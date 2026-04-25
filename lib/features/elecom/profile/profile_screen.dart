@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 
+import '../../../core/config/api_config.dart';
 import '../../../core/session/user_session.dart';
 import '../data/elecom_mobile_api.dart';
+import 'package:image_picker/image_picker.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -12,9 +17,11 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final ElecomMobileApi _api = ElecomMobileApi();
+  final ImagePicker _picker = ImagePicker();
 
   bool _loading = false;
   Map<String, dynamic>? _profile;
+  int _photoCacheBuster = 0;
 
   @override
   void initState() {
@@ -31,6 +38,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         'role': UserSession.role,
         'department': UserSession.department,
         'position': UserSession.position,
+        'profile_photo_url': UserSession.profilePhotoUrl,
       };
     });
   }
@@ -42,6 +50,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     try {
       final res = await _api.getProfile();
+      if (kDebugMode) {
+        debugPrint('GET profile response: $res');
+      }
       final root = res;
       final data = root['data'] is Map<String, dynamic> ? (root['data'] as Map<String, dynamic>) : const <String, dynamic>{};
       final student = data['student'] is Map<String, dynamic>
@@ -83,6 +94,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final fullName = _resolveFullName();
     final role = _readString('role');
     final studentId = _readString('student_id').isNotEmpty ? _readString('student_id') : (UserSession.studentId ?? '');
+    final photoUrl = _resolvePhotoUrl();
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -125,10 +137,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   child: Row(
                     children: [
-                      const CircleAvatar(
+                      CircleAvatar(
                         radius: 28,
                         backgroundColor: Colors.white,
-                        child: Icon(Icons.person, size: 36, color: Colors.black87),
+                        backgroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
+                        child: photoUrl.isNotEmpty ? null : const Icon(Icons.person, size: 36, color: Colors.black87),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -150,7 +163,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ),
                       OutlinedButton.icon(
-                        onPressed: () {},
+                        onPressed: _loading ? null : _changePhoto,
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.black,
                           side: const BorderSide(color: Colors.black12),
@@ -233,6 +246,96 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final last = _readString('last_name');
     final built = [first, middle, last].where((p) => p.trim().isNotEmpty).join(' ').trim();
     return built;
+  }
+
+  String _resolvePhotoUrl() {
+    final direct = _readFirst(const ['profile_photo_url', 'profilePhotoUrl', 'photo_url', 'photoUrl', 'photo', 'avatar']);
+    if (direct.isNotEmpty) return _cacheBust(_normalizePhotoUrl(direct));
+    final sessionUrl = (UserSession.profilePhotoUrl ?? '').trim();
+    if (sessionUrl.isNotEmpty) return _cacheBust(_normalizePhotoUrl(sessionUrl));
+    return '';
+  }
+
+  String _normalizePhotoUrl(String url) {
+    final trimmed = url.trim();
+    if (trimmed.isEmpty) return '';
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+
+    // Backend might return a relative path like /media/... or media/...
+    final base = ApiConfig.baseUrl;
+    if (trimmed.startsWith('/')) return '$base$trimmed';
+    return '$base/$trimmed';
+  }
+
+  String _cacheBust(String url) {
+    if (url.isEmpty) return '';
+    final sep = url.contains('?') ? '&' : '?';
+    return '$url${sep}t=$_photoCacheBuster';
+  }
+
+  Future<void> _changePhoto() async {
+    try {
+      final picked = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+      if (picked == null) return;
+
+      final oldUrl = _resolvePhotoUrl();
+
+      setState(() {
+        _loading = true;
+      });
+
+      // Backend endpoint /api/mobile/account/profile/photo/ expects JSON { photo_url }, not a multipart file.
+      // So we always upload to Cloudinary first, then persist the returned URL to the backend.
+      final secureUrl = await _api.uploadImageToCloudinary(imageFile: File(picked.path));
+      final setRes = await _api.setProfilePhotoUrl(photoUrl: secureUrl);
+      if (kDebugMode) {
+        debugPrint('POST set profile photo URL response: $setRes');
+      }
+
+      final uploadedUrl = secureUrl;
+
+      if (uploadedUrl.isNotEmpty) {
+        UserSession.profilePhotoUrl = uploadedUrl;
+        setState(() {
+          _photoCacheBuster = DateTime.now().millisecondsSinceEpoch;
+          _profile = {
+            ...?_profile,
+            'profile_photo_url': uploadedUrl,
+            'photo_url': uploadedUrl,
+            'photo': uploadedUrl,
+          };
+        });
+      }
+
+      await _refreshProfile();
+
+      // Some backends return ok=true but update the stored URL asynchronously.
+      // Poll profile a few times to catch the new URL and update the avatar.
+      for (var i = 0; i < 4; i++) {
+        final current = _resolvePhotoUrl();
+        if (current.isNotEmpty && current != oldUrl) break;
+        await Future<void>.delayed(const Duration(milliseconds: 800));
+        await _refreshProfile();
+      }
+
+      if (!mounted) return;
+
+      final newUrl = _resolvePhotoUrl();
+      if (newUrl.isNotEmpty && newUrl != oldUrl) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile photo updated')));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Upload finished, but photo URL was not returned yet')));
+      }
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to update profile photo')));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
+    }
   }
 }
 

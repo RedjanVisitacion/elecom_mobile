@@ -1,6 +1,7 @@
 class UserSession {
   static String? studentId;
   static String? fullName;
+  static String? profilePhotoUrl;
   static String? role;
   static String? department;
   static String? position;
@@ -28,6 +29,11 @@ class UserSession {
     final finalName = directName.isNotEmpty ? directName : built;
     fullName = finalName.isEmpty ? null : finalName;
 
+    final photo = (res['profile_photo_url'] ?? res['profilePhotoUrl'] ?? res['photo_url'] ?? res['photoUrl'] ?? res['photo'] ?? res['avatar'] ?? user['profile_photo_url'] ?? user['photo_url'] ?? user['photo'] ?? student['profile_photo_url'] ?? student['photo_url'] ?? student['photo'] ?? '').toString().trim();
+    if (photo.isNotEmpty && photo.toLowerCase() != 'null') {
+      profilePhotoUrl = photo;
+    }
+
     role = (res['role'] ?? user['role'] ?? '').toString();
     department = (res['department'] ?? user['department'] ?? student['department'] ?? '').toString();
     position = (res['position'] ?? user['position'] ?? student['position'] ?? '').toString();
@@ -41,6 +47,7 @@ class UserSession {
   static void clear() {
     studentId = null;
     fullName = null;
+    profilePhotoUrl = null;
     role = null;
     department = null;
     position = null;

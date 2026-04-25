@@ -68,11 +68,6 @@ class StudentDashboardAppBar {
             )
           : const Text('Dashboard'),
       actions: [
-        IconButton(
-          tooltip: 'Terms & Conditions',
-          onPressed: () => showElecomTermsDialog(context),
-          icon: const Icon(Icons.help_outline),
-        ),
         PopupMenuButton<_MenuAction>(
           tooltip: 'Menu',
           icon: const Icon(Icons.more_vert),
