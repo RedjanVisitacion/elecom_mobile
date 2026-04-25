@@ -8,6 +8,8 @@ import '../../../core/network/api_client.dart';
 import '../../../core/session/user_session.dart';
 import '../../auth/presentation/login_screen.dart';
 import '../data/elecom_mobile_api.dart';
+import 'elecom_about_screen.dart';
+import 'elecom_faqs_screen.dart';
 import 'package:image_picker/image_picker.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -277,18 +279,20 @@ class _AccountBodyState extends State<AccountBody> {
               _menuItem(
                 icon: Icons.quiz_outlined,
                 title: 'FAQs',
-                onTap: () => _showInfoDialog(
-                  title: 'FAQs',
-                  message: 'Voting FAQs will be added here.\n\nFor now: make sure you are logged in and connected to the authorized network (if required).',
-                ),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const ElecomFaqsScreen()),
+                  );
+                },
               ),
               _menuItem(
                 icon: Icons.how_to_vote_outlined,
                 title: 'About ELECOM Voting',
-                onTap: () => _showInfoDialog(
-                  title: 'About ELECOM Voting',
-                  message: 'ELECOM is your official voting module.\n\nCast your vote securely using your verified account.',
-                ),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const ElecomAboutScreen()),
+                  );
+                },
               ),
               _menuItem(
                 icon: Icons.support_agent,
