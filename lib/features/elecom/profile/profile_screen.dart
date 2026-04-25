@@ -16,6 +16,43 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        elevation: 0,
+        automaticallyImplyLeading: true,
+        centerTitle: false,
+        titleSpacing: 0,
+        title: Padding(
+          padding: const EdgeInsets.only(left: 12),
+          child: Opacity(
+            opacity: 0.85,
+            child: Image.asset(
+              'assets/img_text/elecom_black1.png',
+              height: 24,
+              fit: BoxFit.contain,
+              errorBuilder: (c, e, s) => const Text('ELECOM'),
+            ),
+          ),
+        ),
+      ),
+      body: const ProfileBody(),
+    );
+  }
+}
+
+class ProfileBody extends StatefulWidget {
+  const ProfileBody({super.key});
+
+  @override
+  State<ProfileBody> createState() => _ProfileBodyState();
+}
+
+class _ProfileBodyState extends State<ProfileBody> {
   final ElecomMobileApi _api = ElecomMobileApi();
   final ImagePicker _picker = ImagePicker();
 
@@ -96,30 +133,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final studentId = _readString('student_id').isNotEmpty ? _readString('student_id') : (UserSession.studentId ?? '');
     final photoUrl = _resolvePhotoUrl();
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0,
-        title: const Text(''),
-        actions: [
-          if (_loading)
-            const Padding(
-              padding: EdgeInsets.only(right: 12),
-              child: SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            ),
-        ],
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            children: [
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          children: [
               Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(14),
@@ -186,8 +204,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _ProfileField(label: 'Student ID', value: studentId),
               _ProfileField(label: 'Year & Section', value: _resolveYearSection()),
               _ProfileField(label: 'Phone No.', value: _readFirst(const ['phone_number', 'phoneNumber', 'phone', 'mobile', 'contact', 'contact_no', 'contactNo'])),
-            ],
-          ),
+          ],
         ),
       ),
     );

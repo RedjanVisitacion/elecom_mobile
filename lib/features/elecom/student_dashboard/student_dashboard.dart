@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/session/user_session.dart';
+import '../profile/profile_screen.dart';
 import '../data/elecom_mobile_api.dart';
 import 'utils/theme_notifier.dart';
 import 'widgets/student_dashboard_appbar.dart';
@@ -108,7 +109,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                 const _PlaceholderTab(title: 'Election'),
                 const _PlaceholderTab(title: 'Results'),
                 const _PlaceholderTab(title: 'Receipt'),
-                const _PlaceholderTab(title: 'Notification'),
+                const ProfileBody(),
               ],
             ),
             bottomNavigationBar: BottomNavigationBar(
@@ -127,7 +128,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                 BottomNavigationBarItem(icon: Icon(Icons.how_to_vote_outlined), label: 'Election'),
                 BottomNavigationBarItem(icon: Icon(Icons.bar_chart_outlined), label: 'Results'),
                 BottomNavigationBarItem(icon: Icon(Icons.receipt_long_outlined), label: 'Receipt'),
-                BottomNavigationBarItem(icon: Icon(Icons.notifications_none), label: 'Notification'),
+                BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Me'),
               ],
             ),
           ),

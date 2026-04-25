@@ -2,11 +2,6 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
-import '../../../../core/network/api_client.dart';
-import '../../../../core/session/user_session.dart';
-import '../../../auth/presentation/login_screen.dart';
-import '../../profile/profile_screen.dart';
-
 class StudentDashboardAppBar {
   static void showElecomTermsDialog(BuildContext context) {
     showDialog<void>(
@@ -68,89 +63,16 @@ class StudentDashboardAppBar {
             )
           : const Text('Dashboard'),
       actions: [
-        PopupMenuButton<_MenuAction>(
-          tooltip: 'Menu',
-          icon: const Icon(Icons.more_vert),
-          position: PopupMenuPosition.under,
-          offset: const Offset(0, 8),
-          color: Colors.white,
-          surfaceTintColor: Colors.white,
-          itemBuilder: (context) {
-            final name = (UserSession.fullName ?? '').trim();
-            final displayName = name.isNotEmpty ? name : (UserSession.studentId ?? '');
-            final parts = displayName.split(RegExp(r'\s+')).where((p) => p.trim().isNotEmpty).toList();
-            final shortName = parts.length >= 2 ? '${parts.first} ${parts.last}' : displayName;
-
-            return [
-              PopupMenuItem<_MenuAction>(
-                enabled: false,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      children: [
-                        const CircleAvatar(
-                          radius: 14,
-                          backgroundColor: Color(0xFFEAEAEA),
-                          child: Icon(Icons.person, size: 18, color: Colors.black87),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            shortName.isEmpty ? 'User' : shortName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontWeight: FontWeight.w800),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const PopupMenuDivider(),
-              const PopupMenuItem<_MenuAction>(
-                value: _MenuAction.profile,
-                child: Row(
-                  children: [
-                    Icon(Icons.person_outline),
-                    SizedBox(width: 10),
-                    Text('Profile'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem<_MenuAction>(
-                value: _MenuAction.logout,
-                child: Row(
-                  children: [
-                    Icon(Icons.logout, color: Colors.red),
-                    SizedBox(width: 10),
-                    Text('Logout', style: TextStyle(color: Colors.red, fontWeight: FontWeight.w700)),
-                  ],
-                ),
-              ),
-            ];
+        IconButton(
+          tooltip: 'Notifications',
+          onPressed: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Coming soon')),
+            );
           },
-          onSelected: (action) {
-            if (action == _MenuAction.profile) {
-              Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ProfileScreen()));
-              return;
-            }
-
-            if (action == _MenuAction.logout) {
-              ApiClient.clearSession();
-              UserSession.clear();
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
-                (route) => false,
-              );
-            }
-          },
+          icon: const Icon(Icons.notifications_none),
         ),
       ],
     );
   }
 }
-
-enum _MenuAction { profile, logout }
