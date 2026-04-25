@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import 'elecom_privacy_notice_screen.dart';
+import 'elecom_terms_conditions_screen.dart';
+
 class ElecomAboutScreen extends StatelessWidget {
   const ElecomAboutScreen({super.key});
 
@@ -89,8 +92,8 @@ class ElecomAboutScreen extends StatelessWidget {
                   width: double.infinity,
                   child: OutlinedButton.icon(
                     onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Privacy Notice: Coming soon')),
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const ElecomPrivacyNoticeScreen()),
                       );
                     },
                     style: OutlinedButton.styleFrom(
@@ -111,8 +114,8 @@ class ElecomAboutScreen extends StatelessWidget {
                   width: double.infinity,
                   child: OutlinedButton.icon(
                     onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Terms and Conditions: Coming soon')),
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const ElecomTermsConditionsScreen()),
                       );
                     },
                     style: OutlinedButton.styleFrom(
