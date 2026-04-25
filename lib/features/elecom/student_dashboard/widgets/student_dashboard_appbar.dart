@@ -41,6 +41,7 @@ class StudentDashboardAppBar {
   static PreferredSizeWidget build({
     required BuildContext context,
     required bool isElecom,
+    String? titleText,
   }) {
     return AppBar(
       backgroundColor: Colors.white,
@@ -48,20 +49,28 @@ class StudentDashboardAppBar {
       elevation: 0,
       centerTitle: false,
       titleSpacing: 0,
-      title: isElecom
+      title: titleText != null
           ? Padding(
               padding: const EdgeInsets.only(left: 12),
-              child: Opacity(
-                opacity: 0.85,
-                child: Image.asset(
-                  'assets/img_text/elecom_black1.png',
-                  height: 24,
-                  fit: BoxFit.contain,
-                  errorBuilder: (c, e, s) => const Text('ELECOM'),
-                ),
+              child: Text(
+                titleText,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
               ),
             )
-          : const Text('Dashboard'),
+          : isElecom
+              ? Padding(
+                  padding: const EdgeInsets.only(left: 12),
+                  child: Opacity(
+                    opacity: 0.85,
+                    child: Image.asset(
+                      'assets/img_text/elecom_black1.png',
+                      height: 24,
+                      fit: BoxFit.contain,
+                      errorBuilder: (c, e, s) => const Text('ELECOM'),
+                    ),
+                  ),
+                )
+              : const Text('Dashboard'),
       actions: [
         IconButton(
           tooltip: 'Notifications',

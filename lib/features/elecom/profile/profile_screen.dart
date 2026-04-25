@@ -4,7 +4,9 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../../../core/config/api_config.dart';
+import '../../../core/network/api_client.dart';
 import '../../../core/session/user_session.dart';
+import '../../auth/presentation/login_screen.dart';
 import '../data/elecom_mobile_api.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -13,6 +15,303 @@ class ProfileScreen extends StatefulWidget {
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class AccountBody extends StatefulWidget {
+  const AccountBody({super.key});
+
+  @override
+  State<AccountBody> createState() => _AccountBodyState();
+}
+
+class _AccountBodyState extends State<AccountBody> {
+  final ElecomMobileApi _api = ElecomMobileApi();
+  bool _loading = false;
+  Map<String, dynamic>? _profile;
+
+  @override
+  void initState() {
+    super.initState();
+    _hydrateFromSession();
+    _refresh();
+  }
+
+  void _hydrateFromSession() {
+    setState(() {
+      _profile = {
+        'full_name': UserSession.fullName,
+        'student_id': UserSession.studentId,
+        'role': UserSession.role,
+        'department': UserSession.department,
+        'position': UserSession.position,
+        'email': null,
+        'profile_photo_url': UserSession.profilePhotoUrl,
+      };
+    });
+  }
+
+  Future<void> _refresh() async {
+    setState(() {
+      _loading = true;
+    });
+    try {
+      final res = await _api.getProfile();
+      if (kDebugMode) {
+        debugPrint('GET profile response (account): $res');
+      }
+      UserSession.setFromResponse(res);
+      if (res['data'] is Map<String, dynamic>) {
+        UserSession.setFromResponse(res['data'] as Map<String, dynamic>);
+      }
+
+      setState(() {
+        _profile = res;
+      });
+    } catch (_) {
+      // keep existing
+    } finally {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
+    }
+  }
+
+  Object? _lookup(String key) {
+    final top = _profile;
+    if (top == null) return null;
+    if (top.containsKey(key) && top[key] != null) return top[key];
+
+    final data = top['data'];
+    if (data is Map<String, dynamic> && data.containsKey(key) && data[key] != null) return data[key];
+
+    final user = top['user'];
+    if (user is Map<String, dynamic> && user.containsKey(key) && user[key] != null) return user[key];
+
+    final student = top['student'];
+    if (student is Map<String, dynamic> && student.containsKey(key) && student[key] != null) return student[key];
+
+    return null;
+  }
+
+  String _readString(String key) {
+    final v = _lookup(key);
+    if (v == null) return '';
+    return v.toString().trim();
+  }
+
+  String _readFirst(List<String> keys) {
+    for (final k in keys) {
+      final v = _readString(k);
+      if (v.isNotEmpty) return v;
+    }
+    return '';
+  }
+
+  String _resolveFullName() {
+    final direct = _readString('full_name');
+    if (direct.isNotEmpty) return direct;
+    final userFirst = _readFirst(const ['first_name', 'firstName']);
+    final userMiddle = _readFirst(const ['middle_name', 'middleName']);
+    final userLast = _readFirst(const ['last_name', 'lastName']);
+    final built = [userFirst, userMiddle, userLast].where((p) => p.trim().isNotEmpty).join(' ').trim();
+    if (built.isNotEmpty) return built;
+    return (UserSession.fullName ?? '').trim();
+  }
+
+  String _resolveStudentId() {
+    final direct = _readFirst(const ['student_id', 'studentId', 'id_number', 'idNumber']);
+    if (direct.isNotEmpty) return direct;
+    return (UserSession.studentId ?? '').trim();
+  }
+
+  String _normalizePhotoUrl(String url) {
+    final trimmed = url.trim();
+    if (trimmed.isEmpty) return '';
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+    final base = ApiConfig.baseUrl;
+    if (trimmed.startsWith('/')) return '$base$trimmed';
+    return '$base/$trimmed';
+  }
+
+  String _resolvePhotoUrl() {
+    final direct = _readFirst(const ['profile_photo_url', 'photo_url', 'photo', 'avatar']);
+    if (direct.isNotEmpty && direct.toLowerCase() != 'null') return _normalizePhotoUrl(direct);
+    final sessionUrl = (UserSession.profilePhotoUrl ?? '').trim();
+    if (sessionUrl.isNotEmpty && sessionUrl.toLowerCase() != 'null') return _normalizePhotoUrl(sessionUrl);
+    return '';
+  }
+
+  Future<void> _logout() async {
+    ApiClient.clearSession();
+    UserSession.clear();
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
+    );
+  }
+
+  Future<void> _showInfoDialog({required String title, required String message}) async {
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: TextButton.styleFrom(foregroundColor: Colors.black),
+            child: const Text('CLOSE'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _menuItem({required IconData icon, required String title, required VoidCallback onTap, bool destructive = false}) {
+    final color = destructive ? Colors.red : Colors.black;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.black12),
+        borderRadius: BorderRadius.circular(12),
+        color: Colors.white,
+      ),
+      child: ListTile(
+        onTap: onTap,
+        leading: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF2F2F2),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: color),
+        ),
+        title: Text(title, style: TextStyle(color: color, fontWeight: FontWeight.w800)),
+        trailing: Icon(Icons.chevron_right, color: color.withValues(alpha: 0.7)),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final name = _resolveFullName();
+    final studentId = _resolveStudentId();
+    final photoUrl = _resolvePhotoUrl();
+
+    return SafeArea(
+      child: RefreshIndicator(
+        onRefresh: _refresh,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 6),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.black12),
+                  borderRadius: BorderRadius.circular(16),
+                  color: Colors.white,
+                ),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 34,
+                      backgroundColor: const Color(0xFFF2F2F2),
+                      backgroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
+                      child: photoUrl.isNotEmpty ? null : const Icon(Icons.person, size: 34, color: Colors.black87),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            name.isEmpty ? 'User' : name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            studentId.isEmpty ? 'Student ID: —' : 'Student ID: $studentId',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.black54, fontWeight: FontWeight.w700),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              _menuItem(
+                icon: Icons.quiz_outlined,
+                title: 'FAQs',
+                onTap: () => _showInfoDialog(
+                  title: 'FAQs',
+                  message: 'Voting FAQs will be added here.\n\nFor now: make sure you are logged in and connected to the authorized network (if required).',
+                ),
+              ),
+              _menuItem(
+                icon: Icons.how_to_vote_outlined,
+                title: 'About ELECOM Voting',
+                onTap: () => _showInfoDialog(
+                  title: 'About ELECOM Voting',
+                  message: 'ELECOM is your official voting module.\n\nCast your vote securely using your verified account.',
+                ),
+              ),
+              _menuItem(
+                icon: Icons.support_agent,
+                title: 'Contact Support',
+                onTap: () => _showInfoDialog(
+                  title: 'Contact Support',
+                  message: 'Please contact your ELECOM administrator or your campus IT support for account issues.',
+                ),
+              ),
+              _menuItem(
+                icon: Icons.star_border,
+                title: 'Rate our app',
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Coming soon')));
+                },
+              ),
+              _menuItem(
+                icon: Icons.settings_outlined,
+                title: 'Settings',
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Coming soon')));
+                },
+              ),
+              _menuItem(
+                icon: Icons.logout,
+                title: 'Logout',
+                destructive: true,
+                onTap: _logout,
+              ),
+              const SizedBox(height: 8),
+              Center(
+                child: Text(
+                  'Version 1.0.0',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.black45, fontWeight: FontWeight.w700),
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {

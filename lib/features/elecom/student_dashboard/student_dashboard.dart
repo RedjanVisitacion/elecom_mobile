@@ -101,7 +101,11 @@ class _StudentDashboardState extends State<StudentDashboard> {
         return Theme(
           data: dashboardTheme,
           child: Scaffold(
-            appBar: StudentDashboardAppBar.build(context: context, isElecom: isElecom),
+            appBar: StudentDashboardAppBar.build(
+              context: context,
+              isElecom: isElecom,
+              titleText: _currentIndex == 4 ? 'Account' : null,
+            ),
             body: IndexedStack(
               index: _currentIndex,
               children: [
@@ -109,7 +113,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                 const _PlaceholderTab(title: 'Election'),
                 const _PlaceholderTab(title: 'Results'),
                 const _PlaceholderTab(title: 'Receipt'),
-                const ProfileBody(),
+                const AccountBody(),
               ],
             ),
             bottomNavigationBar: BottomNavigationBar(
