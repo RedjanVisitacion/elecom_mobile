@@ -26,7 +26,6 @@ class AccountBody extends StatefulWidget {
 
 class _AccountBodyState extends State<AccountBody> {
   final ElecomMobileApi _api = ElecomMobileApi();
-  bool _loading = false;
   Map<String, dynamic>? _profile;
 
   @override
@@ -51,9 +50,6 @@ class _AccountBodyState extends State<AccountBody> {
   }
 
   Future<void> _refresh() async {
-    setState(() {
-      _loading = true;
-    });
     try {
       final res = await _api.getProfile();
       if (kDebugMode) {
@@ -69,12 +65,6 @@ class _AccountBodyState extends State<AccountBody> {
       });
     } catch (_) {
       // keep existing
-    } finally {
-      if (mounted) {
-        setState(() {
-          _loading = false;
-        });
-      }
     }
   }
 
@@ -151,6 +141,36 @@ class _AccountBodyState extends State<AccountBody> {
       MaterialPageRoute(builder: (_) => const LoginScreen()),
       (route) => false,
     );
+  }
+
+  Future<void> _confirmLogout() async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          title: const Text('Logout'),
+          content: const Text('Are you sure you want to logout?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              style: TextButton.styleFrom(foregroundColor: Colors.black),
+              child: const Text('CANCEL'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: TextButton.styleFrom(foregroundColor: Colors.red, textStyle: const TextStyle(fontWeight: FontWeight.w900)),
+              child: const Text('LOGOUT'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldLogout == true) {
+      await _logout();
+    }
   }
 
   Future<void> _showInfoDialog({required String title, required String message}) async {
@@ -296,7 +316,7 @@ class _AccountBodyState extends State<AccountBody> {
                 icon: Icons.logout,
                 title: 'Logout',
                 destructive: true,
-                onTap: _logout,
+                onTap: _confirmLogout,
               ),
               const SizedBox(height: 8),
               Center(
