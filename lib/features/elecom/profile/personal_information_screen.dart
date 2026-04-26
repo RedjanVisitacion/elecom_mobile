@@ -130,6 +130,16 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
     return '';
   }
 
+  String _resolveYearSection() {
+    final direct = _readFirst(const ['year_section', 'yearSection', 'year_and_section', 'yearAndSection']);
+    if (direct.isNotEmpty) return direct;
+
+    final year = _readFirst(const ['year', 'year_level', 'yearLevel']);
+    final section = _readFirst(const ['section', 'sec']);
+    final combined = [year, section].where((x) => x.trim().isNotEmpty).join(' ').trim();
+    return combined;
+  }
+
   Future<void> _changePhoto() async {
     if (!_isEditing || _saving) return;
     try {
@@ -217,6 +227,8 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
     final subtitleColor = isDarkMode ? Colors.white70 : Colors.black54;
     final cardColor = isDarkMode ? const Color(0xFF2A2A35) : Colors.white;
     final borderColor = isDarkMode ? Colors.white12 : Colors.black12;
+    final accentSurface = Colors.white;
+    final accentContent = Colors.black87;
     final photoUrl = _resolvePhotoUrl();
 
     return Scaffold(
@@ -239,7 +251,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                   },
             icon: Icon(
               _isEditing ? Icons.close : Icons.edit_outlined,
-              color: isDarkMode ? Colors.white : Colors.blue,
+              color: titleColor,
             ),
             tooltip: _isEditing ? 'Cancel edit' : 'Edit',
           ),
@@ -276,11 +288,16 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                               child: Container(
                                 width: 34,
                                 height: 34,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFF4D87E2),
+                                decoration: BoxDecoration(
+                                  color: accentSurface,
+                                  border: Border.all(color: borderColor),
                                   shape: BoxShape.circle,
                                 ),
-                                child: const Icon(Icons.photo_camera_outlined, color: Colors.white, size: 18),
+                                child: Icon(
+                                  Icons.photo_camera_outlined,
+                                  color: accentContent,
+                                  size: 18,
+                                ),
                               ),
                             ),
                         ],
@@ -315,6 +332,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                     value: _readFirst(const ['created_at', 'createdAt', 'date_joined', 'dateJoined']),
                     isEditing: false,
                     controller: null,
+                    locked: true,
                     titleColor: titleColor,
                     subtitleColor: subtitleColor,
                     cardColor: cardColor,
@@ -325,6 +343,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                     value: _readFirst(const ['student_id', 'studentId', 'id_number', 'idNumber']),
                     isEditing: false,
                     controller: null,
+                    locked: true,
                     titleColor: titleColor,
                     subtitleColor: subtitleColor,
                     cardColor: cardColor,
@@ -332,9 +351,10 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                   ),
                   _InfoField(
                     label: 'Year & Section',
-                    value: _readFirst(const ['year_section', 'yearSection', 'year_and_section', 'yearAndSection']),
+                    value: _resolveYearSection(),
                     isEditing: false,
                     controller: null,
+                    locked: true,
                     titleColor: titleColor,
                     subtitleColor: subtitleColor,
                     cardColor: cardColor,
@@ -378,15 +398,19 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                       child: ElevatedButton.icon(
                         onPressed: _saving ? null : _applyChanges,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF4D87E2),
-                          foregroundColor: Colors.white,
+                          backgroundColor: accentSurface,
+                          foregroundColor: accentContent,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          side: BorderSide(color: borderColor),
                         ),
                         icon: _saving
                             ? const SizedBox(
                                 width: 18,
                                 height: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.black87,
+                                ),
                               )
                             : const Icon(Icons.send_outlined),
                         label: Text(
@@ -413,6 +437,7 @@ class _InfoField extends StatelessWidget {
     required this.subtitleColor,
     required this.cardColor,
     required this.borderColor,
+    this.locked = false,
     this.keyboardType,
   });
 
@@ -424,6 +449,7 @@ class _InfoField extends StatelessWidget {
   final Color subtitleColor;
   final Color cardColor;
   final Color borderColor;
+  final bool locked;
   final TextInputType? keyboardType;
 
   @override
@@ -440,12 +466,24 @@ class _InfoField extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              color: subtitleColor,
-              fontWeight: FontWeight.w700,
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: subtitleColor,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              if (locked)
+                Icon(
+                  Icons.lock_outline,
+                  size: 16,
+                  color: subtitleColor,
+                ),
+            ],
           ),
           const SizedBox(height: 6),
           if (isEditing && controller != null)
