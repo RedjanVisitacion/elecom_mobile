@@ -14,13 +14,14 @@ class ElecomTermsConditionsScreen extends StatelessWidget {
   }
 
   Widget _paragraph(BuildContext context, String text) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Text(
         text,
         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               height: 1.4,
-              color: Colors.black87,
+              color: isDarkMode ? Colors.white : Colors.black87,
               fontWeight: FontWeight.w400,
             ),
       ),
@@ -28,16 +29,23 @@ class ElecomTermsConditionsScreen extends StatelessWidget {
   }
 
   Widget _bullet(BuildContext context, String text) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.only(top: 6),
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
             child: SizedBox(
               width: 10,
-              child: Text('•', style: TextStyle(fontWeight: FontWeight.w900)),
+              child: Text(
+                '•',
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  color: isDarkMode ? Colors.white : Colors.black,
+                ),
+              ),
             ),
           ),
           Expanded(
@@ -45,7 +53,7 @@ class ElecomTermsConditionsScreen extends StatelessWidget {
               text,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     height: 1.4,
-                    color: Colors.black87,
+                    color: isDarkMode ? Colors.white : Colors.black87,
                     fontWeight: FontWeight.w400,
                   ),
             ),
@@ -57,13 +65,14 @@ class ElecomTermsConditionsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const surface = Color(0xFFF5F5F5);
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final surface = isDarkMode ? const Color(0xFF171620) : const Color(0xFFF5F5F5);
 
     return Scaffold(
       backgroundColor: surface,
       appBar: AppBar(
         backgroundColor: surface,
-        foregroundColor: Colors.black,
+        foregroundColor: isDarkMode ? Colors.white : Colors.black,
         elevation: 0,
         title: const Text(
           'Terms and Conditions',
@@ -77,14 +86,14 @@ class ElecomTermsConditionsScreen extends StatelessWidget {
             'ECVS (ELECOM Voting System)',
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w900,
-                  color: Colors.black54,
+                  color: isDarkMode ? Colors.white70 : Colors.black54,
                 ),
           ),
           const SizedBox(height: 6),
           Text(
             'Effective Date: April 25, 2026',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.black54,
+                  color: isDarkMode ? Colors.white70 : Colors.black54,
                   fontWeight: FontWeight.w600,
                 ),
           ),

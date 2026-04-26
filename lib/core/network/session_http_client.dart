@@ -47,6 +47,16 @@ class SessionHttpClient extends http.BaseClient {
     _cookies.clear();
   }
 
+  Map<String, String> exportCookies() {
+    return Map<String, String>.from(_cookies);
+  }
+
+  void importCookies(Map<String, String> cookies) {
+    _cookies
+      ..clear()
+      ..addAll(cookies);
+  }
+
   @override
   void close() {
     _inner.close();

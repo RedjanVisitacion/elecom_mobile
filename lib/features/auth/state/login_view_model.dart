@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../core/session/user_session.dart';
+import '../../../core/session/session_persistence.dart';
 import '../data/auth_api.dart';
 
 class LoginViewModel extends ChangeNotifier {
@@ -48,6 +49,7 @@ class LoginViewModel extends ChangeNotifier {
         'full_name': res.fullName,
         'name': res.fullName,
       });
+      await SessionPersistence.save();
       return res;
     } on AuthException catch (e) {
       _error = e.message;

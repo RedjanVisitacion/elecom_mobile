@@ -10,4 +10,8 @@ class ApiClient {
   static http.Client get httpClient => _client;
 
   static void clearSession() => _client.clearSession();
+
+  static Map<String, String> exportCookies() => _client.exportCookies();
+
+  static void importCookies(Map<String, String> cookies) => _client.importCookies(cookies);
 }

@@ -96,6 +96,8 @@ class ElecomAboutScreen extends StatelessWidget {
   }
 
   Future<void> _contactSupportOptions(BuildContext context) async {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -107,7 +109,7 @@ class ElecomAboutScreen extends StatelessWidget {
             bottom: MediaQuery.of(ctx).padding.bottom + 10,
           ),
           child: Material(
-            color: Colors.white,
+            color: isDarkMode ? const Color(0xFF2A2A35) : Colors.white,
             borderRadius: BorderRadius.circular(20),
             clipBehavior: Clip.antiAlias,
             child: Column(
@@ -118,29 +120,54 @@ class ElecomAboutScreen extends StatelessWidget {
                   width: 42,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.black12,
+                    color: isDarkMode ? Colors.white24 : Colors.black12,
                     borderRadius: BorderRadius.circular(99),
                   ),
                 ),
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   'Contact Support',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    color: isDarkMode ? Colors.white : Colors.black,
+                  ),
                 ),
                 const SizedBox(height: 10),
                 ListTile(
                   leading: const Icon(Icons.facebook, color: Colors.blue),
-                  title: const Text('Facebook Messenger', style: TextStyle(fontWeight: FontWeight.w800)),
-                  subtitle: const Text('Chat with support on Facebook'),
+                  title: Text(
+                    'Facebook Messenger',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: isDarkMode ? Colors.white : Colors.black,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Chat with support on Facebook',
+                    style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black54),
+                  ),
                   onTap: () async {
                     Navigator.of(ctx).pop();
                     await _openMessengerSupport(context);
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.email_outlined, color: Colors.black87),
-                  title: const Text('Email', style: TextStyle(fontWeight: FontWeight.w800)),
-                  subtitle: const Text('rpsvcodes@gmail.com'),
+                  leading: Icon(
+                    Icons.email_outlined,
+                    color: isDarkMode ? Colors.white : Colors.black87,
+                  ),
+                  title: Text(
+                    'Email',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: isDarkMode ? Colors.white : Colors.black,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'rpsvcodes@gmail.com',
+                    style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black54),
+                  ),
                   onTap: () async {
                     Navigator.of(ctx).pop();
                     await _openEmailSupport(context);
@@ -149,7 +176,9 @@ class ElecomAboutScreen extends StatelessWidget {
                 const SizedBox(height: 6),
                 TextButton(
                   onPressed: () => Navigator.of(ctx).pop(),
-                  style: TextButton.styleFrom(foregroundColor: Colors.black54),
+                  style: TextButton.styleFrom(
+                    foregroundColor: isDarkMode ? Colors.white70 : Colors.black54,
+                  ),
                   child: const Text('Close', style: TextStyle(fontWeight: FontWeight.w800)),
                 ),
                 const SizedBox(height: 10),
@@ -162,13 +191,14 @@ class ElecomAboutScreen extends StatelessWidget {
   }
 
   Widget _sectionHeader(BuildContext context, String title) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return Row(
       children: [
         Container(
           width: 4,
           height: 20,
           decoration: BoxDecoration(
-            color: Colors.black,
+            color: isDarkMode ? Colors.white : Colors.black,
             borderRadius: BorderRadius.circular(6),
           ),
         ),
@@ -182,19 +212,20 @@ class ElecomAboutScreen extends StatelessWidget {
   }
 
   Widget _card(BuildContext context, String body) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDarkMode ? const Color(0xFF2A2A35) : Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.black12),
+        border: Border.all(color: isDarkMode ? Colors.white12 : Colors.black12),
       ),
       child: Text(
         body,
         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               height: 1.35,
-              color: Colors.black87,
+              color: isDarkMode ? Colors.white : Colors.black87,
               fontWeight: FontWeight.w400,
             ),
       ),
@@ -203,13 +234,14 @@ class ElecomAboutScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const surface = Color(0xFFF5F5F5);
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final surface = isDarkMode ? const Color(0xFF171620) : const Color(0xFFF5F5F5);
 
     return Scaffold(
       backgroundColor: surface,
       appBar: AppBar(
         backgroundColor: surface,
-        foregroundColor: Colors.black,
+        foregroundColor: isDarkMode ? Colors.white : Colors.black,
         elevation: 0,
         title: const Text(
           'About ELECOM',
@@ -252,8 +284,8 @@ class ElecomAboutScreen extends StatelessWidget {
                       );
                     },
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.black,
-                      side: const BorderSide(color: Colors.black26),
+                      foregroundColor: isDarkMode ? Colors.white : Colors.black,
+                      side: BorderSide(color: isDarkMode ? Colors.white24 : Colors.black26),
                       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     ),
@@ -274,8 +306,8 @@ class ElecomAboutScreen extends StatelessWidget {
                       );
                     },
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.black,
-                      side: const BorderSide(color: Colors.black26),
+                      foregroundColor: isDarkMode ? Colors.white : Colors.black,
+                      side: BorderSide(color: isDarkMode ? Colors.white24 : Colors.black26),
                       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     ),
@@ -298,8 +330,8 @@ class ElecomAboutScreen extends StatelessWidget {
               child: ElevatedButton.icon(
                 onPressed: () => _contactSupportOptions(context),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black,
-                  foregroundColor: Colors.white,
+                  backgroundColor: isDarkMode ? Colors.white : Colors.black,
+                  foregroundColor: isDarkMode ? Colors.black : Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
                 icon: const Icon(Icons.chat_bubble_outline),

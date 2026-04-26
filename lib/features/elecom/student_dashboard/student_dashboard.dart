@@ -95,6 +95,11 @@ class _StudentDashboardState extends State<StudentDashboard> {
                   brightness: Brightness.dark,
                 ),
                 useMaterial3: true,
+                scaffoldBackgroundColor: const Color(0xFF171620),
+                appBarTheme: const AppBarTheme(
+                  backgroundColor: Color(0xFF171620),
+                  foregroundColor: Colors.white,
+                ),
               )
             : Theme.of(context);
 
@@ -124,9 +129,9 @@ class _StudentDashboardState extends State<StudentDashboard> {
                   _currentIndex = i;
                 });
               },
-              selectedItemColor: Colors.black,
-              unselectedItemColor: Colors.black54,
-              backgroundColor: Colors.white,
+              selectedItemColor: shouldUseDarkMode ? Colors.white : Colors.black,
+              unselectedItemColor: shouldUseDarkMode ? Colors.white70 : Colors.black54,
+              backgroundColor: shouldUseDarkMode ? const Color(0xFF242433) : Colors.white,
               items: const [
                 BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: 'Home'),
                 BottomNavigationBarItem(icon: Icon(Icons.how_to_vote_outlined), label: 'Election'),

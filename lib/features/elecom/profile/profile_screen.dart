@@ -6,12 +6,13 @@ import 'package:flutter/foundation.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/config/api_config.dart';
-import '../../../core/network/api_client.dart';
 import '../../../core/session/user_session.dart';
+import '../../../core/session/session_persistence.dart';
 import '../../auth/presentation/login_screen.dart';
 import '../data/elecom_mobile_api.dart';
 import 'elecom_about_screen.dart';
 import 'elecom_faqs_screen.dart';
+import 'settings_screen.dart';
 import 'package:image_picker/image_picker.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -68,11 +69,12 @@ class _RateAppSheetState extends State<_RateAppSheet> {
   @override
   Widget build(BuildContext context) {
     final safeBottom = MediaQuery.of(context).padding.bottom;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
       padding: EdgeInsets.only(left: 10, right: 10, bottom: safeBottom + 10),
       child: Material(
-        color: Colors.white,
+        color: isDarkMode ? const Color(0xFF2A2A35) : Colors.white,
         borderRadius: BorderRadius.circular(20),
         clipBehavior: Clip.antiAlias,
         child: Padding(
@@ -84,7 +86,7 @@ class _RateAppSheetState extends State<_RateAppSheet> {
                 width: 42,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.black12,
+                  color: isDarkMode ? Colors.white24 : Colors.black12,
                   borderRadius: BorderRadius.circular(99),
                 ),
               ),
@@ -99,7 +101,11 @@ class _RateAppSheetState extends State<_RateAppSheet> {
               const SizedBox(height: 8),
               Text(
                 'We work super hard to serve you better and would love to know how you\'d rate our app.',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.black54, height: 1.3, fontWeight: FontWeight.w500),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: isDarkMode ? Colors.white70 : Colors.black54,
+                      height: 1.3,
+                      fontWeight: FontWeight.w500,
+                    ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 18),
@@ -147,7 +153,9 @@ class _RateAppSheetState extends State<_RateAppSheet> {
               const SizedBox(height: 14),
               TextButton(
                 onPressed: _submitting ? null : () => Navigator.of(context).pop(),
-                style: TextButton.styleFrom(foregroundColor: Colors.black54),
+                style: TextButton.styleFrom(
+                  foregroundColor: isDarkMode ? Colors.white70 : Colors.black54,
+                ),
                 child: const Text('Rate later', style: TextStyle(fontWeight: FontWeight.w800)),
               ),
             ],
@@ -228,9 +236,12 @@ class _RateEmojiTileState extends State<_RateEmojiTile> with SingleTickerProvide
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final textStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
           fontWeight: FontWeight.w700,
-          color: widget.selected ? Colors.black : Colors.black54,
+          color: isDarkMode
+              ? Colors.white
+              : (widget.selected ? Colors.black : Colors.black54),
         );
 
     return AnimatedBuilder(
@@ -431,8 +442,7 @@ class _AccountBodyState extends State<AccountBody> {
   }
 
   Future<void> _logout() async {
-    ApiClient.clearSession();
-    UserSession.clear();
+    await SessionPersistence.clear();
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -545,6 +555,7 @@ class _AccountBodyState extends State<AccountBody> {
 
   Future<void> _contactSupportOptions() async {
     if (!mounted) return;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     await showModalBottomSheet<void>(
       context: context,
@@ -557,7 +568,7 @@ class _AccountBodyState extends State<AccountBody> {
             bottom: MediaQuery.of(ctx).padding.bottom + 10,
           ),
           child: Material(
-            color: Colors.white,
+            color: isDarkMode ? const Color(0xFF2A2A35) : Colors.white,
             borderRadius: BorderRadius.circular(20),
             clipBehavior: Clip.antiAlias,
             child: Column(
@@ -568,29 +579,54 @@ class _AccountBodyState extends State<AccountBody> {
                   width: 42,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.black12,
+                    color: isDarkMode ? Colors.white24 : Colors.black12,
                     borderRadius: BorderRadius.circular(99),
                   ),
                 ),
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   'Contact Support',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    color: isDarkMode ? Colors.white : Colors.black,
+                  ),
                 ),
                 const SizedBox(height: 10),
                 ListTile(
                   leading: const Icon(Icons.facebook, color: Colors.blue),
-                  title: const Text('Facebook Messenger', style: TextStyle(fontWeight: FontWeight.w800)),
-                  subtitle: const Text('Chat with support on Facebook'),
+                  title: Text(
+                    'Facebook Messenger',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: isDarkMode ? Colors.white : Colors.black,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Chat with support on Facebook',
+                    style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black54),
+                  ),
                   onTap: () async {
                     Navigator.of(ctx).pop();
                     await _openMessengerSupport();
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.email_outlined, color: Colors.black87),
-                  title: const Text('Email', style: TextStyle(fontWeight: FontWeight.w800)),
-                  subtitle: const Text('rpsvcodes@gmail.com'),
+                  leading: Icon(
+                    Icons.email_outlined,
+                    color: isDarkMode ? Colors.white : Colors.black87,
+                  ),
+                  title: Text(
+                    'Email',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: isDarkMode ? Colors.white : Colors.black,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'rpsvcodes@gmail.com',
+                    style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black54),
+                  ),
                   onTap: () async {
                     Navigator.of(ctx).pop();
                     await _openEmailSupport();
@@ -599,7 +635,9 @@ class _AccountBodyState extends State<AccountBody> {
                 const SizedBox(height: 6),
                 TextButton(
                   onPressed: () => Navigator.of(ctx).pop(),
-                  style: TextButton.styleFrom(foregroundColor: Colors.black54),
+                  style: TextButton.styleFrom(
+                    foregroundColor: isDarkMode ? Colors.white70 : Colors.black54,
+                  ),
                   child: const Text('Close', style: TextStyle(fontWeight: FontWeight.w800)),
                 ),
                 const SizedBox(height: 10),
@@ -612,13 +650,19 @@ class _AccountBodyState extends State<AccountBody> {
   }
 
   Widget _menuItem({required IconData icon, required String title, required VoidCallback onTap, bool destructive = false}) {
-    final color = destructive ? Colors.red : Colors.black;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final color = destructive
+        ? Colors.red
+        : (isDarkMode ? Colors.white : Colors.black);
+    final cardColor = isDarkMode ? const Color(0xFF2A2A35) : Colors.white;
+    final iconContainerColor = isDarkMode ? const Color(0xFF393948) : const Color(0xFFF2F2F2);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.black12),
+        border: Border.all(color: isDarkMode ? Colors.white12 : Colors.black12),
         borderRadius: BorderRadius.circular(12),
-        color: Colors.white,
+        color: cardColor,
       ),
       child: ListTile(
         onTap: onTap,
@@ -626,7 +670,7 @@ class _AccountBodyState extends State<AccountBody> {
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: const Color(0xFFF2F2F2),
+            color: iconContainerColor,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(icon, color: color),
@@ -639,6 +683,7 @@ class _AccountBodyState extends State<AccountBody> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final name = _resolveFullName();
     final studentId = _resolveStudentId();
     final photoUrl = _resolvePhotoUrl();
@@ -656,9 +701,9 @@ class _AccountBodyState extends State<AccountBody> {
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  border: Border.all(color: Colors.black12),
+                  border: Border.all(color: isDarkMode ? Colors.white12 : Colors.black12),
                   borderRadius: BorderRadius.circular(16),
-                  color: Colors.white,
+                  color: isDarkMode ? const Color(0xFF2A2A35) : Colors.white,
                 ),
                 child: Row(
                   children: [
@@ -684,7 +729,10 @@ class _AccountBodyState extends State<AccountBody> {
                             studentId.isEmpty ? 'Student ID: —' : 'Student ID: $studentId',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.black54, fontWeight: FontWeight.w700),
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: isDarkMode ? Colors.white70 : Colors.black54,
+                                  fontWeight: FontWeight.w700,
+                                ),
                           ),
                         ],
                       ),
@@ -725,7 +773,9 @@ class _AccountBodyState extends State<AccountBody> {
                 icon: Icons.settings_outlined,
                 title: 'Settings',
                 onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Coming soon')));
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                  );
                 },
               ),
               _menuItem(
@@ -738,7 +788,10 @@ class _AccountBodyState extends State<AccountBody> {
               Center(
                 child: Text(
                   'Version 1.0.0',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.black45, fontWeight: FontWeight.w700),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: isDarkMode ? Colors.white54 : Colors.black45,
+                        fontWeight: FontWeight.w700,
+                      ),
                 ),
               ),
               const SizedBox(height: 20),
@@ -753,11 +806,11 @@ class _AccountBodyState extends State<AccountBody> {
 class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
         elevation: 0,
         automaticallyImplyLeading: true,
         centerTitle: false,
@@ -767,7 +820,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Opacity(
             opacity: 0.85,
             child: Image.asset(
-              'assets/img_text/elecom_black1.png',
+              isDarkMode
+                  ? 'assets/img_text/elecom_white1.png'
+                  : 'assets/img_text/elecom_black1.png',
               height: 24,
               fit: BoxFit.contain,
               errorBuilder: (c, e, s) => const Text('ELECOM'),

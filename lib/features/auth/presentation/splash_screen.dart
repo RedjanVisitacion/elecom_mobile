@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../elecom/presentation/elecom_dashboard.dart';
+import '../../../core/session/session_persistence.dart';
 import 'login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -55,9 +57,11 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       await Future<void>.delayed(minDuration - elapsed);
     }
 
+    final hasSession = await SessionPersistence.restore();
+
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      MaterialPageRoute(builder: (_) => hasSession ? const ElecomDashboard() : const LoginScreen()),
     );
   }
 

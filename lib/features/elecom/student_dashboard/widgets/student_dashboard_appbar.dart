@@ -43,9 +43,9 @@ class StudentDashboardAppBar {
     required bool isElecom,
     String? titleText,
   }) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return AppBar(
-      backgroundColor: Colors.white,
-      foregroundColor: Colors.black,
       elevation: 0,
       centerTitle: false,
       titleSpacing: 0,
@@ -54,7 +54,10 @@ class StudentDashboardAppBar {
               padding: const EdgeInsets.only(left: 12),
               child: Text(
                 titleText,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      color: isDarkMode ? Colors.white : Colors.black,
+                    ),
               ),
             )
           : isElecom
@@ -63,7 +66,9 @@ class StudentDashboardAppBar {
                   child: Opacity(
                     opacity: 0.85,
                     child: Image.asset(
-                      'assets/img_text/elecom_black1.png',
+                      isDarkMode
+                          ? 'assets/img_text/elecom_white1.png'
+                          : 'assets/img_text/elecom_black1.png',
                       height: 24,
                       fit: BoxFit.contain,
                       errorBuilder: (c, e, s) => const Text('ELECOM'),
