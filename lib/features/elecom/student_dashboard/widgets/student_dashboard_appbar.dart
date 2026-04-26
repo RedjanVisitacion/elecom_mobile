@@ -2,6 +2,8 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import '../../../../core/session/notification_preferences.dart';
+
 class StudentDashboardAppBar {
   static void showElecomTermsDialog(BuildContext context) {
     showDialog<void>(
@@ -79,7 +81,12 @@ class StudentDashboardAppBar {
       actions: [
         IconButton(
           tooltip: 'Notifications',
-          onPressed: () {
+          onPressed: () async {
+            final inAppEnabled = await NotificationPreferences.isInAppEnabled();
+            if (!context.mounted) return;
+            if (!inAppEnabled) {
+              return;
+            }
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Coming soon')),
             );

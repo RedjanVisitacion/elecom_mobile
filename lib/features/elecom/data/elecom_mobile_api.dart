@@ -103,6 +103,33 @@ class ElecomMobileApi {
     });
   }
 
+  Future<Map<String, dynamic>> updateProfileDetails({
+    required String email,
+    required String phone,
+  }) async {
+    return _postJson(MobileApiPaths.accountProfileUpdate, <String, dynamic>{
+      'email': email,
+      'phone': phone,
+      'phone_number': phone,
+      'contact_no': phone,
+      'contactNo': phone,
+      'user': <String, dynamic>{
+        'email': email,
+        'phone': phone,
+        'phone_number': phone,
+        'contact_no': phone,
+        'contactNo': phone,
+      },
+      'student': <String, dynamic>{
+        'email': email,
+        'phone': phone,
+        'phone_number': phone,
+        'contact_no': phone,
+        'contactNo': phone,
+      },
+    });
+  }
+
   Future<String> uploadImageToCloudinary({required File imageFile}) async {
     final sigRes = await getCloudinarySignature();
 

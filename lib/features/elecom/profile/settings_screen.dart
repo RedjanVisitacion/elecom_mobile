@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'account_settings_screen.dart';
+import 'notification_settings_screen.dart';
 import '../student_dashboard/utils/theme_notifier.dart';
 import 'elecom_privacy_notice_screen.dart';
 import 'elecom_terms_conditions_screen.dart';
@@ -44,11 +46,19 @@ class SettingsScreen extends StatelessWidget {
           const SizedBox(height: 6),
           _SettingsTile(
             title: 'Notification Settings',
-            onTap: () => _showComingSoon(context, 'Notification Settings'),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const NotificationSettingsScreen()),
+              );
+            },
           ),
           _SettingsTile(
             title: 'Account Settings',
-            onTap: () => _showComingSoon(context, 'Account Settings'),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const AccountSettingsScreen()),
+              );
+            },
           ),
           _SettingsTile(
             title: 'Change Password',
