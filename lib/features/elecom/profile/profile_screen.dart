@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/config/api_config.dart';
 import '../../../core/network/api_client.dart';
@@ -19,6 +21,259 @@ class ProfileScreen extends StatefulWidget {
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
+class _RateAppSheet extends StatefulWidget {
+  const _RateAppSheet({
+    required this.onRate,
+  });
+
+  final Future<void> Function(int rating, String label) onRate;
+
+  @override
+  State<_RateAppSheet> createState() => _RateAppSheetState();
+}
+
+class _RateAppSheetState extends State<_RateAppSheet> {
+  int _selected = -1;
+  bool _submitting = false;
+  int _pressed = -1;
+
+  Future<void> _select(int idx) async {
+    if (_submitting) return;
+
+    setState(() {
+      _selected = idx;
+      _submitting = true;
+    });
+
+    final items = _items;
+    final chosen = items[idx];
+
+    try {
+      await widget.onRate(chosen.rating, chosen.label);
+    } finally {
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    }
+  }
+
+  static const _items = <_RateItem>[
+    _RateItem(rating: 1, label: 'Terrible', emoji: '😠', color: Color(0xFFF59E0B)),
+    _RateItem(rating: 2, label: 'Bad', emoji: '😞', color: Color(0xFFF59E0B)),
+    _RateItem(rating: 3, label: 'Okay', emoji: '😐', color: Color(0xFFF59E0B)),
+    _RateItem(rating: 4, label: 'Good', emoji: '😊', color: Color(0xFF22C55E)),
+    _RateItem(rating: 5, label: 'Amazing', emoji: '😍', color: Color(0xFFEF4444)),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final safeBottom = MediaQuery.of(context).padding.bottom;
+
+    return Padding(
+      padding: EdgeInsets.only(left: 10, right: 10, bottom: safeBottom + 10),
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        clipBehavior: Clip.antiAlias,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.black12,
+                  borderRadius: BorderRadius.circular(99),
+                ),
+              ),
+              const SizedBox(height: 18),
+              const Icon(Icons.thumb_up, size: 48, color: Color(0xFF2563EB)),
+              const SizedBox(height: 12),
+              Text(
+                'Enjoying the ELECOM app so far?',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'We work super hard to serve you better and would love to know how you\'d rate our app.',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.black54, height: 1.3, fontWeight: FontWeight.w500),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 18),
+              SizedBox(
+                height: 78,
+                child: Row(
+                  children: [
+                    for (int i = 0; i < _items.length; i++)
+                      Expanded(
+                        child: InkWell(
+                          onTap: _submitting ? null : () => _select(i),
+                          onTapDown: (_) {
+                            if (_submitting) return;
+                            setState(() {
+                              _pressed = i;
+                            });
+                          },
+                          onTapCancel: () {
+                            if (_submitting) return;
+                            setState(() {
+                              _pressed = -1;
+                            });
+                          },
+                          onTapUp: (_) {
+                            if (_submitting) return;
+                            setState(() {
+                              _pressed = -1;
+                            });
+                          },
+                          child: _RateEmojiTile(
+                            emoji: _items[i].emoji,
+                            color: _items[i].color,
+                            label: _items[i].label,
+                            index: i,
+                            total: _items.length,
+                            active: _selected == i || _pressed == i,
+                            selected: _selected == i,
+                            disabled: _submitting,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              TextButton(
+                onPressed: _submitting ? null : () => Navigator.of(context).pop(),
+                style: TextButton.styleFrom(foregroundColor: Colors.black54),
+                child: const Text('Rate later', style: TextStyle(fontWeight: FontWeight.w800)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RateItem {
+  const _RateItem({
+    required this.rating,
+    required this.label,
+    required this.emoji,
+    required this.color,
+  });
+
+  final int rating;
+  final String label;
+  final String emoji;
+  final Color color;
+}
+
+class _RateEmojiTile extends StatefulWidget {
+  const _RateEmojiTile({
+    required this.emoji,
+    required this.color,
+    required this.label,
+    required this.index,
+    required this.total,
+    required this.active,
+    required this.selected,
+    required this.disabled,
+  });
+
+  final String emoji;
+  final Color color;
+  final String label;
+  final int index;
+  final int total;
+  final bool active;
+  final bool selected;
+  final bool disabled;
+
+  @override
+  State<_RateEmojiTile> createState() => _RateEmojiTileState();
+}
+
+class _RateEmojiTileState extends State<_RateEmojiTile> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 650));
+    if (!widget.disabled) {
+      _controller.repeat();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _RateEmojiTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.disabled && !_controller.isAnimating) {
+      _controller.repeat();
+    } else if (widget.disabled && _controller.isAnimating) {
+      _controller.stop();
+      _controller.value = 0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
+          fontWeight: FontWeight.w700,
+          color: widget.selected ? Colors.black : Colors.black54,
+        );
+
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final baseT = _controller.value;
+        final phaseShift = widget.total <= 0 ? 0.0 : (widget.index / widget.total);
+        final t = (baseT + phaseShift) % 1.0;
+
+        final idleWave = math.sin(t * math.pi * 2);
+        final activeWave = math.sin(t * math.pi * 2);
+
+        final dy = (widget.active || widget.selected) ? (-10 * activeWave).toDouble() : (-3 * idleWave).toDouble();
+        final rot = (widget.active || widget.selected)
+            ? (0.12 * math.sin(t * math.pi * 4)).toDouble()
+            : (0.03 * math.sin(t * math.pi * 4)).toDouble();
+        final scale = widget.selected ? 1.18 : (widget.active ? 1.12 : 1.02);
+
+        return Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Transform.translate(
+              offset: Offset(0, dy),
+              child: Transform.rotate(
+                angle: rot,
+                child: Transform.scale(
+                  scale: scale,
+                  child: Text(
+                    widget.emoji,
+                    style: TextStyle(fontSize: 28, color: widget.color),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(widget.label, style: textStyle),
+          ],
+        );
+      },
+    );
+  }
+}
+
 class AccountBody extends StatefulWidget {
   const AccountBody({super.key});
 
@@ -30,11 +285,51 @@ class _AccountBodyState extends State<AccountBody> {
   final ElecomMobileApi _api = ElecomMobileApi();
   Map<String, dynamic>? _profile;
 
+  static final Uri _supportMessengerUri = Uri.parse('https://m.me/redjan.phil.s.visitacion');
+  static final Uri _supportEmailUri = Uri(
+    scheme: 'mailto',
+    path: 'rpsvcodes@gmail.com',
+    queryParameters: <String, String>{
+      'subject': 'ELECOM Support',
+      'body': 'Hello, I need help with my ELECOM account.',
+    },
+  );
+
   @override
   void initState() {
     super.initState();
     _hydrateFromSession();
     _refresh();
+  }
+
+  Future<void> _openRateBottomSheet() async {
+    if (!mounted) return;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: false,
+      builder: (ctx) {
+        return _RateAppSheet(
+          onRate: (rating, label) async {
+            try {
+              await _api.submitAppRating(rating: rating, label: label);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Thanks for your feedback!')),
+                );
+              }
+            } catch (_) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Could not submit rating. Please try again later.')),
+                );
+              }
+            }
+          },
+        );
+      },
+    );
   }
 
   void _hydrateFromSession() {
@@ -194,6 +489,128 @@ class _AccountBodyState extends State<AccountBody> {
     );
   }
 
+  Future<void> _openMessengerSupport() async {
+    try {
+      final launched = await launchUrl(
+        _supportMessengerUri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (launched) return;
+
+      final fallback = await launchUrl(
+        _supportMessengerUri,
+        mode: LaunchMode.platformDefault,
+      );
+      if (fallback) return;
+
+      if (!mounted) return;
+      await _showInfoDialog(
+        title: 'Contact Support',
+        message: 'Unable to open Messenger. Please open this link:\n\nhttps://m.me/redjan.phil.s.visitacion',
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open Messenger.')),
+      );
+    }
+  }
+
+  Future<void> _openEmailSupport() async {
+    try {
+      final launched = await launchUrl(
+        _supportEmailUri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (launched) return;
+
+      final fallback = await launchUrl(
+        _supportEmailUri,
+        mode: LaunchMode.platformDefault,
+      );
+      if (fallback) return;
+
+      if (!mounted) return;
+      await _showInfoDialog(
+        title: 'Contact Support',
+        message: 'Unable to open email app. Please email:\n\nrpsvcodes@gmail.com',
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open email app.')),
+      );
+    }
+  }
+
+  Future<void> _contactSupportOptions() async {
+    if (!mounted) return;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 10,
+            right: 10,
+            bottom: MediaQuery.of(ctx).padding.bottom + 10,
+          ),
+          child: Material(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 12),
+                Container(
+                  width: 42,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.black12,
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Contact Support',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 10),
+                ListTile(
+                  leading: const Icon(Icons.facebook, color: Colors.blue),
+                  title: const Text('Facebook Messenger', style: TextStyle(fontWeight: FontWeight.w800)),
+                  subtitle: const Text('Chat with support on Facebook'),
+                  onTap: () async {
+                    Navigator.of(ctx).pop();
+                    await _openMessengerSupport();
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.email_outlined, color: Colors.black87),
+                  title: const Text('Email', style: TextStyle(fontWeight: FontWeight.w800)),
+                  subtitle: const Text('rpsvcodes@gmail.com'),
+                  onTap: () async {
+                    Navigator.of(ctx).pop();
+                    await _openEmailSupport();
+                  },
+                ),
+                const SizedBox(height: 6),
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  style: TextButton.styleFrom(foregroundColor: Colors.black54),
+                  child: const Text('Close', style: TextStyle(fontWeight: FontWeight.w800)),
+                ),
+                const SizedBox(height: 10),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _menuItem({required IconData icon, required String title, required VoidCallback onTap, bool destructive = false}) {
     final color = destructive ? Colors.red : Colors.black;
     return Container(
@@ -297,17 +714,12 @@ class _AccountBodyState extends State<AccountBody> {
               _menuItem(
                 icon: Icons.support_agent,
                 title: 'Contact Support',
-                onTap: () => _showInfoDialog(
-                  title: 'Contact Support',
-                  message: 'Please contact your ELECOM administrator or your campus IT support for account issues.',
-                ),
+                onTap: _contactSupportOptions,
               ),
               _menuItem(
                 icon: Icons.star_border,
                 title: 'Rate our app',
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Coming soon')));
-                },
+                onTap: _openRateBottomSheet,
               ),
               _menuItem(
                 icon: Icons.settings_outlined,

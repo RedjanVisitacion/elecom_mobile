@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../features/auth/presentation/login_screen.dart';
+import '../features/auth/presentation/splash_screen.dart';
 import '../features/auth/state/login_view_model.dart';
 
 class ElecomApp extends StatelessWidget {
@@ -24,7 +24,7 @@ class ElecomApp extends StatelessWidget {
             cursorColor: Colors.black,
           ),
         ),
-        home: const LoginScreen(),
+        home: const SplashScreen(),
       ),
     );
   }

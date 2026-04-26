@@ -14,6 +14,7 @@ class MobileApiPaths {
   static String get accountProfilePhoto => '$base/account/profile/photo/';
   static String get accountProfileUpdate => '$base/account/profile/update/';
   static String get accountProfilePassword => '$base/account/profile/password/';
+  static String get accountAppRating => '$base/account/app-rating/';
 
   static String get networkCheck => '$base/network/check/';
 

@@ -15,6 +15,16 @@ class ElecomMobileApi {
     return _getJson(MobileApiPaths.accountProfile);
   }
 
+  Future<Map<String, dynamic>> submitAppRating({
+    required int rating,
+    required String label,
+  }) async {
+    return _postJson(MobileApiPaths.accountAppRating, <String, dynamic>{
+      'rating': rating,
+      'label': label,
+    });
+  }
+
   Future<Map<String, dynamic>> setProfilePhotoUrl({required String photoUrl}) async {
     return _postJson(MobileApiPaths.accountProfilePhoto, <String, dynamic>{
       'photo_url': photoUrl,
