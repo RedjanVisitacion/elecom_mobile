@@ -130,6 +130,21 @@ class ElecomMobileApi {
     });
   }
 
+  Future<Map<String, dynamic>> changePassword({
+    required String oldPassword,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    return _postJson(MobileApiPaths.accountProfilePassword, <String, dynamic>{
+      'old_password': oldPassword,
+      'new_password': newPassword,
+      'confirm_password': confirmPassword,
+      'oldPassword': oldPassword,
+      'newPassword': newPassword,
+      'confirmPassword': confirmPassword,
+    });
+  }
+
   Future<String> uploadImageToCloudinary({required File imageFile}) async {
     final sigRes = await getCloudinarySignature();
 

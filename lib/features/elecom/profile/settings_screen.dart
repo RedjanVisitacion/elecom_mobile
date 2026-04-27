@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'account_settings_screen.dart';
+import 'change_password_screen.dart';
 import 'notification_settings_screen.dart';
 import '../student_dashboard/utils/theme_notifier.dart';
 import 'elecom_privacy_notice_screen.dart';
@@ -62,7 +63,11 @@ class SettingsScreen extends StatelessWidget {
           ),
           _SettingsTile(
             title: 'Change Password',
-            onTap: () => _showComingSoon(context, 'Change Password'),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ChangePasswordScreen()),
+              );
+            },
           ),
           const SizedBox(height: 18),
           _SectionTitle(
@@ -181,11 +186,6 @@ class SettingsScreen extends StatelessWidget {
     Navigator.of(context).pop();
   }
 
-  void _showComingSoon(BuildContext context, String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$feature is coming soon.')),
-    );
-  }
 }
 
 class _SectionTitle extends StatelessWidget {

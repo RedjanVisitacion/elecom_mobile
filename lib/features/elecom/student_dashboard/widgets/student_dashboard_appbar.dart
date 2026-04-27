@@ -2,7 +2,8 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
-import '../../../../core/session/notification_preferences.dart';
+import '../../../../core/notifications/notification_center_store.dart';
+import '../../profile/notifications_screen.dart';
 
 class StudentDashboardAppBar {
   static void showElecomTermsDialog(BuildContext context) {
@@ -46,6 +47,7 @@ class StudentDashboardAppBar {
     String? titleText,
   }) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    NotificationCenterStore.init();
 
     return AppBar(
       elevation: 0,
@@ -79,19 +81,46 @@ class StudentDashboardAppBar {
                 )
               : const Text('Dashboard'),
       actions: [
-        IconButton(
-          tooltip: 'Notifications',
-          onPressed: () async {
-            final inAppEnabled = await NotificationPreferences.isInAppEnabled();
-            if (!context.mounted) return;
-            if (!inAppEnabled) {
-              return;
-            }
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Coming soon')),
+        ValueListenableBuilder<int>(
+          valueListenable: NotificationCenterStore.unreadCount,
+          builder: (context, unreadCount, _) {
+            return IconButton(
+              tooltip: 'Notifications',
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+                );
+              },
+              icon: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  const Icon(Icons.notifications_none),
+                  if (unreadCount > 0)
+                    Positioned(
+                      right: -6,
+                      top: -6,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                        constraints: const BoxConstraints(minWidth: 16),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          unreadCount > 99 ? '99+' : unreadCount.toString(),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             );
           },
-          icon: const Icon(Icons.notifications_none),
         ),
       ],
     );
