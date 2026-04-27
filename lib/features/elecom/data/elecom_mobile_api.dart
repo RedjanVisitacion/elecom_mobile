@@ -79,9 +79,8 @@ class ElecomMobileApi {
   }
 
   Future<Map<String, dynamic>> getCloudinarySignature() async {
-    final base = MobileApiPaths.adminCloudinarySignature;
-    final url = base.contains('?') ? '$base&type=profile_photo' : '$base?type=profile_photo';
-    return _getJson(url);
+    // Use non-admin signature for student profile photo uploads.
+    return _getJson(MobileApiPaths.cloudinaryProfileSignature);
   }
 
   Future<Map<String, dynamic>> updateProfilePhotoUrl({required String photoUrl}) async {
@@ -199,6 +198,41 @@ class ElecomMobileApi {
     }
 
     return secureUrl;
+  }
+
+  Future<List<Map<String, dynamic>>> getNotifications() async {
+    final res = await _getJson(MobileApiPaths.notifications);
+    final raw = res['notifications'];
+    if (raw is! List) return <Map<String, dynamic>>[];
+    return raw.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+  }
+
+  Future<Map<String, dynamic>> createNotification({
+    required String title,
+    required String body,
+    String type = 'general',
+    int? receiptId,
+    bool pinned = false,
+  }) async {
+    final res = await _postJson(MobileApiPaths.notificationsCreate, <String, dynamic>{
+      'title': title,
+      'body': body,
+      'type': type,
+      'receipt_id': receiptId,
+      'pinned': pinned,
+    });
+    final raw = res['notification'];
+    if (raw is Map<String, dynamic>) return raw;
+    if (raw is Map) return Map<String, dynamic>.from(raw);
+    return <String, dynamic>{};
+  }
+
+  Future<void> markNotificationRead(int id) async {
+    await _postJson(MobileApiPaths.notificationsRead, <String, dynamic>{'id': id});
+  }
+
+  Future<void> markAllNotificationsRead() async {
+    await _postJson(MobileApiPaths.notificationsReadAll, <String, dynamic>{});
   }
 
   Future<Map<String, dynamic>> _getJson(String url) async {

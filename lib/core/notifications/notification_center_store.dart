@@ -1,38 +1,30 @@
-import 'dart:convert';
-
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../features/elecom/data/elecom_mobile_api.dart';
 
 class NotificationCenterStore {
   NotificationCenterStore._();
 
-  static const _kNotifications = 'elecom.notifications.items';
   static final ValueNotifier<List<Map<String, dynamic>>> items = ValueNotifier<List<Map<String, dynamic>>>(<Map<String, dynamic>>[]);
   static final ValueNotifier<int> unreadCount = ValueNotifier<int>(0);
-  static bool _loaded = false;
+  static final ElecomMobileApi _api = ElecomMobileApi();
+  static bool _initialized = false;
 
-  static Future<void> init() async {
-    if (_loaded) return;
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_kNotifications);
-    if (raw == null || raw.trim().isEmpty) {
-      _loaded = true;
-      items.value = <Map<String, dynamic>>[];
-      unreadCount.value = 0;
-      return;
-    }
+  static Future<void> init({bool forceRefresh = false}) async {
+    if (_initialized && !forceRefresh) return;
+    _initialized = true;
+    await refresh();
+  }
+
+  static Future<void> refresh() async {
     try {
-      final decoded = jsonDecode(raw);
-      if (decoded is List) {
-        final list = decoded.whereType<Map>().map((m) => Map<String, dynamic>.from(m)).toList();
-        items.value = list;
-        unreadCount.value = list.where((e) => e['read'] != true).length;
-      }
+      final remote = await _api.getNotifications();
+      final mapped = remote.map(_mapRemoteItem).toList();
+      items.value = mapped;
+      unreadCount.value = mapped.where((e) => e['read'] != true).length;
     } catch (_) {
       items.value = <Map<String, dynamic>>[];
       unreadCount.value = 0;
-    } finally {
-      _loaded = true;
     }
   }
 
@@ -41,40 +33,45 @@ class NotificationCenterStore {
     required String body,
   }) async {
     await init();
-    final id = DateTime.now().millisecondsSinceEpoch;
-    final entry = <String, dynamic>{
-      'id': id,
-      'title': title,
-      'body': body,
-      'created_at': DateTime.now().toIso8601String(),
-      'read': false,
-    };
+    final created = await _api.createNotification(title: title, body: body);
+    final entry = _mapRemoteItem(created);
     final next = <Map<String, dynamic>>[entry, ...items.value];
     items.value = next;
     unreadCount.value = next.where((e) => e['read'] != true).length;
-    await _persist(next);
   }
 
   static Future<void> markAsRead(int id) async {
     await init();
+    await _api.markNotificationRead(id);
     final next = items.value
         .map((e) => e['id'] == id ? <String, dynamic>{...e, 'read': true} : e)
         .toList();
     items.value = next;
     unreadCount.value = next.where((e) => e['read'] != true).length;
-    await _persist(next);
   }
 
   static Future<void> markAllRead() async {
     await init();
+    await _api.markAllNotificationsRead();
     final next = items.value.map((e) => <String, dynamic>{...e, 'read': true}).toList();
     items.value = next;
     unreadCount.value = 0;
-    await _persist(next);
   }
 
-  static Future<void> _persist(List<Map<String, dynamic>> list) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_kNotifications, jsonEncode(list));
+  static void clearLocal() {
+    _initialized = false;
+    items.value = <Map<String, dynamic>>[];
+    unreadCount.value = 0;
+  }
+
+  static Map<String, dynamic> _mapRemoteItem(Map<String, dynamic> remote) {
+    final readAt = (remote['read_at'] ?? '').toString().trim();
+    return <String, dynamic>{
+      'id': (remote['id'] as num?)?.toInt() ?? 0,
+      'title': (remote['title'] ?? '').toString(),
+      'body': (remote['body'] ?? '').toString(),
+      'created_at': (remote['created_at'] ?? '').toString(),
+      'read': readAt.isNotEmpty && readAt.toLowerCase() != 'null',
+    };
   }
 }

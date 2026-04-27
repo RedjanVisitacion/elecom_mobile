@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/config/api_config.dart';
+import '../../../core/notifications/local_push_service.dart';
+import '../../../core/notifications/notification_center_store.dart';
+import '../../../core/session/notification_preferences.dart';
 import '../../../core/session/user_session.dart';
 import '../data/elecom_mobile_api.dart';
 
@@ -164,6 +167,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
       });
 
       if (!mounted) return;
+      await _notifyProfilePhotoUpdateSuccess();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Profile photo updated.')),
       );
@@ -191,6 +195,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
         email: _emailController.text.trim(),
         phone: _phoneController.text.trim(),
       );
+      await _notifyProfileUpdateSuccess();
       await _refresh();
       if (!mounted) return;
       setState(() {
@@ -210,6 +215,43 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
           _saving = false;
         });
       }
+    }
+  }
+
+  Future<void> _notifyProfileUpdateSuccess() async {
+    const notifTitle = 'Personal Info Updated';
+    const notifBody = 'Your personal information was updated successfully.';
+    final pushEnabled = await NotificationPreferences.isPushEnabled();
+
+    // Always persist to the backend so notifications are per-account.
+    await NotificationCenterStore.add(
+      title: notifTitle,
+      body: notifBody,
+    );
+
+    if (pushEnabled) {
+      await LocalPushService.show(
+        id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        title: notifTitle,
+        body: notifBody,
+      );
+    }
+  }
+
+  Future<void> _notifyProfilePhotoUpdateSuccess() async {
+    const notifTitle = 'Profile Photo Updated';
+    const notifBody = 'Your profile photo was updated successfully.';
+    final pushEnabled = await NotificationPreferences.isPushEnabled();
+
+    // Always persist to the backend so notifications are per-account.
+    await NotificationCenterStore.add(title: notifTitle, body: notifBody);
+
+    if (pushEnabled) {
+      await LocalPushService.show(
+        id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        title: notifTitle,
+        body: notifBody,
+      );
     }
   }
 

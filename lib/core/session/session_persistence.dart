@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../notifications/notification_center_store.dart';
 import '../network/api_client.dart';
 import 'user_session.dart';
 
@@ -64,6 +65,7 @@ class SessionPersistence {
     await prefs.remove(_kCookies);
     await prefs.remove(_kUser);
     ApiClient.clearSession();
+    NotificationCenterStore.clearLocal();
     UserSession.clear();
   }
 }

@@ -2,6 +2,7 @@ import '../../../core/config/api_config.dart';
 
 class MobileApiPaths {
   static String get base => '${ApiConfig.baseUrl}/api/mobile';
+  static String get rootApi => '${ApiConfig.baseUrl}/api';
 
   static String get electionWindow => '$base/election/window/';
   static String get ballot => '$base/ballot/';
@@ -15,6 +16,10 @@ class MobileApiPaths {
   static String get accountProfileUpdate => '$base/account/profile/update/';
   static String get accountProfilePassword => '$base/account/profile/password/';
   static String get accountAppRating => '$base/account/app-rating/';
+  static String get notifications => '$base/notifications/';
+  static String get notificationsCreate => '$base/notifications/create/';
+  static String get notificationsRead => '$base/notifications/read/';
+  static String get notificationsReadAll => '$base/notifications/read-all/';
 
   static String get networkCheck => '$base/network/check/';
 
@@ -28,6 +33,7 @@ class MobileApiPaths {
   static String get adminNetworkSettings => '$base/admin/network-settings/';
   static String get adminNetworkLogs => '$base/admin/network-logs/';
   static String get adminCloudinarySignature => '$base/admin/cloudinary/signature/';
+  static String get cloudinaryProfileSignature => '$rootApi/cloudinary/signature/?type=profile_photo';
   static String get adminCandidatesList => '$base/admin/candidates/list/';
   static String get adminCandidatesDetail => '$base/admin/candidates/detail/';
   static String get adminCandidatesCreate => '$base/admin/candidates/create/';

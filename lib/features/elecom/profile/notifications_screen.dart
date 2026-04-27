@@ -13,7 +13,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   void initState() {
     super.initState();
-    NotificationCenterStore.init();
+    NotificationCenterStore.init(forceRefresh: true);
   }
 
   @override

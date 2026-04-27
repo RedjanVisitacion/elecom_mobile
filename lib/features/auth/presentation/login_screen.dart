@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/notifications/notification_center_store.dart';
 import '../../elecom/profile/elecom_terms_conditions_screen.dart';
 import '../../elecom/presentation/elecom_dashboard.dart';
 import '../state/login_view_model.dart';
@@ -58,6 +59,7 @@ class _LoginScreenState extends State<LoginScreen> {
         studentId: _studentIdController.text.trim(),
         password: _passwordController.text,
       );
+      await NotificationCenterStore.init(forceRefresh: true);
 
       if (!mounted) return;
 

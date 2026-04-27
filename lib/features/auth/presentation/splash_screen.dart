@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/notifications/notification_center_store.dart';
 import '../../elecom/presentation/elecom_dashboard.dart';
 import '../../../core/session/session_persistence.dart';
 import 'login_screen.dart';
@@ -58,6 +59,9 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     }
 
     final hasSession = await SessionPersistence.restore();
+    if (hasSession) {
+      await NotificationCenterStore.init(forceRefresh: true);
+    }
 
     if (!mounted) return;
     Navigator.of(context).pushReplacement(

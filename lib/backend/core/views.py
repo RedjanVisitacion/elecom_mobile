@@ -1123,6 +1123,201 @@ def _require_admin(request):
     return None
 
 
+def _ensure_user_notifications_table() -> None:
+    with connection.cursor() as cur:
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS user_notifications (
+                id BIGSERIAL PRIMARY KEY,
+                student_id VARCHAR(64) NOT NULL,
+                type VARCHAR(50),
+                title VARCHAR(255) NOT NULL,
+                body TEXT NOT NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                read_at TIMESTAMP NULL,
+                receipt_id BIGINT NULL,
+                pinned BOOLEAN NOT NULL DEFAULT FALSE
+            )
+            """
+        )
+        cur.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_user_notifications_student_created
+            ON user_notifications(student_id, created_at DESC)
+            """
+        )
+
+
+@require_http_methods(["GET"])
+def user_notifications_list_api(request):
+    student_id = (request.session.get("student_id") or "").strip()
+    if not student_id:
+        return JsonResponse({"ok": False, "error": "Unauthorized."}, status=401)
+
+    try:
+        _ensure_user_notifications_table()
+        with connection.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, student_id, type, title, body, created_at, read_at, receipt_id, pinned
+                FROM user_notifications
+                WHERE student_id::text = %s
+                ORDER BY created_at DESC, id DESC
+                LIMIT 200
+                """,
+                [student_id],
+            )
+            cols = [c[0] for c in cur.description]
+            rows = [dict(zip(cols, r)) for r in cur.fetchall()]
+
+        out = []
+        for row in rows:
+            out.append(
+                {
+                    "id": int(row["id"]),
+                    "student_id": str(row.get("student_id") or ""),
+                    "type": (row.get("type") or "").strip(),
+                    "title": (row.get("title") or "").strip(),
+                    "body": (row.get("body") or "").strip(),
+                    "created_at": row["created_at"].isoformat() if row.get("created_at") else None,
+                    "read_at": row["read_at"].isoformat() if row.get("read_at") else None,
+                    "receipt_id": row.get("receipt_id"),
+                    "pinned": bool(row.get("pinned") or False),
+                }
+            )
+
+        unread = sum(1 for x in out if not x.get("read_at"))
+        return JsonResponse({"ok": True, "notifications": out, "unread_count": unread})
+    except Exception as e:
+        if getattr(settings, "DEBUG", False):
+            return JsonResponse({"ok": False, "error": str(e)}, status=500)
+        return JsonResponse({"ok": False, "error": "Failed to load notifications."}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def user_notifications_create_api(request):
+    student_id = (request.session.get("student_id") or "").strip()
+    if not student_id:
+        return JsonResponse({"ok": False, "error": "Unauthorized."}, status=401)
+
+    try:
+        payload = json.loads((request.body or b"{}").decode("utf-8"))
+    except Exception:
+        payload = {}
+
+    title = str(payload.get("title") or "").strip()
+    body = str(payload.get("body") or "").strip()
+    notif_type = str(payload.get("type") or "general").strip() or "general"
+    pinned = bool(payload.get("pinned") or False)
+    receipt_raw = payload.get("receipt_id")
+
+    if not title or not body:
+        return JsonResponse({"ok": False, "error": "Missing notification content."}, status=400)
+
+    receipt_id = None
+    if receipt_raw is not None and str(receipt_raw).strip():
+        try:
+            receipt_id = int(receipt_raw)
+        except Exception:
+            return JsonResponse({"ok": False, "error": "Invalid receipt id."}, status=400)
+
+    try:
+        _ensure_user_notifications_table()
+        with connection.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO user_notifications (
+                    student_id, type, title, body, receipt_id, pinned, created_at
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, NOW())
+                RETURNING id, student_id, type, title, body, created_at, read_at, receipt_id, pinned
+                """,
+                [student_id, notif_type, title, body, receipt_id, pinned],
+            )
+            row = cur.fetchone()
+            cols = [c[0] for c in cur.description]
+            created = dict(zip(cols, row)) if row else {}
+
+        notif = {
+            "id": int(created.get("id") or 0),
+            "student_id": str(created.get("student_id") or ""),
+            "type": (created.get("type") or "").strip(),
+            "title": (created.get("title") or "").strip(),
+            "body": (created.get("body") or "").strip(),
+            "created_at": created["created_at"].isoformat() if created.get("created_at") else None,
+            "read_at": created["read_at"].isoformat() if created.get("read_at") else None,
+            "receipt_id": created.get("receipt_id"),
+            "pinned": bool(created.get("pinned") or False),
+        }
+        return JsonResponse({"ok": True, "notification": notif})
+    except Exception as e:
+        if getattr(settings, "DEBUG", False):
+            return JsonResponse({"ok": False, "error": str(e)}, status=500)
+        return JsonResponse({"ok": False, "error": "Failed to create notification."}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def user_notifications_mark_read_api(request):
+    student_id = (request.session.get("student_id") or "").strip()
+    if not student_id:
+        return JsonResponse({"ok": False, "error": "Unauthorized."}, status=401)
+
+    try:
+        payload = json.loads((request.body or b"{}").decode("utf-8"))
+    except Exception:
+        payload = {}
+
+    raw_id = payload.get("id")
+    try:
+        notif_id = int(raw_id)
+    except Exception:
+        return JsonResponse({"ok": False, "error": "Invalid notification id."}, status=400)
+
+    try:
+        _ensure_user_notifications_table()
+        with connection.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE user_notifications
+                SET read_at = COALESCE(read_at, NOW())
+                WHERE id = %s AND student_id::text = %s
+                """,
+                [notif_id, student_id],
+            )
+        return JsonResponse({"ok": True})
+    except Exception as e:
+        if getattr(settings, "DEBUG", False):
+            return JsonResponse({"ok": False, "error": str(e)}, status=500)
+        return JsonResponse({"ok": False, "error": "Failed to mark notification as read."}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def user_notifications_mark_all_read_api(request):
+    student_id = (request.session.get("student_id") or "").strip()
+    if not student_id:
+        return JsonResponse({"ok": False, "error": "Unauthorized."}, status=401)
+
+    try:
+        _ensure_user_notifications_table()
+        with connection.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE user_notifications
+                SET read_at = COALESCE(read_at, NOW())
+                WHERE student_id::text = %s
+                """,
+                [student_id],
+            )
+        return JsonResponse({"ok": True})
+    except Exception as e:
+        if getattr(settings, "DEBUG", False):
+            return JsonResponse({"ok": False, "error": str(e)}, status=500)
+        return JsonResponse({"ok": False, "error": "Failed to mark all notifications as read."}, status=500)
+
+
 @require_http_methods(["GET"])
 def admin_cloudinary_signature_api(request):
     forbidden = _require_admin(request)

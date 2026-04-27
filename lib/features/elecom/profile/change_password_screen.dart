@@ -54,6 +54,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       const notifTitle = 'Password Updated';
       const notifBody = 'Your account password was changed successfully.';
 
+      // Always persist to the backend so notifications are per-account.
       await NotificationCenterStore.add(
         title: notifTitle,
         body: notifBody,
