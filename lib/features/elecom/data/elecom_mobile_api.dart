@@ -231,6 +231,21 @@ class ElecomMobileApi {
     await _postJson(MobileApiPaths.notificationsRead, <String, dynamic>{'id': id});
   }
 
+  Future<void> markNotificationUnread(int id) async {
+    await _postJson(MobileApiPaths.notificationsUnread, <String, dynamic>{'id': id});
+  }
+
+  Future<void> setNotificationPinned({required int id, required bool pinned}) async {
+    await _postJson(MobileApiPaths.notificationsPin, <String, dynamic>{
+      'id': id,
+      'pinned': pinned,
+    });
+  }
+
+  Future<void> deleteNotification(int id) async {
+    await _postJson(MobileApiPaths.notificationsDelete, <String, dynamic>{'id': id});
+  }
+
   Future<void> markAllNotificationsRead() async {
     await _postJson(MobileApiPaths.notificationsReadAll, <String, dynamic>{});
   }

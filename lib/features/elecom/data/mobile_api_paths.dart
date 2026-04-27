@@ -20,6 +20,9 @@ class MobileApiPaths {
   static String get notificationsCreate => '$base/notifications/create/';
   static String get notificationsRead => '$base/notifications/read/';
   static String get notificationsReadAll => '$base/notifications/read-all/';
+  static String get notificationsUnread => '$base/notifications/unread/';
+  static String get notificationsPin => '$base/notifications/pin/';
+  static String get notificationsDelete => '$base/notifications/delete/';
 
   static String get networkCheck => '$base/network/check/';
 

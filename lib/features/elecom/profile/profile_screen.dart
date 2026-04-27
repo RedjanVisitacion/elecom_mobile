@@ -690,6 +690,8 @@ class _AccountBodyState extends State<AccountBody> {
 
     return SafeArea(
       child: RefreshIndicator(
+        color: Colors.black,
+        backgroundColor: Colors.white,
         onRefresh: _refresh,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
