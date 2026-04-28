@@ -5,6 +5,7 @@ import '../profile/profile_screen.dart';
 import '../data/elecom_mobile_api.dart';
 import 'utils/theme_notifier.dart';
 import 'widgets/student_dashboard_appbar.dart';
+import '../candidates/candidate_search_screen.dart';
 
 class StudentDashboard extends StatefulWidget {
   const StudentDashboard({
@@ -147,38 +148,80 @@ class _StudentDashboardState extends State<StudentDashboard> {
   }
 
   Widget _homeTab(BuildContext context) {
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 600),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Image.asset(
-                widget.assetPath,
-                height: 72,
-                fit: BoxFit.contain,
-                errorBuilder: (c, e, s) => const Icon(Icons.how_to_vote, size: 64),
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDarkMode ? const Color(0xFF2A2A35) : Colors.white;
+    final borderColor = isDarkMode ? Colors.white12 : Colors.black12;
+    final subtitleColor = isDarkMode ? Colors.white70 : Colors.black54;
+
+    return SafeArea(
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 600),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Facebook-style search bar that navigates to search screen.
+                  InkWell(
+                    borderRadius: BorderRadius.circular(18),
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const CandidateSearchScreen()),
+                      );
+                    },
+                    child: Container(
+                      height: 52,
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      decoration: BoxDecoration(
+                        color: cardColor,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: borderColor),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.search, color: subtitleColor),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Search candidates...',
+                              style: TextStyle(color: subtitleColor, fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Image.asset(
+                    widget.assetPath,
+                    height: 72,
+                    fit: BoxFit.contain,
+                    errorBuilder: (c, e, s) => const Icon(Icons.how_to_vote, size: 64),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    widget.orgName,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    _displayName(),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Search for candidates using the bar above.',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                    textAlign: TextAlign.center,
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
-              Text(
-                widget.orgName,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                _displayName(),
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Elecom module UI is being reused. Next step is wiring voting + candidates + admin features to your Django API.',
-                style: Theme.of(context).textTheme.bodyMedium,
-                textAlign: TextAlign.center,
-              ),
-            ],
+            ),
           ),
         ),
       ),
