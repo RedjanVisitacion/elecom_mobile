@@ -219,12 +219,11 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
             gradient: const LinearGradient(
-              begin: Alignment.centerLeft,
+              begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Color(0xFF1E2A78),
-                Color(0xFF2E4F9E),
-                Color(0xFFC7E040),
+                Color(0xFF0c1e70),
+                Color(0xFFfea501),
               ],
             ),
             boxShadow: [

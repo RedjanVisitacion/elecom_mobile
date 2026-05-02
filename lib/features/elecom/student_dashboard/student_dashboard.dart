@@ -270,100 +270,96 @@ class _StudentDashboardState extends State<StudentDashboard> {
                     ),
                   ),
                   const SizedBox(height: 14),
-                  // Profile summary row (like your reference UI).
+                  // Profile row — same horizontal bounds as search bar (single outer padding only).
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
                       color: cardColor,
                       borderRadius: BorderRadius.circular(18),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                    child: Row(
                       children: [
-                        Row(
-                          children: [
-                            Container(
-                              width: 62,
-                              height: 62,
-                              padding: const EdgeInsets.all(2),
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: isDarkMode ? Colors.white24 : Colors.black26,
-                                  width: 2,
+                        Container(
+                          width: 62,
+                          height: 62,
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isDarkMode ? Colors.white24 : Colors.black26,
+                              width: 2,
+                            ),
+                          ),
+                          child: CircleAvatar(
+                            radius: 28,
+                            backgroundColor: isDarkMode ? Colors.white12 : const Color(0xFFEAF1FF),
+                            backgroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
+                            child: photoUrl.isNotEmpty
+                                ? null
+                                : Icon(Icons.person, color: isDarkMode ? Colors.white70 : Colors.blue, size: 28),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Hi, ${_displayFirstName().toUpperCase()}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: titleColor,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 18,
+                                  height: 1.05,
+                                  letterSpacing: 0.2,
                                 ),
                               ),
-                              child: CircleAvatar(
-                                radius: 28,
-                                backgroundColor: isDarkMode ? Colors.white12 : const Color(0xFFEAF1FF),
-                                backgroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
-                                child: photoUrl.isNotEmpty
-                                    ? null
-                                    : Icon(Icons.person, color: isDarkMode ? Colors.white70 : Colors.blue, size: 28),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Hi, ${_displayFirstName().toUpperCase()}',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: titleColor,
-                                      fontWeight: FontWeight.w900,
-                                      fontSize: 18,
-                                      height: 1.05,
-                                      letterSpacing: 0.2,
-                                    ),
+                              const SizedBox(height: 6),
+                              if (phoneMasked.isNotEmpty)
+                                Text(
+                                  phoneMasked,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: subtitleColor,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13,
+                                    height: 1.1,
                                   ),
-                                  const SizedBox(height: 6),
-                                  if (phoneMasked.isNotEmpty)
-                                    Text(
-                                      phoneMasked,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        color: subtitleColor,
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 13,
-                                        height: 1.1,
-                                      ),
-                                    ),
-                                  if (emailMasked.isNotEmpty) ...[
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      emailMasked,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        color: subtitleColor,
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 13,
-                                        height: 1.1,
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            SizedBox(
-                              width: 62,
-                              height: 62,
-                              child: Image.asset(
-                                'assets/gif/Elecom Splash.gif',
-                                fit: BoxFit.contain,
-                              ),
-                            ),
-                          ],
+                                ),
+                              if (emailMasked.isNotEmpty) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  emailMasked,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: subtitleColor,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13,
+                                    height: 1.1,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
                         ),
-                        ElectionHomeCountdown(orgName: widget.orgName, embeddedInProfileCard: true),
+                        const SizedBox(width: 10),
+                        SizedBox(
+                          width: 62,
+                          height: 62,
+                          child: Image.asset(
+                            'assets/gif/Elecom Splash.gif',
+                            fit: BoxFit.contain,
+                          ),
+                        ),
                       ],
                     ),
                   ),
+                  const SizedBox(height: 14),
+                  ElectionHomeCountdown(orgName: widget.orgName, embeddedInProfileCard: false),
                 ],
               ),
             ),
