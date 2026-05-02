@@ -316,7 +316,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: isDarkMode ? Colors.white24 : Colors.black26,
+                              color: isDarkMode ? Colors.white24 : const Color(0xFFFEA501),
                               width: 2,
                             ),
                           ),

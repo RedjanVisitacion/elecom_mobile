@@ -28,7 +28,9 @@ class HomeCandidatesStrip extends StatelessWidget {
     if (candidates.isEmpty) return const SizedBox.shrink();
 
     final labelColor = isDarkMode ? Colors.white : Colors.black87;
-    final ringColor = isDarkMode ? const Color(0xFFFEA501) : const Color(0xFF0C1E70);
+    final ringColor = isDarkMode
+        ? const Color(0xFFFEA501)
+        : const Color(0xFF0C1E70);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -62,7 +64,9 @@ class HomeCandidatesStrip extends StatelessWidget {
                     onTap: () {
                       Navigator.of(context).push(
                         MaterialPageRoute<void>(
-                          builder: (_) => CandidateProfileScreen(candidate: Map<String, dynamic>.from(c)),
+                          builder: (_) => CandidateProfileScreen(
+                            candidate: Map<String, dynamic>.from(c),
+                          ),
                         ),
                       );
                     },
@@ -78,10 +82,20 @@ class HomeCandidatesStrip extends StatelessWidget {
                           padding: const EdgeInsets.all(2.5),
                           child: CircleAvatar(
                             radius: 30,
-                            backgroundColor: isDarkMode ? Colors.white12 : const Color(0xFFEAF1FF),
-                            backgroundImage: photo != null ? NetworkImage(photo) : null,
+                            backgroundColor: isDarkMode
+                                ? Colors.white12
+                                : const Color(0xFFEAF1FF),
+                            backgroundImage: photo != null
+                                ? NetworkImage(photo)
+                                : null,
                             child: photo == null
-                                ? Icon(Icons.person, size: 28, color: isDarkMode ? Colors.white54 : Colors.blue)
+                                ? Icon(
+                                    Icons.person,
+                                    size: 28,
+                                    color: isDarkMode
+                                        ? Colors.white54
+                                        : Colors.blue,
+                                  )
                                 : null,
                           ),
                         ),
