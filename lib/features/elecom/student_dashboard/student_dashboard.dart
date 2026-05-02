@@ -10,6 +10,7 @@ import 'dart:math' as math;
 import '../../../core/config/api_config.dart';
 import '../../../core/notifications/notification_center_store.dart';
 import 'widgets/election_home_countdown.dart';
+import 'widgets/home_candidates_strip.dart';
 import 'widgets/omnibus_code_carousel.dart';
 
 class StudentDashboard extends StatefulWidget {
@@ -45,6 +46,7 @@ class _PlaceholderTab extends StatelessWidget {
 class _StudentDashboardState extends State<StudentDashboard> {
   final ElecomMobileApi _api = ElecomMobileApi();
   int _currentIndex = 0;
+  List<Map<String, dynamic>> _homeCandidates = <Map<String, dynamic>>[];
 
   String _displayFirstName() {
     final raw = (UserSession.fullName ?? '').trim();
@@ -95,11 +97,28 @@ class _StudentDashboardState extends State<StudentDashboard> {
   void initState() {
     super.initState();
     _ensureProfileBasics();
+    _loadHomeCandidates();
+  }
+
+  Future<void> _loadHomeCandidates() async {
+    try {
+      final list = await _api.listAllCandidates();
+      if (!mounted) return;
+      setState(() {
+        _homeCandidates = list;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _homeCandidates = <Map<String, dynamic>>[];
+      });
+    }
   }
 
   Future<void> _refreshHome() async {
     await _ensureProfileBasics();
     await NotificationCenterStore.refresh();
+    await _loadHomeCandidates();
   }
 
   Future<void> _ensureProfileBasics() async {
@@ -280,7 +299,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 10),
                   // Profile row — same horizontal bounds as search bar (single outer padding only).
                   Container(
                     padding: const EdgeInsets.all(14),
@@ -369,13 +388,18 @@ class _StudentDashboardState extends State<StudentDashboard> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 10),
                   ElectionHomeCountdown(
                     orgName: widget.orgName,
                     embeddedInProfileCard: false,
                     onVoteNow: () {
                       setState(() => _currentIndex = 1);
                     },
+                  ),
+                  const SizedBox(height: 12),
+                  HomeCandidatesStrip(
+                    candidates: _homeCandidates,
+                    isDarkMode: isDarkMode,
                   ),
                   const SizedBox(height: 18),
                   const OmnibusCodeCarousel(),

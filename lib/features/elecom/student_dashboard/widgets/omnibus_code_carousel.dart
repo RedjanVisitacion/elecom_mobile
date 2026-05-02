@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 
 /// Opens a full-screen omnibus reader (multi-page, PDF-style).
@@ -143,19 +141,19 @@ class _OmnibusFullscreenReaderState extends State<_OmnibusFullscreenReader> {
   }
 }
 
-/// Horizontal auto-advancing carousel: **two cards per page** (like ELECOM reference).
+/// Horizontally scrollable omnibus page previews (tap opens full-screen reader).
 class OmnibusCodeCarousel extends StatefulWidget {
   const OmnibusCodeCarousel({
     super.key,
     this.assetPaths,
-    this.interval = const Duration(seconds: 5),
     this.height = 200,
+    this.cardWidth = 168,
   });
 
   /// Defaults to [page01.jpg … page14.jpg] under `assets/omnibus/`.
   final List<String>? assetPaths;
-  final Duration interval;
   final double height;
+  final double cardWidth;
 
   static List<String> defaultAssetPaths() {
     return List<String>.generate(
@@ -169,36 +167,7 @@ class OmnibusCodeCarousel extends StatefulWidget {
 }
 
 class _OmnibusCodeCarouselState extends State<OmnibusCodeCarousel> {
-  late PageController _pageController;
-  Timer? _timer;
-
   List<String> get _paths => widget.assetPaths ?? OmnibusCodeCarousel.defaultAssetPaths();
-
-  int get _pageCount => _paths.isEmpty ? 0 : (_paths.length + 1) ~/ 2;
-
-  @override
-  void initState() {
-    super.initState();
-    _pageController = PageController();
-    _timer = Timer.periodic(widget.interval, (_) {
-      if (!mounted || _pageCount <= 1) return;
-      if (!_pageController.hasClients) return;
-      final cur = _pageController.page!.round();
-      final next = (cur + 1) % _pageCount;
-      _pageController.animateToPage(
-        next,
-        duration: const Duration(milliseconds: 520),
-        curve: Curves.easeInOut,
-      );
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    _pageController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -220,54 +189,28 @@ class _OmnibusCodeCarouselState extends State<OmnibusCodeCarousel> {
         const SizedBox(height: 10),
         SizedBox(
           height: widget.height,
-          child: PageView.builder(
-            controller: _pageController,
-            itemCount: _pageCount,
-            itemBuilder: (context, pageIndex) {
-              final i = pageIndex * 2;
-              final leftPath = paths[i];
-              final rightPath = i + 1 < paths.length ? paths[i + 1] : null;
-              final pad = const EdgeInsets.symmetric(horizontal: 2);
-              if (rightPath == null) {
-                return Padding(
-                  padding: pad,
-                  child: _OmnibusCard(
-                    path: leftPath,
-                    index: i,
-                    allPaths: paths,
-                    height: widget.height,
-                    isDark: isDark,
-                  ),
-                );
-              }
-              return Padding(
-                padding: pad,
-                child: Row(
-                  children: [
-                    Expanded(
+          child: paths.isEmpty
+              ? const SizedBox.shrink()
+              : ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.only(left: 2, right: 8),
+                  itemCount: paths.length,
+                  separatorBuilder: (context, index) => const SizedBox(width: 10),
+                  itemBuilder: (context, i) {
+                    return SizedBox(
+                      width: widget.cardWidth,
                       child: _OmnibusCard(
-                        path: leftPath,
+                        path: paths[i],
                         index: i,
                         allPaths: paths,
                         height: widget.height,
+                        width: widget.cardWidth,
                         isDark: isDark,
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _OmnibusCard(
-                        path: rightPath,
-                        index: i + 1,
-                        allPaths: paths,
-                        height: widget.height,
-                        isDark: isDark,
-                      ),
-                    ),
-                  ],
+                    );
+                  },
                 ),
-              );
-            },
-          ),
         ),
       ],
     );
@@ -281,12 +224,14 @@ class _OmnibusCard extends StatelessWidget {
     required this.allPaths,
     required this.height,
     required this.isDark,
+    this.width,
   });
 
   final String path;
   final int index;
   final List<String> allPaths;
   final double height;
+  final double? width;
   final bool isDark;
 
   static const Color _frame = Color(0xFF0c1e70);
@@ -304,6 +249,7 @@ class _OmnibusCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         child: Ink(
           height: height,
+          width: width,
           decoration: BoxDecoration(
             color: isDark ? _frame.withValues(alpha: 0.35) : _frame.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(14),
