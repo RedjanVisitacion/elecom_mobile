@@ -8,6 +8,7 @@ import 'widgets/student_dashboard_appbar.dart';
 import '../candidates/candidate_search_screen.dart';
 import 'dart:math' as math;
 import '../../../core/config/api_config.dart';
+import '../../../core/notifications/notification_center_store.dart';
 import 'widgets/election_home_countdown.dart';
 import 'widgets/omnibus_code_carousel.dart';
 
@@ -94,6 +95,11 @@ class _StudentDashboardState extends State<StudentDashboard> {
   void initState() {
     super.initState();
     _ensureProfileBasics();
+  }
+
+  Future<void> _refreshHome() async {
+    await _ensureProfileBasics();
+    await NotificationCenterStore.refresh();
   }
 
   Future<void> _ensureProfileBasics() async {
@@ -230,14 +236,18 @@ class _StudentDashboardState extends State<StudentDashboard> {
     final emailMasked = _maskEmail(_email);
 
     return SafeArea(
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 600),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
+      child: RefreshIndicator(
+        color: Colors.black,
+        backgroundColor: Colors.white,
+        onRefresh: _refreshHome,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 600),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Facebook-style search bar that navigates to search screen.
@@ -369,7 +379,8 @@ class _StudentDashboardState extends State<StudentDashboard> {
                   ),
                   const SizedBox(height: 18),
                   const OmnibusCodeCarousel(),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
