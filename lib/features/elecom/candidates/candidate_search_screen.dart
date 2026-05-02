@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../data/elecom_mobile_api.dart';
+import 'candidate_profile_screen.dart';
 
 class CandidateSearchScreen extends StatefulWidget {
   const CandidateSearchScreen({super.key});
@@ -199,10 +200,17 @@ class _CandidateSearchScreenState extends State<CandidateSearchScreen> {
                         border: Border.all(color: borderColor),
                       ),
                       child: ListTile(
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => CandidateProfileScreen(candidate: c)),
+                          );
+                        },
                         leading: CircleAvatar(
                           backgroundColor: isDarkMode ? Colors.white12 : const Color(0xFFEAF1FF),
-                          backgroundImage: photoUrl.startsWith('http') ? NetworkImage(photoUrl) : null,
-                          child: photoUrl.startsWith('http')
+                          backgroundImage: resolvedCandidatePhotoUrl(photoUrl) != null
+                              ? NetworkImage(resolvedCandidatePhotoUrl(photoUrl)!)
+                              : null,
+                          child: resolvedCandidatePhotoUrl(photoUrl) != null
                               ? null
                               : Icon(Icons.person, color: isDarkMode ? Colors.white70 : Colors.blue),
                         ),
@@ -218,7 +226,7 @@ class _CandidateSearchScreenState extends State<CandidateSearchScreen> {
                       ),
                     );
                   },
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  separatorBuilder: (_, _) => const SizedBox(height: 10),
                   itemCount: _results.length,
                 );
               },
