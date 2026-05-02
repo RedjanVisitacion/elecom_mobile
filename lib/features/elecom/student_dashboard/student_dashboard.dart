@@ -6,6 +6,9 @@ import '../data/elecom_mobile_api.dart';
 import 'utils/theme_notifier.dart';
 import 'widgets/student_dashboard_appbar.dart';
 import '../candidates/candidate_search_screen.dart';
+import 'dart:math' as math;
+import '../../../core/config/api_config.dart';
+import 'widgets/election_home_countdown.dart';
 
 class StudentDashboard extends StatefulWidget {
   const StudentDashboard({
@@ -39,22 +42,63 @@ class _PlaceholderTab extends StatelessWidget {
 
 class _StudentDashboardState extends State<StudentDashboard> {
   final ElecomMobileApi _api = ElecomMobileApi();
-  bool _loadingName = false;
   int _currentIndex = 0;
+
+  String _displayFirstName() {
+    final raw = (UserSession.fullName ?? '').trim();
+    if (raw.isEmpty) return 'Student';
+    final parts = raw.split(RegExp(r'\s+')).where((p) => p.trim().isNotEmpty).toList();
+    if (parts.isEmpty) return 'Student';
+    // Prefer "First Middle" (e.g. Redjan Phil) if available.
+    if (parts.length >= 2) return '${parts[0]} ${parts[1]}';
+    return parts.first;
+  }
+
+  String _maskPhone(String raw) {
+    final s = raw.trim();
+    if (s.isEmpty) return '';
+    // Keep digits, preserve leading + if present.
+    final hasPlus = s.startsWith('+');
+    final digits = s.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.length <= 4) return s;
+    final last4 = digits.substring(digits.length - 4);
+    final prefix = hasPlus ? '+' : '';
+    return '$prefix${digits.substring(0, math.min(3, digits.length))} *** $last4';
+  }
+
+  String _maskEmail(String raw) {
+    final s = raw.trim();
+    if (s.isEmpty) return '';
+    final at = s.indexOf('@');
+    if (at <= 1) return s;
+    final name = s.substring(0, at);
+    final domain = s.substring(at);
+    final keep = math.min(2, name.length);
+    return '${name.substring(0, keep)}***$domain';
+  }
+
+  String _resolvePhotoUrl() {
+    final url = (UserSession.profilePhotoUrl ?? '').trim();
+    if (url.isEmpty || url.toLowerCase() == 'null') return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    final base = ApiConfig.baseUrl;
+    if (url.startsWith('/')) return '$base$url';
+    return '$base/$url';
+  }
+
+  String _phone = '';
+  String _email = '';
 
   @override
   void initState() {
     super.initState();
-    _ensureFullName();
+    _ensureProfileBasics();
   }
 
-  Future<void> _ensureFullName() async {
-    final existing = (UserSession.fullName ?? '').trim();
-    if (existing.isNotEmpty) return;
-
+  Future<void> _ensureProfileBasics() async {
     if (mounted) {
       setState(() {
-        _loadingName = true;
+        // keep UI responsive; show no explicit loading here
       });
     }
 
@@ -69,13 +113,40 @@ class _StudentDashboardState extends State<StudentDashboard> {
       }
       UserSession.setFromResponse(root);
 
+      String readFirst(Map<String, dynamic> obj, List<String> keys) {
+        for (final k in keys) {
+          final v = obj[k];
+          if (v == null) continue;
+          final s = v.toString().trim();
+          if (s.isNotEmpty && s.toLowerCase() != 'null') return s;
+        }
+        return '';
+      }
+
+      final user = root['user'] is Map<String, dynamic> ? (root['user'] as Map<String, dynamic>) : const <String, dynamic>{};
+      final student = root['student'] is Map<String, dynamic> ? (root['student'] as Map<String, dynamic>) : const <String, dynamic>{};
+
+      final email = readFirst(root, const ['email']);
+      final email2 = email.isNotEmpty ? email : readFirst(user, const ['email']);
+      final email3 = email2.isNotEmpty ? email2 : readFirst(student, const ['email']);
+
+      final phone = readFirst(root, const ['phone', 'phone_number', 'phoneNumber', 'contact_no', 'contactNo']);
+      final phone2 = phone.isNotEmpty ? phone : readFirst(user, const ['phone', 'phone_number', 'contact_no', 'contactNo']);
+      final phone3 = phone2.isNotEmpty ? phone2 : readFirst(student, const ['phone_number', 'phone', 'contact_no', 'contactNo']);
+
       if (mounted) setState(() {});
+      if (mounted) {
+        setState(() {
+          _email = email3;
+          _phone = phone3;
+        });
+      }
     } catch (_) {
       if (mounted) setState(() {});
     } finally {
       if (mounted) {
         setState(() {
-          _loadingName = false;
+          // done
         });
       }
     }
@@ -152,6 +223,10 @@ class _StudentDashboardState extends State<StudentDashboard> {
     final cardColor = isDarkMode ? const Color(0xFF2A2A35) : Colors.white;
     final borderColor = isDarkMode ? Colors.white12 : Colors.black12;
     final subtitleColor = isDarkMode ? Colors.white70 : Colors.black54;
+    final titleColor = isDarkMode ? Colors.white : Colors.black;
+    final photoUrl = _resolvePhotoUrl();
+    final phoneMasked = _maskPhone(_phone);
+    final emailMasked = _maskEmail(_email);
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -194,30 +269,100 @@ class _StudentDashboardState extends State<StudentDashboard> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  Image.asset(
-                    widget.assetPath,
-                    height: 72,
-                    fit: BoxFit.contain,
-                    errorBuilder: (c, e, s) => const Icon(Icons.how_to_vote, size: 64),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    widget.orgName,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    _displayName(),
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Search for candidates using the bar above.',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                    textAlign: TextAlign.center,
+                  const SizedBox(height: 14),
+                  // Profile summary row (like your reference UI).
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: cardColor,
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 62,
+                              height: 62,
+                              padding: const EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: isDarkMode ? Colors.white24 : Colors.black26,
+                                  width: 2,
+                                ),
+                              ),
+                              child: CircleAvatar(
+                                radius: 28,
+                                backgroundColor: isDarkMode ? Colors.white12 : const Color(0xFFEAF1FF),
+                                backgroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
+                                child: photoUrl.isNotEmpty
+                                    ? null
+                                    : Icon(Icons.person, color: isDarkMode ? Colors.white70 : Colors.blue, size: 28),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Hi, ${_displayFirstName().toUpperCase()}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: titleColor,
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 18,
+                                      height: 1.05,
+                                      letterSpacing: 0.2,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  if (phoneMasked.isNotEmpty)
+                                    Text(
+                                      phoneMasked,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: subtitleColor,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 13,
+                                        height: 1.1,
+                                      ),
+                                    ),
+                                  if (emailMasked.isNotEmpty) ...[
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      emailMasked,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: subtitleColor,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 13,
+                                        height: 1.1,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            SizedBox(
+                              width: 62,
+                              height: 62,
+                              child: Image.asset(
+                                'assets/gif/Elecom Splash.gif',
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                          ],
+                        ),
+                        ElectionHomeCountdown(orgName: widget.orgName, embeddedInProfileCard: true),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -228,13 +373,5 @@ class _StudentDashboardState extends State<StudentDashboard> {
     );
   }
 
-  String _displayName() {
-    final name = (UserSession.fullName ?? '').trim();
-    if (name.isNotEmpty) return name;
-
-    if (_loadingName) return 'Loading...';
-
-    // If profile API still didn't give a name, keep a safe fallback.
-    return 'Student';
-  }
+  // (previous _displayName removed; home tab now uses profile summary row)
 }
