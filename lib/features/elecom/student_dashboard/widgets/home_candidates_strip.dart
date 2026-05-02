@@ -23,13 +23,12 @@ class HomeCandidatesStrip extends StatelessWidget {
   final List<Map<String, dynamic>> candidates;
   final bool isDarkMode;
 
-  static const Color _ring = Color(0xFF0C1E70);
-
   @override
   Widget build(BuildContext context) {
     if (candidates.isEmpty) return const SizedBox.shrink();
 
     final labelColor = isDarkMode ? Colors.white : Colors.black87;
+    final ringColor = isDarkMode ? const Color(0xFFFEA501) : const Color(0xFF0C1E70);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -74,7 +73,7 @@ class HomeCandidatesStrip extends StatelessWidget {
                         Container(
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            border: Border.all(color: _ring, width: 2.5),
+                            border: Border.all(color: ringColor, width: 2.5),
                           ),
                           padding: const EdgeInsets.all(2.5),
                           child: CircleAvatar(
