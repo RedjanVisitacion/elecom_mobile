@@ -14,12 +14,16 @@ class ElectionHomeCountdown extends StatefulWidget {
     super.key,
     required this.orgName,
     this.embeddedInProfileCard = false,
+    this.onVoteNow,
   });
 
   final String orgName;
 
   /// When true, spacing is tightened for use directly under the profile row.
   final bool embeddedInProfileCard;
+
+  /// Opens voting (e.g. switch bottom nav to Election).
+  final VoidCallback? onVoteNow;
 
   @override
   State<ElectionHomeCountdown> createState() => _ElectionHomeCountdownState();
@@ -280,10 +284,48 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
                   height: 1.25,
                 ),
               ),
+              const SizedBox(height: 14),
+              _voteNowButton(context),
             ],
           ),
         ),
       ],
+    );
+  }
+
+  Widget _voteNowButton(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      elevation: 3,
+      shadowColor: Colors.black.withValues(alpha: 0.2),
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: () => widget.onVoteNow?.call(),
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.how_to_vote_rounded,
+                color: Color(0xFF0c1e70),
+                size: 24,
+              ),
+              const SizedBox(width: 10),
+              Text(
+                'Vote Now',
+                style: TextStyle(
+                  color: const Color(0xFF0c1e70),
+                  fontWeight: FontWeight.w900,
+                  fontSize: 16,
+                  letterSpacing: 0.4,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

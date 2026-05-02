@@ -9,6 +9,7 @@ import '../candidates/candidate_search_screen.dart';
 import 'dart:math' as math;
 import '../../../core/config/api_config.dart';
 import 'widgets/election_home_countdown.dart';
+import 'widgets/omnibus_code_carousel.dart';
 
 class StudentDashboard extends StatefulWidget {
   const StudentDashboard({
@@ -359,7 +360,15 @@ class _StudentDashboardState extends State<StudentDashboard> {
                     ),
                   ),
                   const SizedBox(height: 14),
-                  ElectionHomeCountdown(orgName: widget.orgName, embeddedInProfileCard: false),
+                  ElectionHomeCountdown(
+                    orgName: widget.orgName,
+                    embeddedInProfileCard: false,
+                    onVoteNow: () {
+                      setState(() => _currentIndex = 1);
+                    },
+                  ),
+                  const SizedBox(height: 18),
+                  const OmnibusCodeCarousel(),
                 ],
               ),
             ),
