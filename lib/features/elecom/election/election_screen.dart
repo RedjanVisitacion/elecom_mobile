@@ -158,6 +158,28 @@ class _ElectionScreenState extends State<ElectionScreen> {
   ElectionThemePalette _electionPalette(BuildContext context, bool isDark) =>
       ElectionThemePalette.fromBrightness(isDark ? Brightness.dark : Brightness.light);
 
+  Map<int, Map<String, dynamic>> _candidateIndex() {
+    final out = <int, Map<String, dynamic>>{};
+    for (final org in _orgList) {
+      final positions = org['positions'];
+      if (positions is! List) continue;
+      for (final raw in positions) {
+        if (raw is! Map) continue;
+        final p = Map<String, dynamic>.from(raw);
+        final cands = p['candidates'];
+        if (cands is! List) continue;
+        for (final c in cands.whereType<Map>()) {
+          final m = Map<String, dynamic>.from(c);
+          final idVal = m['id'];
+          final id = idVal is int ? idVal : int.tryParse(idVal.toString());
+          if (id == null || id == 0) continue;
+          out[id] = m;
+        }
+      }
+    }
+    return out;
+  }
+
   String? _candidateName(Map<String, dynamic> c) {
     final n = (c['name'] ?? '').toString().trim();
     if (n.isNotEmpty) return n;
@@ -184,42 +206,239 @@ class _ElectionScreenState extends State<ElectionScreen> {
 
     final blankCount = _expectedKeys.length - _filledCount;
 
+    final index = _candidateIndex();
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) {
         final fg = Theme.of(ctx).brightness == Brightness.dark ? Colors.white : Colors.black;
         final sub = Theme.of(ctx).brightness == Brightness.dark ? Colors.white70 : Colors.black54;
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          titleTextStyle: TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: fg),
-          title: const Text('Confirm your vote'),
-          content: SingleChildScrollView(
-            child: Text(
-              blankCount > 0
-                  ? 'You have chosen candidates for $_filledCount of ${_expectedKeys.length} ballot position(s).\n'
-                        '$blankCount position(s) will be left blank or skipped.\n\n'
-                        'Once you confirm, your vote will be submitted and cannot be changed. Continue?'
-                  : 'You are about to submit your ballot with all positions filled.\n\n'
-                      'Once you confirm, your vote cannot be changed. Continue?',
-              style: TextStyle(color: sub, height: 1.4, fontWeight: FontWeight.w600),
+        final screenH = MediaQuery.sizeOf(ctx).height;
+        final dialogH = (screenH * 0.82).clamp(screenH * 0.75, screenH * 0.85);
+
+        Widget avatar(dynamic photoUrlRaw) {
+          final isDark = Theme.of(ctx).brightness == Brightness.dark;
+          final photo = resolvedCandidatePhotoUrl(photoUrlRaw);
+          final stroke = isDark ? Colors.white24 : const Color(0xFFD7D7D7);
+          return Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: stroke, width: 2),
+            ),
+            padding: const EdgeInsets.all(1.5),
+            child: CircleAvatar(
+              radius: 20, // ~40px photo, compact but readable
+              backgroundColor: isDark ? Colors.white12 : const Color(0xFFEAF1FF),
+              backgroundImage: photo != null ? NetworkImage(photo) : null,
+              child: photo == null ? Icon(Icons.person, size: 18, color: isDark ? Colors.white54 : Colors.black54) : null,
+            ),
+          );
+        }
+
+        List<Widget> summaryWidgets() {
+          final widgets = <Widget>[];
+          for (final key in _expectedKeys) {
+            final parts = key.split('::');
+            if (parts.length != 2) continue;
+            final org = parts[0].trim();
+            final pos = parts[1].trim();
+
+            widgets.add(
+              Padding(
+                padding: const EdgeInsets.only(top: 10, bottom: 6),
+                child: Text(
+                  pos,
+                  style: TextStyle(fontWeight: FontWeight.w900, color: fg, fontSize: 13.5),
+                ),
+              ),
+            );
+
+            final v = _selections[key];
+            if (v == null || (v is List && v.isEmpty)) {
+              widgets.add(
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 2),
+                  child: Text(
+                    'No candidate selected',
+                    style: TextStyle(color: sub, fontWeight: FontWeight.w500, fontSize: 12),
+                  ),
+                ),
+              );
+              continue;
+            }
+
+            final ids = v is List
+                ? v.map((e) => e is int ? e : int.tryParse(e.toString())).whereType<int>().toList()
+                : <int>[v is int ? v : (int.tryParse(v.toString()) ?? 0)].where((x) => x != 0).toList();
+
+            for (final id in ids) {
+              final c = index[id] ?? <String, dynamic>{'id': id};
+              final name = _candidateName(c) ?? 'Candidate';
+              final party = (c['party_name'] ?? '').toString().trim();
+              widgets.add(
+                Container(
+                  margin: const EdgeInsets.only(bottom: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Theme.of(ctx).brightness == Brightness.dark ? Colors.white12 : const Color(0xFFD7D7D7),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      avatar(c['photo_url']),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              name,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontWeight: FontWeight.w800, color: fg, fontSize: 14, height: 1.15),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              [
+                                if (party.isNotEmpty) party,
+                                org,
+                              ].join(' · '),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(color: sub, fontWeight: FontWeight.w500, fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+          }
+          return widgets;
+        }
+
+        // Avoid nested scrollables (can cause jank/ANR on some devices).
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        final dialogBg = isDark ? const Color(0xFF18191A) : Colors.white;
+        final noteColor = isDark ? const Color(0xFFFF6B6B) : const Color(0xFFB00020);
+
+        return Dialog(
+          insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+          backgroundColor: dialogBg,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: SizedBox(
+            height: dialogH.toDouble(),
+            width: double.maxFinite,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Confirm your vote',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: fg),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'You are about to submit your ballot. Please review your selected candidates before continuing. '
+                    'Once submitted, your vote cannot be changed.',
+                    style: TextStyle(color: sub, height: 1.35, fontWeight: FontWeight.w500, fontSize: 12.5),
+                  ),
+                  if (blankCount > 0) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'Note: $blankCount position(s) will be left blank.',
+                      style: TextStyle(color: noteColor, height: 1.25, fontWeight: FontWeight.w700, fontSize: 12.5),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: Scrollbar(
+                      thumbVisibility: true,
+                      child: ListView(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        children: summaryWidgets(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: SizedBox(
+                          height: 44,
+                          child: TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: Text('Cancel', style: TextStyle(color: fg, fontWeight: FontWeight.w700)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: SizedBox(
+                          height: 44,
+                          child: FilledButton(
+                            style: FilledButton.styleFrom(backgroundColor: palette.accent),
+                            onPressed: () => Navigator.pop(ctx, true),
+                            child: Text('Continue', style: TextStyle(color: palette.onAccent, fontWeight: FontWeight.w800)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('Cancel', style: TextStyle(color: fg))),
-            FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: palette.accent),
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text('Continue', style: TextStyle(color: palette.onAccent)),
-            ),
-          ],
         );
       },
     );
     if (ok != true || !mounted) return;
 
+    // Show a blocking progress dialog while we submit (prevents perceived \"freeze\").
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        final fg = isDark ? Colors.white : Colors.black;
+        final bg = isDark ? const Color(0xFF18191A) : Colors.white;
+        return Center(
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+              decoration: BoxDecoration(
+                color: bg,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: isDark ? Colors.white12 : const Color(0xFFD7D7D7)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2.2, color: palette.accent),
+                  ),
+                  const SizedBox(width: 12),
+                  Text('Submitting...', style: TextStyle(color: fg, fontWeight: FontWeight.w700)),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
     try {
       await _api.submitVote(<String, dynamic>{'selections': payload});
       if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop(); // close submitting dialog
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: palette.snackNeutral,
@@ -229,6 +448,7 @@ class _ElectionScreenState extends State<ElectionScreen> {
       await _load();
     } on ElecomApiException catch (e) {
       if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop(); // close submitting dialog
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: palette.snackNeutral,
@@ -237,6 +457,7 @@ class _ElectionScreenState extends State<ElectionScreen> {
       );
     } catch (e) {
       if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop(); // close submitting dialog
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: palette.snackNeutral,
