@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/notifications/local_push_service.dart';
+import '../../../core/notifications/notification_center_store.dart';
+import '../../../core/session/notification_preferences.dart';
 import '../candidates/candidate_profile_screen.dart';
 import '../data/elecom_mobile_api.dart';
 
@@ -192,6 +195,257 @@ class _ElectionScreenState extends State<ElectionScreen> {
     return parts.join(' ');
   }
 
+  String _formatReceiptDate(String? iso) {
+    final raw = (iso ?? '').trim();
+    if (raw.isEmpty) return '';
+    final dt = DateTime.tryParse(raw);
+    if (dt == null) return '';
+    final local = dt.isUtc ? dt.toLocal() : dt;
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${local.year}-${two(local.month)}-${two(local.day)} ${two(local.hour)}:${two(local.minute)}';
+  }
+
+  Future<void> _showVoteReceiptSheet({
+    required Map receipt,
+    required ElectionThemePalette palette,
+  }) async {
+    if (!mounted) return;
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = isDark ? const Color(0xFF18191A) : Colors.white;
+    final fg = isDark ? Colors.white : Colors.black;
+    final sub = isDark ? Colors.white70 : Colors.black54;
+
+    final ref = (receipt['reference_number'] ?? '').toString().trim();
+    final votedAt = _formatReceiptDate((receipt['voted_at'] ?? '').toString());
+    final totalSelections = receipt['total_selections'];
+
+    final selectionsRaw = receipt['selections'];
+    final selections = selectionsRaw is Map ? Map<String, dynamic>.from(selectionsRaw) : <String, dynamic>{};
+
+    final candidatesRaw = receipt['candidates'];
+    final candidates = candidatesRaw is Map ? Map<String, dynamic>.from(candidatesRaw) : <String, dynamic>{};
+
+    final ballotDataRaw = receipt['ballot_data'];
+    final ballotData = ballotDataRaw is Map ? Map<String, dynamic>.from(ballotDataRaw) : <String, dynamic>{};
+    final ballotRaw = ballotData['ballot'];
+    final ballot = ballotRaw is List ? ballotRaw.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList() : <Map<String, dynamic>>[];
+
+    Widget receiptAvatar(dynamic photoUrlRaw) {
+      final photo = resolvedCandidatePhotoUrl(photoUrlRaw);
+      final stroke = isDark ? Colors.white24 : const Color(0xFFD7D7D7);
+      return Container(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: stroke, width: 2),
+        ),
+        padding: const EdgeInsets.all(1.5),
+        child: CircleAvatar(
+          radius: 20, // ~40px photo (same feel as Election)
+          backgroundColor: isDark ? Colors.white12 : const Color(0xFFEAF1FF),
+          backgroundImage: photo != null ? NetworkImage(photo) : null,
+          child: photo == null ? Icon(Icons.person, size: 18, color: isDark ? Colors.white54 : Colors.black54) : null,
+        ),
+      );
+    }
+
+    List<Widget> buildLines() {
+      final lines = <Widget>[];
+
+      void addLine(String left, String right) {
+        if (right.trim().isEmpty) return;
+        lines.add(
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Row(
+              children: [
+                Expanded(child: Text(left, style: TextStyle(color: sub, fontWeight: FontWeight.w600, fontSize: 12.5))),
+                const SizedBox(width: 12),
+                Flexible(child: Text(right, style: TextStyle(color: fg, fontWeight: FontWeight.w800, fontSize: 12.5))),
+              ],
+            ),
+          ),
+        );
+      }
+
+      addLine('Reference', ref);
+      addLine('Voted at', votedAt);
+      addLine('Selections', totalSelections == null ? '' : totalSelections.toString());
+
+      lines.add(const SizedBox(height: 14));
+      lines.add(Divider(color: isDark ? Colors.white12 : const Color(0xFFE6E6E6), height: 1));
+      lines.add(const SizedBox(height: 10));
+      lines.add(Text('Summary', style: TextStyle(color: fg, fontWeight: FontWeight.w900, fontSize: 14)));
+      lines.add(const SizedBox(height: 6));
+
+      // Render selected items (position -> candidate(s)).
+      Iterable<String> orderedPositionKeys() sync* {
+        // Prefer ballot order (same as Election screen). Fallback to natural map key order.
+        if (ballot.isNotEmpty) {
+          for (final org in ballot) {
+            final orgName = (org['organization'] ?? '').toString().trim();
+            final positionsRaw = org['positions'];
+            if (orgName.isEmpty || positionsRaw is! List) continue;
+            for (final p in positionsRaw.whereType<Map>()) {
+              final posName = (p['position'] ?? '').toString().trim();
+              if (posName.isEmpty) continue;
+              yield '$orgName::$posName';
+            }
+          }
+          return;
+        }
+        for (final k in selections.keys) {
+          yield k.toString();
+        }
+      }
+
+      final emitted = <String>{};
+      for (final posKey in orderedPositionKeys()) {
+        if (emitted.contains(posKey)) continue;
+        emitted.add(posKey);
+
+        final v = selections[posKey];
+        final ids = v is List
+            ? v.map((e) => e.toString()).where((x) => x.isNotEmpty).toList()
+            : <String>[v?.toString() ?? ''].where((x) => x.isNotEmpty).toList();
+        if (ids.isEmpty) continue;
+
+        final orgLabel = posKey.contains('::') ? posKey.split('::').first.trim() : '';
+        final posLabel = posKey.contains('::') ? posKey.split('::').last.trim() : posKey;
+
+        lines.add(
+          Padding(
+            padding: const EdgeInsets.only(top: 10, bottom: 6),
+            child: Text(
+              posLabel,
+              style: TextStyle(color: fg, fontWeight: FontWeight.w900, fontSize: 13.5),
+            ),
+          ),
+        );
+
+        for (final id in ids) {
+          final candRaw = candidates[id];
+          final cand = candRaw is Map ? Map<String, dynamic>.from(candRaw) : <String, dynamic>{};
+          final name = (cand['name'] ?? '').toString().trim();
+          final party = (cand['party_name'] ?? '').toString().trim();
+          final photoUrl = cand['photo_url'];
+          final subtitle = [if (party.isNotEmpty) party, if (orgLabel.isNotEmpty) orgLabel].join(' · ');
+
+          lines.add(
+            Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: isDark ? Colors.white12 : const Color(0xFFD7D7D7)),
+              ),
+              child: Row(
+                children: [
+                  receiptAvatar(photoUrl),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          name.isEmpty ? 'Candidate' : name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: fg, fontWeight: FontWeight.w800, fontSize: 13.5, height: 1.15),
+                        ),
+                        if (subtitle.trim().isNotEmpty) ...[
+                          const SizedBox(height: 3),
+                          Text(
+                            subtitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(color: sub, fontWeight: FontWeight.w500, fontSize: 12),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+      }
+
+      return lines;
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: bg,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (ctx) {
+        final h = MediaQuery.sizeOf(ctx).height;
+        return SafeArea(
+          top: false,
+          child: SizedBox(
+            height: (h * 0.82).clamp(h * 0.65, h * 0.9),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              child: Column(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white24 : Colors.black12,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Vote receipt',
+                          style: TextStyle(color: fg, fontWeight: FontWeight.w900, fontSize: 16),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Close',
+                        onPressed: () => Navigator.pop(ctx),
+                        icon: Icon(Icons.close, color: fg),
+                      ),
+                    ],
+                  ),
+                  Text(
+                    'Thank you for voting. Your vote has been successfully recorded.',
+                    style: TextStyle(color: sub, fontWeight: FontWeight.w500, height: 1.35, fontSize: 12.5),
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      children: buildLines(),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 46,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(backgroundColor: palette.accent),
+                      onPressed: () => Navigator.pop(ctx),
+                      child: Text('Done', style: TextStyle(color: palette.onAccent, fontWeight: FontWeight.w900)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _submit(ElectionThemePalette palette) async {
     final payload = _payloadOnlyFilled();
     if (payload.isEmpty) {
@@ -209,11 +463,13 @@ class _ElectionScreenState extends State<ElectionScreen> {
     final index = _candidateIndex();
     final ok = await showDialog<bool>(
       context: context,
+      barrierDismissible: false,
       builder: (ctx) {
         final fg = Theme.of(ctx).brightness == Brightness.dark ? Colors.white : Colors.black;
         final sub = Theme.of(ctx).brightness == Brightness.dark ? Colors.white70 : Colors.black54;
         final screenH = MediaQuery.sizeOf(ctx).height;
         final dialogH = (screenH * 0.82).clamp(screenH * 0.75, screenH * 0.85);
+        final listController = ScrollController();
 
         Widget avatar(dynamic photoUrlRaw) {
           final isDark = Theme.of(ctx).brightness == Brightness.dark;
@@ -325,74 +581,101 @@ class _ElectionScreenState extends State<ElectionScreen> {
         final dialogBg = isDark ? const Color(0xFF18191A) : Colors.white;
         final noteColor = isDark ? const Color(0xFFFF6B6B) : const Color(0xFFB00020);
 
-        return Dialog(
-          insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-          backgroundColor: dialogBg,
-          surfaceTintColor: Colors.transparent,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: SizedBox(
-            height: dialogH.toDouble(),
-            width: double.maxFinite,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Confirm your vote',
-                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: fg),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'You are about to submit your ballot. Please review your selected candidates before continuing. '
-                    'Once submitted, your vote cannot be changed.',
-                    style: TextStyle(color: sub, height: 1.35, fontWeight: FontWeight.w500, fontSize: 12.5),
-                  ),
-                  if (blankCount > 0) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      'Note: $blankCount position(s) will be left blank.',
-                      style: TextStyle(color: noteColor, height: 1.25, fontWeight: FontWeight.w700, fontSize: 12.5),
-                    ),
-                  ],
-                  const SizedBox(height: 12),
-                  Expanded(
-                    child: Scrollbar(
-                      thumbVisibility: true,
-                      child: ListView(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        children: summaryWidgets(),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: SizedBox(
-                          height: 44,
-                          child: TextButton(
-                            onPressed: () => Navigator.pop(ctx, false),
-                            child: Text('Cancel', style: TextStyle(color: fg, fontWeight: FontWeight.w700)),
+        bool isAtBottom() {
+          if (!listController.hasClients) return false;
+          // Treat "near bottom" as bottom to avoid pixel-perfect issues.
+          return listController.position.extentAfter <= 8;
+        }
+
+        return PopScope(
+          canPop: false,
+          child: StatefulBuilder(
+            builder: (ctx, setState) {
+              var canContinue = isAtBottom();
+
+              void syncBottom() {
+                final next = isAtBottom() || (listController.hasClients && listController.position.maxScrollExtent <= 0);
+                if (next != canContinue) setState(() => canContinue = next);
+              }
+
+              // Initial computation after layout.
+              WidgetsBinding.instance.addPostFrameCallback((_) => syncBottom());
+
+              return Dialog(
+                insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                backgroundColor: dialogBg,
+                surfaceTintColor: Colors.transparent,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                child: SizedBox(
+                  height: dialogH.toDouble(),
+                  width: double.maxFinite,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Confirm your vote',
+                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: fg),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'You are about to submit your ballot. Please review your selected candidates before continuing. '
+                          'Once submitted, your vote cannot be changed.',
+                          style: TextStyle(color: sub, height: 1.35, fontWeight: FontWeight.w500, fontSize: 12.5),
+                        ),
+                        if (blankCount > 0) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            'Note: $blankCount position(s) will be left blank.',
+                            style: TextStyle(color: noteColor, height: 1.25, fontWeight: FontWeight.w700, fontSize: 12.5),
+                          ),
+                        ],
+                        const SizedBox(height: 12),
+                        Expanded(
+                          child: NotificationListener<ScrollNotification>(
+                            onNotification: (n) {
+                              if (n is ScrollUpdateNotification || n is ScrollEndNotification) syncBottom();
+                              return false;
+                            },
+                            child: ListView(
+                              controller: listController,
+                              padding: const EdgeInsets.only(bottom: 8),
+                              children: summaryWidgets(),
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: SizedBox(
-                          height: 44,
-                          child: FilledButton(
-                            style: FilledButton.styleFrom(backgroundColor: palette.accent),
-                            onPressed: () => Navigator.pop(ctx, true),
-                            child: Text('Continue', style: TextStyle(color: palette.onAccent, fontWeight: FontWeight.w800)),
-                          ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: SizedBox(
+                                height: 44,
+                                child: TextButton(
+                                  onPressed: () => Navigator.pop(ctx, false),
+                                  child: Text('Cancel', style: TextStyle(color: fg, fontWeight: FontWeight.w700)),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: SizedBox(
+                                height: 44,
+                                child: FilledButton(
+                                  style: FilledButton.styleFrom(backgroundColor: palette.accent),
+                                  onPressed: canContinue ? () => Navigator.pop(ctx, true) : null,
+                                  child: Text('Continue', style: TextStyle(color: palette.onAccent, fontWeight: FontWeight.w800)),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           ),
         );
       },
@@ -439,12 +722,54 @@ class _ElectionScreenState extends State<ElectionScreen> {
       await _api.submitVote(<String, dynamic>{'selections': payload});
       if (!mounted) return;
       Navigator.of(context, rootNavigator: true).pop(); // close submitting dialog
+
+      // Fetch receipt once to ensure it's available right away.
+      Map<String, dynamic>? receiptMap;
+      String? referenceNumber;
+      try {
+        final receiptRes = await _api.getVoteReceipt();
+        final receipt = receiptRes['receipt'];
+        if (receipt is Map) {
+          receiptMap = Map<String, dynamic>.from(receipt);
+          final ref = (receipt['reference_number'] ?? '').toString().trim();
+          if (ref.isNotEmpty) referenceNumber = ref;
+        }
+      } catch (_) {
+        // Ignore: receipt can still be viewed later from the Receipt tab.
+      }
+
+      final notifTitle = 'Vote recorded';
+      final notifBody = referenceNumber == null
+          ? 'Thank you for voting. Your vote has been successfully recorded.'
+          : 'Thank you for voting. Your vote has been successfully recorded.\nReceipt: $referenceNumber';
+
+      // In-app notification (server-backed).
+      if (await NotificationPreferences.isInAppEnabled()) {
+        try {
+          await NotificationCenterStore.add(title: notifTitle, body: notifBody);
+        } catch (_) {}
+      }
+
+      // Push notification (local notification on-device).
+      if (await NotificationPreferences.isPushEnabled()) {
+        try {
+          final id = DateTime.now().millisecondsSinceEpoch.remainder(1 << 30);
+          await LocalPushService.show(id: id, title: notifTitle, body: notifBody);
+        } catch (_) {}
+      }
+
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: palette.snackNeutral,
           content: Text('Your vote has been recorded.', style: TextStyle(color: palette.snackFg)),
         ),
       );
+
+      if (receiptMap != null) {
+        await _showVoteReceiptSheet(receipt: receiptMap, palette: palette);
+      }
+
       await _load();
     } on ElecomApiException catch (e) {
       if (!mounted) return;

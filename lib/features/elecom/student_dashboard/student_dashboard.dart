@@ -7,6 +7,7 @@ import 'utils/theme_notifier.dart';
 import 'widgets/student_dashboard_appbar.dart';
 import '../candidates/candidate_search_screen.dart';
 import '../election/election_screen.dart';
+import '../election/receipt_screen.dart';
 import 'dart:math' as math;
 import '../../../core/config/api_config.dart';
 import '../../../core/notifications/notification_center_store.dart';
@@ -216,7 +217,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                 _homeTab(context),
                 const ElectionScreen(),
                 const _PlaceholderTab(title: 'Results'),
-                const _PlaceholderTab(title: 'Receipt'),
+                const ReceiptScreen(),
                 const AccountBody(),
               ],
             ),

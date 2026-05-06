@@ -24,15 +24,20 @@ class LocalPushService {
     required String body,
   }) async {
     await init();
-    const androidDetails = AndroidNotificationDetails(
+    final androidDetails = AndroidNotificationDetails(
       'elecom_general_notifications',
       'General Notifications',
       channelDescription: 'General notifications for ELECOM account activity.',
       importance: Importance.max,
       priority: Priority.high,
       playSound: true,
+      styleInformation: BigTextStyleInformation(
+        body,
+        contentTitle: title,
+        // Android will show the full text when expanded (prevents truncation).
+      ),
     );
-    const details = NotificationDetails(android: androidDetails);
+    final details = NotificationDetails(android: androidDetails);
     await _plugin.show(
       id: id,
       title: title,
