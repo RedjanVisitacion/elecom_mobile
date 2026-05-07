@@ -9,6 +9,7 @@ import '../candidates/candidate_search_screen.dart';
 import '../election/election_screen.dart';
 import '../election/receipt_screen.dart';
 import '../election/election_transparency_screen.dart';
+import '../results/results_screen.dart';
 import 'dart:math' as math;
 import '../../../core/config/api_config.dart';
 import '../../../core/notifications/notification_center_store.dart';
@@ -30,25 +31,10 @@ class StudentDashboard extends StatefulWidget {
   State<StudentDashboard> createState() => _StudentDashboardState();
 }
 
-class _PlaceholderTab extends StatelessWidget {
-  const _PlaceholderTab({required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Text(
-        title,
-        style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-      ),
-    );
-  }
-}
-
 class _StudentDashboardState extends State<StudentDashboard> {
   final ElecomMobileApi _api = ElecomMobileApi();
   int _currentIndex = 0;
+  int _resultsScreenVersion = 0;
   List<Map<String, dynamic>> _homeCandidates = <Map<String, dynamic>>[];
 
   String _displayFirstName() {
@@ -227,7 +213,10 @@ class _StudentDashboardState extends State<StudentDashboard> {
                     );
                   },
                 ),
-                const _PlaceholderTab(title: 'Results'),
+                KeyedSubtree(
+                  key: ValueKey<int>(_resultsScreenVersion),
+                  child: const ResultsScreen(),
+                ),
                 const ReceiptScreen(),
                 const AccountBody(),
               ],
@@ -239,6 +228,11 @@ class _StudentDashboardState extends State<StudentDashboard> {
                 currentIndex: _currentIndex,
                 onTap: (i) {
                   setState(() {
+                    if (i == 2) {
+                      // Recreate ResultsScreen on every Results-tab tap
+                      // so charts replay animations even when already on Results.
+                      _resultsScreenVersion++;
+                    }
                     _currentIndex = i;
                   });
                 },
