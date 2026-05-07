@@ -8,6 +8,7 @@ import 'widgets/student_dashboard_appbar.dart';
 import '../candidates/candidate_search_screen.dart';
 import '../election/election_screen.dart';
 import '../election/receipt_screen.dart';
+import '../election/election_transparency_screen.dart';
 import 'dart:math' as math;
 import '../../../core/config/api_config.dart';
 import '../../../core/notifications/notification_center_store.dart';
@@ -215,30 +216,43 @@ class _StudentDashboardState extends State<StudentDashboard> {
               index: _currentIndex,
               children: [
                 _homeTab(context),
-                const ElectionScreen(),
+                ElectionScreen(
+                  onRequestTabIndex: (i) {
+                    if (!mounted) return;
+                    setState(() => _currentIndex = i);
+                  },
+                  onViewTransparency: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const ElectionTransparencyScreen()),
+                    );
+                  },
+                ),
                 const _PlaceholderTab(title: 'Results'),
                 const ReceiptScreen(),
                 const AccountBody(),
               ],
             ),
-            bottomNavigationBar: BottomNavigationBar(
-              type: BottomNavigationBarType.fixed,
-              currentIndex: _currentIndex,
-              onTap: (i) {
-                setState(() {
-                  _currentIndex = i;
-                });
-              },
-              selectedItemColor: shouldUseDarkMode ? Colors.white : Colors.black,
-              unselectedItemColor: shouldUseDarkMode ? Colors.white70 : Colors.black54,
-              backgroundColor: shouldUseDarkMode ? const Color(0xFF242433) : Colors.white,
-              items: const [
-                BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: 'Home'),
-                BottomNavigationBarItem(icon: Icon(Icons.how_to_vote_outlined), label: 'Election'),
-                BottomNavigationBarItem(icon: Icon(Icons.bar_chart_outlined), label: 'Results'),
-                BottomNavigationBarItem(icon: Icon(Icons.receipt_long_outlined), label: 'Receipt'),
-                BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Me'),
-              ],
+            bottomNavigationBar: SafeArea(
+              top: false,
+              child: BottomNavigationBar(
+                type: BottomNavigationBarType.fixed,
+                currentIndex: _currentIndex,
+                onTap: (i) {
+                  setState(() {
+                    _currentIndex = i;
+                  });
+                },
+                selectedItemColor: shouldUseDarkMode ? Colors.white : Colors.black,
+                unselectedItemColor: shouldUseDarkMode ? Colors.white70 : Colors.black54,
+                backgroundColor: shouldUseDarkMode ? const Color(0xFF242433) : Colors.white,
+                items: const [
+                  BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: 'Home'),
+                  BottomNavigationBarItem(icon: Icon(Icons.how_to_vote_outlined), label: 'Election'),
+                  BottomNavigationBarItem(icon: Icon(Icons.bar_chart_outlined), label: 'Results'),
+                  BottomNavigationBarItem(icon: Icon(Icons.receipt_long_outlined), label: 'Receipt'),
+                  BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Me'),
+                ],
+              ),
             ),
           ),
         );

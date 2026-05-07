@@ -5,23 +5,37 @@ import '../../../core/notifications/notification_center_store.dart';
 import '../../../core/session/notification_preferences.dart';
 import '../candidates/candidate_profile_screen.dart';
 import '../data/elecom_mobile_api.dart';
+import 'election_transparency_screen.dart';
+import 'receipt_screen.dart';
 
 /// Election / voting tab: ballot from [GET /api/mobile/ballot/], submit via [POST /api/mobile/vote/submit/].
 /// Program-based organizations and USG representative rows are enforced server-side.
 class ElectionScreen extends StatefulWidget {
-  const ElectionScreen({super.key});
+  const ElectionScreen({
+    super.key,
+    this.onRequestTabIndex,
+    this.onViewTransparency,
+  });
+
+  /// Optional hook for the parent dashboard to switch tabs (e.g. go to Receipt).
+  final void Function(int index)? onRequestTabIndex;
+
+  /// Optional hook to open an Election Transparency / Voting Ledger screen.
+  final VoidCallback? onViewTransparency;
 
   @override
   State<ElectionScreen> createState() => _ElectionScreenState();
 }
 
-class _ElectionScreenState extends State<ElectionScreen> {
+class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProviderStateMixin {
   final ElecomMobileApi _api = ElecomMobileApi();
 
   bool _loading = true;
   bool _alreadyVoted = false;
+  bool _checkingReceipt = false;
   String? _loadError;
   Map<String, dynamic> _ballotPayload = const {};
+  late final AnimationController _successIconController;
 
   final Map<String, dynamic> _selections = {};
 
@@ -76,7 +90,17 @@ class _ElectionScreenState extends State<ElectionScreen> {
   @override
   void initState() {
     super.initState();
+    _successIconController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2400),
+    )..repeat(reverse: true);
     _load();
+  }
+
+  @override
+  void dispose() {
+    _successIconController.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -805,31 +829,203 @@ class _ElectionScreenState extends State<ElectionScreen> {
     }
 
     if (_alreadyVoted) {
+      final pageBg = isDark ? const Color(0xFF121212) : const Color(0xFFF3F4F6);
+      final cardBg = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+      final cardBorder = isDark ? Colors.white12 : const Color(0xFFE5E7EB);
+      final iconBg = isDark ? const Color(0xFF163427) : const Color(0xFFDCFCE7);
+      final primary = isDark ? Colors.white : const Color(0xFF111111);
+      final secondaryText = isDark ? Colors.white70 : const Color(0xFF6B7280);
+
       return RefreshIndicator(
         color: Colors.black,
         backgroundColor: Colors.white,
         onRefresh: _load,
-        child: ListView(
+        child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(24),
-          children: [
-            Icon(Icons.how_to_vote_outlined, size: 56, color: subtitleColor),
-            const SizedBox(height: 16),
-            Text(
-              'You have already submitted your vote. You cannot vote again.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: titleColor,
-                height: 1.35,
+          slivers: [
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: ColoredBox(
+                color: pageBg,
+                child: SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 520),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+                          decoration: BoxDecoration(
+                            color: cardBg,
+                            borderRadius: BorderRadius.circular(22),
+                            border: Border.all(color: cardBorder),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.10),
+                                blurRadius: 24,
+                                offset: const Offset(0, 10),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Center(
+                                child: AnimatedBuilder(
+                                  animation: _successIconController,
+                                  builder: (context, child) {
+                                    final t = Curves.easeInOut.transform(_successIconController.value);
+                                    final dy = (t - 0.5) * 5;
+                                    final scale = 1 + (0.035 * t);
+                                    final glow = 0.14 + (0.12 * t);
+                                    return Transform.translate(
+                                      offset: Offset(0, -dy),
+                                      child: Transform.scale(
+                                        scale: scale,
+                                        child: Container(
+                                          width: 62,
+                                          height: 62,
+                                          decoration: BoxDecoration(
+                                            color: iconBg,
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: isDark
+                                                  ? const Color(0xFF22C55E).withValues(alpha: 0.35)
+                                                  : const Color(0xFF22C55E).withValues(alpha: 0.28),
+                                              width: 1,
+                                            ),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: const Color(0xFF22C55E).withValues(alpha: glow),
+                                                blurRadius: 16,
+                                                offset: const Offset(0, 7),
+                                              ),
+                                            ],
+                                          ),
+                                          child: const Icon(
+                                            Icons.check_rounded,
+                                            size: 34,
+                                            color: Color(0xFF16A34A),
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              Text(
+                                'Vote Submitted',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w900,
+                                  color: primary,
+                                  height: 1.15,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Your vote has been recorded successfully.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: secondaryText,
+                                  fontWeight: FontWeight.w700,
+                                  height: 1.35,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                'You can view your receipt once available.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: isDark ? Colors.white60 : Colors.black45,
+                                  fontWeight: FontWeight.w700,
+                                  height: 1.35,
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              _SecureActionButton(
+                                loading: _checkingReceipt,
+                                label: 'View Receipt',
+                                icon: Icons.receipt_long_outlined,
+                                background: const Color(0xFF0D0D0D),
+                                gold: isDark ? Colors.white12 : const Color(0xFFE5E7EB),
+                                onPressed: () async {
+                                  setState(() => _checkingReceipt = true);
+                                  try {
+                                    final res = await _api.getVoteReceipt();
+                                    if (!mounted) return;
+                                    final ok = res['ok'] == true;
+                                    final receipt = res['receipt'];
+                                    if (ok && receipt != null) {
+                                      if (widget.onRequestTabIndex != null) {
+                                        widget.onRequestTabIndex!.call(3);
+                                      } else {
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute(builder: (_) => const ReceiptScreen()),
+                                        );
+                                      }
+                                    } else {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          backgroundColor: Colors.black,
+                                          content: const Text(
+                                            'Your receipt is not yet available.',
+                                            style: TextStyle(color: Colors.white),
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  } catch (_) {
+                                    if (!mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        backgroundColor: Colors.black,
+                                        content: const Text(
+                                          'Your receipt is not yet available.',
+                                          style: TextStyle(color: Colors.white),
+                                        ),
+                                      ),
+                                    );
+                                  } finally {
+                                    if (mounted) setState(() => _checkingReceipt = false);
+                                  }
+                                },
+                              ),
+                              const SizedBox(height: 6),
+                              TextButton.icon(
+                                onPressed: () {
+                                  if (widget.onViewTransparency != null) {
+                                    widget.onViewTransparency!.call();
+                                    return;
+                                  }
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(builder: (_) => const ElectionTransparencyScreen()),
+                                  );
+                                },
+                                icon: Icon(
+                                  Icons.link_rounded,
+                                  size: 16,
+                                  color: isDark ? Colors.white60 : Colors.black54,
+                                ),
+                                label: const Text('View Transparency'),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: isDark ? Colors.white70 : const Color(0xFF4B5563),
+                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                  textStyle: const TextStyle(fontWeight: FontWeight.w800),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Thank you for participating. You can view your receipt from the Receipt tab when available.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: subtitleColor, fontWeight: FontWeight.w600),
             ),
           ],
         ),
@@ -1249,3 +1445,90 @@ class ElectionThemePalette {
     );
   }
 }
+
+class _SecureActionButton extends StatefulWidget {
+  const _SecureActionButton({
+    required this.loading,
+    required this.label,
+    required this.icon,
+    required this.background,
+    required this.gold,
+    required this.onPressed,
+  });
+
+  final bool loading;
+  final String label;
+  final IconData icon;
+  final Color background;
+  final Color gold;
+  final VoidCallback onPressed;
+
+  @override
+  State<_SecureActionButton> createState() => _SecureActionButtonState();
+}
+
+class _SecureActionButtonState extends State<_SecureActionButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final fg = Colors.white;
+    final disabled = widget.loading;
+
+    return AnimatedScale(
+      scale: _pressed ? 0.985 : 1,
+      duration: const Duration(milliseconds: 120),
+      curve: Curves.easeOut,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: disabled ? null : widget.onPressed,
+          onTapDown: disabled ? null : (_) => setState(() => _pressed = true),
+          onTapCancel: disabled ? null : () => setState(() => _pressed = false),
+          onTapUp: disabled ? null : (_) => setState(() => _pressed = false),
+          borderRadius: BorderRadius.circular(20),
+          child: Ink(
+            height: 56,
+            decoration: BoxDecoration(
+              color: widget.background,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: widget.gold.withValues(alpha: disabled ? 0.25 : 0.75), width: 1),
+              boxShadow: [
+                BoxShadow(
+                  color: widget.gold.withValues(alpha: disabled ? 0.0 : (isDark ? 0.10 : 0.12)),
+                  blurRadius: 18,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Center(
+              child: widget.loading
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white),
+                    )
+                  : Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(widget.icon, size: 18, color: fg),
+                        const SizedBox(width: 10),
+                        Text(
+                          widget.label,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+

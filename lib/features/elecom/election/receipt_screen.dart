@@ -111,23 +111,34 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
         color: Colors.black,
         backgroundColor: Colors.white,
         onRefresh: _load,
-        child: ListView(
+        child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(24),
-          children: [
-            const SizedBox(height: 60),
-            Icon(Icons.receipt_long_outlined, size: 56, color: sub),
-            const SizedBox(height: 16),
-            Text(
-              'No receipt yet',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: fg),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Your vote receipt will appear here after you have cast your vote.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: sub, fontWeight: FontWeight.w600),
+          slivers: [
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.receipt_long_outlined, size: 56, color: sub),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No receipt yet',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: fg),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Your vote receipt will appear here after you have cast your vote.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: sub, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ],
         ),
