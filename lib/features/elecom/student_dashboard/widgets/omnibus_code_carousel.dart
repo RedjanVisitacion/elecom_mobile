@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:carousel_slider/carousel_slider.dart';
+import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
 /// Opens a full-screen omnibus reader (multi-page, PDF-style).
 void showOmnibusFullScreen(
@@ -27,7 +29,8 @@ class _OmnibusFullscreenReader extends StatefulWidget {
   final int initialIndex;
 
   @override
-  State<_OmnibusFullscreenReader> createState() => _OmnibusFullscreenReaderState();
+  State<_OmnibusFullscreenReader> createState() =>
+      _OmnibusFullscreenReaderState();
 }
 
 class _OmnibusFullscreenReaderState extends State<_OmnibusFullscreenReader> {
@@ -37,7 +40,10 @@ class _OmnibusFullscreenReaderState extends State<_OmnibusFullscreenReader> {
   @override
   void initState() {
     super.initState();
-    _pageKeys = List<GlobalKey>.generate(widget.assetPaths.length, (_) => GlobalKey());
+    _pageKeys = List<GlobalKey>.generate(
+      widget.assetPaths.length,
+      (_) => GlobalKey(),
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted || widget.assetPaths.isEmpty) return;
       final idx = widget.initialIndex.clamp(0, widget.assetPaths.length - 1);
@@ -100,7 +106,9 @@ class _OmnibusFullscreenReaderState extends State<_OmnibusFullscreenReader> {
                           constraints: BoxConstraints(maxWidth: pageW),
                           child: DecoratedBox(
                             decoration: BoxDecoration(
-                              color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.04),
+                              color: isDark
+                                  ? Colors.white10
+                                  : Colors.black.withValues(alpha: 0.04),
                               borderRadius: BorderRadius.circular(14),
                               border: Border.all(
                                 color: isDark ? Colors.white12 : Colors.black12,
@@ -167,13 +175,27 @@ class OmnibusCodeCarousel extends StatefulWidget {
 }
 
 class _OmnibusCodeCarouselState extends State<OmnibusCodeCarousel> {
-  List<String> get _paths => widget.assetPaths ?? OmnibusCodeCarousel.defaultAssetPaths();
+  List<String> get _paths =>
+      widget.assetPaths ?? OmnibusCodeCarousel.defaultAssetPaths();
+  int _currentIndex = 0;
+
+  List<List<int>> _groupedPageIndices(int total) {
+    if (total <= 0) return const <List<int>>[];
+    final groups = <List<int>>[];
+    for (var i = 0; i < total; i += 2) {
+      final pair = <int>[i];
+      if (i + 1 < total) pair.add(i + 1);
+      groups.add(pair);
+    }
+    return groups;
+  }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final titleColor = isDark ? Colors.white : Colors.black;
     final paths = _paths;
+    final groupedIndices = _groupedPageIndices(paths.length);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -191,27 +213,99 @@ class _OmnibusCodeCarouselState extends State<OmnibusCodeCarousel> {
           height: widget.height,
           child: paths.isEmpty
               ? const SizedBox.shrink()
-              : ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.only(left: 2, right: 8),
-                  itemCount: paths.length,
-                  separatorBuilder: (context, index) => const SizedBox(width: 10),
-                  itemBuilder: (context, i) {
-                    return SizedBox(
-                      width: widget.cardWidth,
-                      child: _OmnibusCard(
-                        path: paths[i],
-                        index: i,
-                        allPaths: paths,
-                        height: widget.height,
-                        width: widget.cardWidth,
-                        isDark: isDark,
+              : CarouselSlider.builder(
+                  itemCount: groupedIndices.length,
+                  itemBuilder: (context, slideIndex, _) {
+                    final group = groupedIndices[slideIndex];
+                    if (group.length == 1) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 2),
+                        child: Row(
+                          children: [
+                            const Spacer(),
+                            Expanded(
+                              flex: 2,
+                              child: _OmnibusCard(
+                                path: paths[group[0]],
+                                index: group[0],
+                                allPaths: paths,
+                                height: widget.height,
+                                isDark: isDark,
+                              ),
+                            ),
+                            const Spacer(),
+                          ],
+                        ),
+                      );
+                    }
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 2),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _OmnibusCard(
+                              path: paths[group[0]],
+                              index: group[0],
+                              allPaths: paths,
+                              height: widget.height,
+                              isDark: isDark,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _OmnibusCard(
+                              path: paths[group[1]],
+                              index: group[1],
+                              allPaths: paths,
+                              height: widget.height,
+                              isDark: isDark,
+                            ),
+                          ),
+                        ],
                       ),
                     );
                   },
+                  options: CarouselOptions(
+                    height: widget.height,
+                    viewportFraction: 1.0,
+                    enlargeCenterPage: false,
+                    autoPlay: true,
+                    autoPlayInterval: const Duration(seconds: 4),
+                    autoPlayAnimationDuration: const Duration(
+                      milliseconds: 650,
+                    ),
+                    autoPlayCurve: Curves.easeInOut,
+                    enableInfiniteScroll: groupedIndices.length > 1,
+                    pauseAutoPlayOnManualNavigate: true,
+                    pauseAutoPlayOnTouch: true,
+                    onPageChanged: (index, _) {
+                      if (!mounted) return;
+                      setState(() => _currentIndex = index);
+                    },
+                  ),
                 ),
         ),
+        if (groupedIndices.length > 1) ...[
+          const SizedBox(height: 8),
+          Center(
+            child: AnimatedSmoothIndicator(
+              activeIndex: _currentIndex.clamp(0, groupedIndices.length - 1),
+              count: groupedIndices.length,
+              effect: ExpandingDotsEffect(
+                dotWidth: 5.5,
+                dotHeight: 5.5,
+                spacing: 4.5,
+                expansionFactor: 2.1,
+                dotColor: isDark
+                    ? Colors.white24
+                    : const Color(0xFFCCCCCC),
+                activeDotColor: isDark
+                    ? Colors.white
+                    : const Color(0xFF4A4A4A),
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -224,14 +318,12 @@ class _OmnibusCard extends StatelessWidget {
     required this.allPaths,
     required this.height,
     required this.isDark,
-    this.width,
   });
 
   final String path;
   final int index;
   final List<String> allPaths;
   final double height;
-  final double? width;
   final bool isDark;
 
   static const Color _frame = Color(0xFF0c1e70);
@@ -249,9 +341,10 @@ class _OmnibusCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         child: Ink(
           height: height,
-          width: width,
           decoration: BoxDecoration(
-            color: isDark ? _frame.withValues(alpha: 0.35) : _frame.withValues(alpha: 0.08),
+            color: isDark
+                ? _frame.withValues(alpha: 0.35)
+                : _frame.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: _frame, width: 2),
           ),

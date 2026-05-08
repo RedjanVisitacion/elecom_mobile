@@ -40,7 +40,10 @@ class _StudentDashboardState extends State<StudentDashboard> {
   String _displayFirstName() {
     final raw = (UserSession.fullName ?? '').trim();
     if (raw.isEmpty) return 'Student';
-    final parts = raw.split(RegExp(r'\s+')).where((p) => p.trim().isNotEmpty).toList();
+    final parts = raw
+        .split(RegExp(r'\s+'))
+        .where((p) => p.trim().isNotEmpty)
+        .toList();
     if (parts.isEmpty) return 'Student';
     // Prefer "First Middle" (e.g. Redjan Phil) if available.
     if (parts.length >= 2) return '${parts[0]} ${parts[1]}';
@@ -120,7 +123,9 @@ class _StudentDashboardState extends State<StudentDashboard> {
     try {
       final res = await _api.getProfile();
       final root = res;
-      final data = root['data'] is Map<String, dynamic> ? (root['data'] as Map<String, dynamic>) : const <String, dynamic>{};
+      final data = root['data'] is Map<String, dynamic>
+          ? (root['data'] as Map<String, dynamic>)
+          : const <String, dynamic>{};
 
       // Apply both shapes: some APIs return {ok:true, data:{...}} while others return fields at root.
       if (data.isNotEmpty) {
@@ -138,16 +143,44 @@ class _StudentDashboardState extends State<StudentDashboard> {
         return '';
       }
 
-      final user = root['user'] is Map<String, dynamic> ? (root['user'] as Map<String, dynamic>) : const <String, dynamic>{};
-      final student = root['student'] is Map<String, dynamic> ? (root['student'] as Map<String, dynamic>) : const <String, dynamic>{};
+      final user = root['user'] is Map<String, dynamic>
+          ? (root['user'] as Map<String, dynamic>)
+          : const <String, dynamic>{};
+      final student = root['student'] is Map<String, dynamic>
+          ? (root['student'] as Map<String, dynamic>)
+          : const <String, dynamic>{};
 
       final email = readFirst(root, const ['email']);
-      final email2 = email.isNotEmpty ? email : readFirst(user, const ['email']);
-      final email3 = email2.isNotEmpty ? email2 : readFirst(student, const ['email']);
+      final email2 = email.isNotEmpty
+          ? email
+          : readFirst(user, const ['email']);
+      final email3 = email2.isNotEmpty
+          ? email2
+          : readFirst(student, const ['email']);
 
-      final phone = readFirst(root, const ['phone', 'phone_number', 'phoneNumber', 'contact_no', 'contactNo']);
-      final phone2 = phone.isNotEmpty ? phone : readFirst(user, const ['phone', 'phone_number', 'contact_no', 'contactNo']);
-      final phone3 = phone2.isNotEmpty ? phone2 : readFirst(student, const ['phone_number', 'phone', 'contact_no', 'contactNo']);
+      final phone = readFirst(root, const [
+        'phone',
+        'phone_number',
+        'phoneNumber',
+        'contact_no',
+        'contactNo',
+      ]);
+      final phone2 = phone.isNotEmpty
+          ? phone
+          : readFirst(user, const [
+              'phone',
+              'phone_number',
+              'contact_no',
+              'contactNo',
+            ]);
+      final phone3 = phone2.isNotEmpty
+          ? phone2
+          : readFirst(student, const [
+              'phone_number',
+              'phone',
+              'contact_no',
+              'contactNo',
+            ]);
 
       if (mounted) setState(() {});
       if (mounted) {
@@ -209,7 +242,9 @@ class _StudentDashboardState extends State<StudentDashboard> {
                   },
                   onViewTransparency: () {
                     Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const ElectionTransparencyScreen()),
+                      MaterialPageRoute(
+                        builder: (_) => const ElectionTransparencyScreen(),
+                      ),
                     );
                   },
                 ),
@@ -236,15 +271,36 @@ class _StudentDashboardState extends State<StudentDashboard> {
                     _currentIndex = i;
                   });
                 },
-                selectedItemColor: shouldUseDarkMode ? Colors.white : Colors.black,
-                unselectedItemColor: shouldUseDarkMode ? Colors.white70 : Colors.black54,
-                backgroundColor: shouldUseDarkMode ? const Color(0xFF242433) : Colors.white,
+                selectedItemColor: shouldUseDarkMode
+                    ? Colors.white
+                    : Colors.black,
+                unselectedItemColor: shouldUseDarkMode
+                    ? Colors.white70
+                    : Colors.black54,
+                backgroundColor: shouldUseDarkMode
+                    ? const Color(0xFF242433)
+                    : Colors.white,
                 items: const [
-                  BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: 'Home'),
-                  BottomNavigationBarItem(icon: Icon(Icons.how_to_vote_outlined), label: 'Election'),
-                  BottomNavigationBarItem(icon: Icon(Icons.bar_chart_outlined), label: 'Results'),
-                  BottomNavigationBarItem(icon: Icon(Icons.receipt_long_outlined), label: 'Receipt'),
-                  BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Me'),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.home_outlined),
+                    label: 'Home',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.how_to_vote_outlined),
+                    label: 'Election',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.bar_chart_outlined),
+                    label: 'Results',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.receipt_long_outlined),
+                    label: 'Receipt',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.person_outline),
+                    label: 'Me',
+                  ),
                 ],
               ),
             ),
@@ -277,142 +333,165 @@ class _StudentDashboardState extends State<StudentDashboard> {
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Facebook-style search bar that navigates to search screen.
-                  InkWell(
-                    borderRadius: BorderRadius.circular(18),
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const CandidateSearchScreen()),
-                      );
-                    },
-                    child: Container(
-                      height: 52,
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Facebook-style search bar that navigates to search screen.
+                    InkWell(
+                      borderRadius: BorderRadius.circular(18),
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const CandidateSearchScreen(),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        height: 52,
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        decoration: BoxDecoration(
+                          color: cardColor,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: borderColor),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.search, color: subtitleColor),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'Search candidates...',
+                                style: TextStyle(
+                                  color: subtitleColor,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    // Profile row — same horizontal bounds as search bar (single outer padding only).
+                    Container(
+                      padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
                         color: cardColor,
                         borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: borderColor),
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.search, color: subtitleColor),
-                          const SizedBox(width: 10),
+                          Container(
+                            width: 62,
+                            height: 62,
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: isDarkMode
+                                    ? Colors.white24
+                                    : const Color(0xFFFEA501),
+                                width: 2,
+                              ),
+                            ),
+                            child: CircleAvatar(
+                              radius: 28,
+                              backgroundColor: isDarkMode
+                                  ? Colors.white12
+                                  : const Color(0xFFEAF1FF),
+                              backgroundImage: photoUrl.isNotEmpty
+                                  ? NetworkImage(photoUrl)
+                                  : null,
+                              child: photoUrl.isNotEmpty
+                                  ? null
+                                  : Icon(
+                                      Icons.person,
+                                      color: isDarkMode
+                                          ? Colors.white70
+                                          : Colors.blue,
+                                      size: 28,
+                                    ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
                           Expanded(
-                            child: Text(
-                              'Search candidates...',
-                              style: TextStyle(color: subtitleColor, fontWeight: FontWeight.w700),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Hi, ${_displayFirstName().toUpperCase()}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: titleColor,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 18,
+                                    height: 1.05,
+                                    letterSpacing: 0.2,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                if (phoneMasked.isNotEmpty)
+                                  Text(
+                                    phoneMasked,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: subtitleColor,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13,
+                                      height: 1.1,
+                                    ),
+                                  ),
+                                if (emailMasked.isNotEmpty) ...[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    emailMasked,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: subtitleColor,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13,
+                                      height: 1.1,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          SizedBox(
+                            width: 62,
+                            height: 62,
+                            child: Image.asset(
+                              'assets/gif/Elecom Splash.gif',
+                              fit: BoxFit.contain,
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  // Profile row — same horizontal bounds as search bar (single outer padding only).
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: cardColor,
-                      borderRadius: BorderRadius.circular(18),
+                    const SizedBox(height: 10),
+                    ElectionHomeCountdown(
+                      orgName: widget.orgName,
+                      embeddedInProfileCard: false,
+                      onVoteNow: () {
+                        setState(() => _currentIndex = 1);
+                      },
+                      onViewResults: () {
+                        setState(() {
+                          _resultsScreenVersion++;
+                          _currentIndex = 2;
+                        });
+                      },
                     ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 62,
-                          height: 62,
-                          padding: const EdgeInsets.all(2),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: isDarkMode ? Colors.white24 : const Color(0xFFFEA501),
-                              width: 2,
-                            ),
-                          ),
-                          child: CircleAvatar(
-                            radius: 28,
-                            backgroundColor: isDarkMode ? Colors.white12 : const Color(0xFFEAF1FF),
-                            backgroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
-                            child: photoUrl.isNotEmpty
-                                ? null
-                                : Icon(Icons.person, color: isDarkMode ? Colors.white70 : Colors.blue, size: 28),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Hi, ${_displayFirstName().toUpperCase()}',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: titleColor,
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 18,
-                                  height: 1.05,
-                                  letterSpacing: 0.2,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              if (phoneMasked.isNotEmpty)
-                                Text(
-                                  phoneMasked,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: subtitleColor,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 13,
-                                    height: 1.1,
-                                  ),
-                                ),
-                              if (emailMasked.isNotEmpty) ...[
-                                const SizedBox(height: 2),
-                                Text(
-                                  emailMasked,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: subtitleColor,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 13,
-                                    height: 1.1,
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        SizedBox(
-                          width: 62,
-                          height: 62,
-                          child: Image.asset(
-                            'assets/gif/Elecom Splash.gif',
-                            fit: BoxFit.contain,
-                          ),
-                        ),
-                      ],
+                    const SizedBox(height: 12),
+                    HomeCandidatesStrip(
+                      candidates: _homeCandidates,
+                      isDarkMode: isDarkMode,
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  ElectionHomeCountdown(
-                    orgName: widget.orgName,
-                    embeddedInProfileCard: false,
-                    onVoteNow: () {
-                      setState(() => _currentIndex = 1);
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  HomeCandidatesStrip(
-                    candidates: _homeCandidates,
-                    isDarkMode: isDarkMode,
-                  ),
-                  const SizedBox(height: 18),
-                  const OmnibusCodeCarousel(),
+                    const SizedBox(height: 18),
+                    const OmnibusCodeCarousel(),
                   ],
                 ),
               ),

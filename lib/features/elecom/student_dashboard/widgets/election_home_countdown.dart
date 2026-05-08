@@ -15,6 +15,7 @@ class ElectionHomeCountdown extends StatefulWidget {
     required this.orgName,
     this.embeddedInProfileCard = false,
     this.onVoteNow,
+    this.onViewResults,
   });
 
   final String orgName;
@@ -24,6 +25,7 @@ class ElectionHomeCountdown extends StatefulWidget {
 
   /// Opens voting (e.g. switch bottom nav to Election).
   final VoidCallback? onVoteNow;
+  final VoidCallback? onViewResults;
 
   @override
   State<ElectionHomeCountdown> createState() => _ElectionHomeCountdownState();
@@ -44,7 +46,10 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
       if (!mounted) return;
       setState(() {});
     });
-    _pollTicker = Timer.periodic(const Duration(seconds: 45), (_) => _refreshFromServer());
+    _pollTicker = Timer.periodic(
+      const Duration(seconds: 45),
+      (_) => _refreshFromServer(),
+    );
   }
 
   @override
@@ -67,19 +72,24 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
 
   DateTime? _countdownTarget(Map<String, dynamic> e) {
     final status = (e['status'] ?? '').toString();
-    final rs = (e['results_status'] ?? e['results_state'] ?? '').toString().toLowerCase();
+    final rs = (e['results_status'] ?? e['results_state'] ?? '')
+        .toString()
+        .toLowerCase();
     final start = _parseIso(e['start_at']?.toString());
     final end = _parseIso(e['end_at']?.toString());
     final results = _parseIso(e['results_at']?.toString());
     if (status == 'Upcoming' && start != null) return start.toLocal();
     if (status == 'Active' && end != null) return end.toLocal();
-    if (status == 'Closed' && rs == 'pending' && results != null) return results.toLocal();
+    if (status == 'Closed' && rs == 'pending' && results != null)
+      return results.toLocal();
     return null;
   }
 
   String _statusLine(Map<String, dynamic> e, Duration? remaining) {
     final status = (e['status'] ?? '').toString();
-    final rs = (e['results_status'] ?? e['results_state'] ?? '').toString().toLowerCase();
+    final rs = (e['results_status'] ?? e['results_state'] ?? '')
+        .toString()
+        .toLowerCase();
     final days = remaining?.inDays ?? 0;
     if (status == 'Active') {
       return 'You have ${days.clamp(0, 9999)} days left to vote. Don\'t miss your chance!';
@@ -96,12 +106,34 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
     return 'Election schedule will appear here when it is configured.';
   }
 
+  bool _isActive(Map<String, dynamic> e) {
+    return (e['status'] ?? '').toString() == 'Active';
+  }
+
+  bool _isResultsPublished(Map<String, dynamic> e) {
+    final status = (e['status'] ?? '').toString();
+    final rs = (e['results_status'] ?? e['results_state'] ?? '')
+        .toString()
+        .toLowerCase();
+    return status == 'Closed' && rs == 'published';
+  }
+
+  bool _isClosedWithoutPublishedResults(Map<String, dynamic> e) {
+    final status = (e['status'] ?? '').toString();
+    final rs = (e['results_status'] ?? e['results_state'] ?? '')
+        .toString()
+        .toLowerCase();
+    return status == 'Closed' && rs != 'published';
+  }
+
   Future<void> _maybeReactToPhaseChange(Map<String, dynamic> e) async {
     final sid = (UserSession.studentId ?? '').trim();
     final suffix = sid.isEmpty ? 'anon' : sid;
     final w = '${e['window_id'] ?? ''}';
     final st = '${e['status'] ?? ''}';
-    final rs = ((e['results_status'] ?? e['results_state']) ?? '').toString().toLowerCase();
+    final rs = ((e['results_status'] ?? e['results_state']) ?? '')
+        .toString()
+        .toLowerCase();
     final phaseKey = '$w|$st|$rs';
     final sched = (e['schedule_sig'] ?? '').toString();
 
@@ -126,7 +158,8 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
       await LocalPushService.show(
         id: 91004,
         title: 'Voting schedule updated',
-        body: 'Election dates were changed. Check the Home countdown for the latest schedule.',
+        body:
+            'Election dates were changed. Check the Home countdown for the latest schedule.',
       );
     }
 
@@ -171,7 +204,9 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
     try {
       final res = await _api.getElectionWindow();
       final election = res['election'];
-      final map = election is Map<String, dynamic> ? election : const <String, dynamic>{};
+      final map = election is Map<String, dynamic>
+          ? election
+          : const <String, dynamic>{};
       if (!mounted) return;
       setState(() {
         _election = map;
@@ -200,6 +235,10 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
     final h = diff.inHours.remainder(24);
     final m = diff.inMinutes.remainder(60);
     final s = diff.inSeconds.remainder(60);
+    final isActive = _isActive(e);
+    final showViewResults =
+        _isClosedWithoutPublishedResults(e) || _isResultsPublished(e);
+    final ctaText = isActive ? 'Vote Now' : (showViewResults ? 'View Results' : 'Vote Now');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -217,7 +256,10 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
         if (_loadError != null)
           Text(
             _loadError!,
-            style: TextStyle(color: isDark ? Colors.orangeAccent : Colors.red.shade800, fontWeight: FontWeight.w700),
+            style: TextStyle(
+              color: isDark ? Colors.orangeAccent : Colors.red.shade800,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         Container(
           decoration: BoxDecoration(
@@ -225,10 +267,7 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
             gradient: const LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                Color(0xFF0c1e70),
-                Color(0xFFfea501),
-              ],
+              colors: [Color(0xFF0c1e70), Color(0xFFfea501)],
             ),
             boxShadow: [
               BoxShadow(
@@ -243,7 +282,9 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                widget.orgName.trim().isEmpty ? 'ELECOM Election' : '${widget.orgName.trim()} Election',
+                widget.orgName.trim().isEmpty
+                    ? 'ELECOM Election'
+                    : '${widget.orgName.trim()} Election',
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -285,7 +326,7 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
                 ),
               ),
               const SizedBox(height: 14),
-              _voteNowButton(context),
+              _voteNowButton(context, ctaText: ctaText, showViewResults: showViewResults),
             ],
           ),
         ),
@@ -293,14 +334,24 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
     );
   }
 
-  Widget _voteNowButton(BuildContext context) {
+  Widget _voteNowButton(
+    BuildContext context, {
+    required String ctaText,
+    required bool showViewResults,
+  }) {
     return Material(
       color: Colors.white,
       elevation: 3,
       shadowColor: Colors.black.withValues(alpha: 0.2),
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
-        onTap: () => widget.onVoteNow?.call(),
+        onTap: () {
+          if (showViewResults) {
+            widget.onViewResults?.call();
+            return;
+          }
+          widget.onVoteNow?.call();
+        },
         borderRadius: BorderRadius.circular(14),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
@@ -314,7 +365,7 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
               ),
               const SizedBox(width: 10),
               Text(
-                'Vote Now',
+                ctaText,
                 style: TextStyle(
                   color: const Color(0xFF0c1e70),
                   fontWeight: FontWeight.w900,

@@ -43,6 +43,8 @@ dependencies:
   url_launcher: ^6.3.0
   shared_preferences: ^2.2.3
   flutter_local_notifications: ^21.0.0
+  carousel_slider: ^5.1.2
+  smooth_page_indicator: ^2.0.1
 
 dev_dependencies:
   flutter_test:
