@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../core/notifications/notification_center_store.dart';
+import '../../../core/notifications/push_notification_service.dart';
 import '../../elecom/presentation/elecom_dashboard.dart';
 import '../../../core/session/session_persistence.dart';
 import 'login_screen.dart';
@@ -14,7 +15,8 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _fade;
   late final Animation<double> _scale;
@@ -29,9 +31,10 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       duration: const Duration(milliseconds: 650),
     );
     _fade = CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic);
-    _scale = Tween<double>(begin: 0.96, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
-    );
+    _scale = Tween<double>(
+      begin: 0.96,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
 
     _controller.forward();
 
@@ -45,8 +48,14 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
     try {
       await Future.wait<void>([
-        precacheImage(const AssetImage('assets/no_txt_no_bg_elecom.png'), context),
-        precacheImage(const AssetImage('assets/img_text/elecom_black1.png'), context),
+        precacheImage(
+          const AssetImage('assets/no_txt_no_bg_elecom.png'),
+          context,
+        ),
+        precacheImage(
+          const AssetImage('assets/img_text/elecom_black1.png'),
+          context,
+        ),
       ]);
     } catch (_) {
       // ignore
@@ -61,11 +70,15 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     final hasSession = await SessionPersistence.restore();
     if (hasSession) {
       await NotificationCenterStore.init(forceRefresh: true);
+      await PushNotificationService.syncForLoggedInUser();
     }
 
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => hasSession ? const ElecomDashboard() : const LoginScreen()),
+      MaterialPageRoute(
+        builder: (_) =>
+            hasSession ? const ElecomDashboard() : const LoginScreen(),
+      ),
     );
   }
 
@@ -132,7 +145,8 @@ class _FiveDotsLoader extends StatefulWidget {
   State<_FiveDotsLoader> createState() => _FiveDotsLoaderState();
 }
 
-class _FiveDotsLoaderState extends State<_FiveDotsLoader> with SingleTickerProviderStateMixin {
+class _FiveDotsLoaderState extends State<_FiveDotsLoader>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 
   @override

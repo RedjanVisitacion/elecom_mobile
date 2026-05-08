@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import hashlib
+from datetime import datetime, timezone
 
 from django.http import JsonResponse
 from django.shortcuts import render
@@ -899,6 +901,250 @@ def eligible_ballot_api(request):
     )
 
 
+def _ensure_vote_blocks_table() -> None:
+    with connection.cursor() as cur:
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS vote_blocks (
+                id BIGSERIAL PRIMARY KEY,
+                election_id BIGINT NULL,
+                vote_id BIGINT NULL,
+                anonymous_voter_hash VARCHAR(128) NOT NULL,
+                vote_data_hash VARCHAR(128) NOT NULL,
+                previous_hash VARCHAR(128) NULL,
+                current_hash VARCHAR(128) NOT NULL,
+                submitted_at TIMESTAMP NOT NULL DEFAULT NOW()
+            )
+            """
+        )
+        cur.execute(
+            """
+            ALTER TABLE vote_blocks
+            ADD COLUMN IF NOT EXISTS vote_id BIGINT NULL
+            """
+        )
+        cur.execute(
+            """
+            ALTER TABLE vote_blocks
+            ADD COLUMN IF NOT EXISTS block_status VARCHAR(20) NOT NULL DEFAULT 'pending'
+            """
+        )
+        cur.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_vote_blocks_submitted
+            ON vote_blocks(submitted_at DESC, id DESC)
+            """
+        )
+
+
+def _sha256_hex(text: str) -> str:
+    return hashlib.sha256((text or "").encode("utf-8")).hexdigest()
+
+
+def _ensure_validator_tables() -> None:
+    with connection.cursor() as cur:
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS validator_nodes (
+                id BIGSERIAL PRIMARY KEY,
+                node_name VARCHAR(120) NOT NULL,
+                node_role VARCHAR(80) NOT NULL,
+                public_key TEXT NOT NULL,
+                is_active BOOLEAN NOT NULL DEFAULT TRUE,
+                created_at TIMESTAMP NOT NULL DEFAULT NOW()
+            )
+            """
+        )
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS block_validations (
+                id BIGSERIAL PRIMARY KEY,
+                vote_block_id BIGINT NOT NULL,
+                validator_node_id BIGINT NOT NULL,
+                validation_status VARCHAR(20) NOT NULL,
+                validation_message TEXT,
+                validated_at TIMESTAMP NOT NULL DEFAULT NOW()
+            )
+            """
+        )
+        cur.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_block_validations_block
+            ON block_validations(vote_block_id, validated_at DESC)
+            """
+        )
+
+        # Ensure system validator nodes exist (not login accounts).
+        defaults = [
+            ("ELECOM Validator", "system_validator"),
+            ("USG Validator", "system_validator"),
+            ("Admin Validator", "system_validator"),
+        ]
+        for name, role in defaults:
+            cur.execute(
+                "SELECT id FROM validator_nodes WHERE node_name = %s LIMIT 1", [name]
+            )
+            existing = cur.fetchone()
+            if existing and existing[0] is not None:
+                cur.execute(
+                    """
+                    UPDATE validator_nodes
+                    SET node_role = %s,
+                        is_active = TRUE
+                    WHERE id = %s
+                    """,
+                    [role, int(existing[0])],
+                )
+            else:
+                cur.execute(
+                    """
+                    INSERT INTO validator_nodes (node_name, node_role, public_key, is_active, created_at)
+                    VALUES (%s, %s, %s, TRUE, NOW())
+                    """,
+                    [name, role, _sha256_hex(f"{name}|{role}|elecom-validator")],
+                )
+
+        # Deactivate any non-system validators so consensus stays 3-of-3.
+        cur.execute(
+            """
+            UPDATE validator_nodes
+            SET is_active = FALSE
+            WHERE node_name NOT IN (%s, %s, %s)
+            """,
+            [defaults[0][0], defaults[1][0], defaults[2][0]],
+        )
+
+        # Deactivate duplicates of system validators (keep one active row per name).
+        for name, _role in defaults:
+            cur.execute(
+                "SELECT id FROM validator_nodes WHERE node_name = %s ORDER BY id ASC",
+                [name],
+            )
+            ids = [int(r[0]) for r in (cur.fetchall() or []) if r and r[0] is not None]
+            if not ids:
+                continue
+            keep_id = ids[0]
+            cur.execute(
+                "UPDATE validator_nodes SET is_active = TRUE WHERE id = %s",
+                [keep_id],
+            )
+            if len(ids) > 1:
+                cur.execute(
+                    "UPDATE validator_nodes SET is_active = FALSE WHERE id = ANY(%s)",
+                    [ids[1:]],
+                )
+
+
+def _iso_utc(dt_obj) -> str:
+    if dt_obj is None:
+        dt_obj = datetime.now(timezone.utc)
+    if getattr(dt_obj, "tzinfo", None) is None:
+        dt_obj = dt_obj.replace(tzinfo=timezone.utc)
+    return dt_obj.astimezone(timezone.utc).isoformat()
+
+
+def _vote_data_hash_from_requested(requested: list[tuple[str, str, int]]) -> str:
+    normalized = [f"{org}::{pos}::{cid}" for org, pos, cid in requested]
+    normalized.sort()
+    return _sha256_hex("|".join(normalized))
+
+
+def _compute_expected_block_hash(
+    election_id,
+    anonymous_voter_hash: str,
+    vote_data_hash: str,
+    previous_hash: str,
+    submitted_at,
+) -> str:
+    return _sha256_hex(
+        f"{int(election_id or 0)}|{anonymous_voter_hash}|{vote_data_hash}|{previous_hash or ''}|{_iso_utc(submitted_at)}"
+    )
+
+
+def _current_election_id() -> int:
+    try:
+        with connection.cursor() as cur:
+            cur.execute("SELECT id FROM vote_windows ORDER BY id DESC LIMIT 1")
+            row = cur.fetchone()
+        return int(row[0]) if row and row[0] is not None else 0
+    except Exception:
+        return 0
+
+
+def _is_election_active_now() -> bool:
+    try:
+        with connection.cursor() as cur:
+            cur.execute(
+                "SELECT start_at, end_at FROM vote_windows ORDER BY id DESC LIMIT 1"
+            )
+            row = cur.fetchone()
+        if not row:
+            return False
+        start_at, end_at = row
+        if start_at is None or end_at is None:
+            return False
+        now = timezone.now()
+        if timezone.is_naive(start_at):
+            start_at = timezone.make_aware(
+                start_at, timezone.get_current_timezone()
+            )
+        if timezone.is_naive(end_at):
+            end_at = timezone.make_aware(end_at, timezone.get_current_timezone())
+        return start_at <= now <= end_at
+    except Exception:
+        return False
+
+
+def _evaluate_block_checks(
+    *,
+    vote_data_hash: str,
+    previous_hash: str,
+    expected_previous_hash: str,
+    current_hash: str,
+    election_id: int,
+    anonymous_voter_hash: str,
+    submitted_at,
+) -> dict:
+    checks: list[tuple[bool, str, bool]] = []
+    # Automatic system validators only check block integrity (no manual approval, no voter identity).
+    checks.append((int(election_id or 0) > 0, "election_id is valid", False))
+    checks.append((bool((vote_data_hash or "").strip()), "vote_data_hash exists", False))
+    checks.append(
+        (
+            bool((anonymous_voter_hash or "").strip()),
+            "anonymous_voter_hash exists",
+            False,
+        )
+    )
+    checks.append(
+        (
+            (previous_hash or "") == (expected_previous_hash or ""),
+            "previous_hash matches the previous block",
+            True,
+        )
+    )
+
+    expected_current = _compute_expected_block_hash(
+        election_id=election_id,
+        anonymous_voter_hash=anonymous_voter_hash,
+        vote_data_hash=vote_data_hash,
+        previous_hash=previous_hash,
+        submitted_at=submitted_at,
+    )
+    checks.append((expected_current == current_hash, "current hash is correct", True))
+
+    # Tamper check mirrors deterministic re-hash check.
+    checks.append((expected_current == current_hash, "vote block was not tampered", True))
+
+    failures = [msg for ok, msg, _is_hash_related in checks if not ok]
+    hash_mismatch = any((not ok) and is_hash for ok, _msg, is_hash in checks)
+    return {
+        "approved": len(failures) == 0,
+        "hash_mismatch": hash_mismatch,
+        "failures": failures,
+    }
+
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def vote_submit_api(request):
@@ -914,6 +1160,8 @@ def vote_submit_api(request):
     selections = payload.get("selections")
     if not isinstance(selections, dict) or not selections:
         return JsonResponse({"ok": False, "error": "No selections provided."}, status=400)
+    ledger_payload = payload.get("ledger_payload") if isinstance(payload.get("ledger_payload"), dict) else {}
+    _ensure_validator_tables()
 
     program_code = _get_student_program_code(student_id)
     eligible_orgs = _eligible_orgs_for_program(program_code)
@@ -1051,6 +1299,157 @@ def vote_submit_api(request):
                     [vote_id, position_key, cid_i],
                 )
 
+            # Write a public, privacy-safe ledger block.
+            _ensure_vote_blocks_table()
+            election_id = _current_election_id()
+            vote_data_hash = _vote_data_hash_from_requested(requested)
+            anonymous_voter_hash = _sha256_hex(f"{student_id}|{vote_id}|elecom")
+
+            cur.execute(
+                """
+                SELECT current_hash
+                FROM vote_blocks
+                ORDER BY id DESC
+                LIMIT 1
+                """
+            )
+            prev_row = cur.fetchone()
+            previous_hash = str(prev_row[0] or "") if prev_row and prev_row[0] is not None else ""
+
+            submitted_at = datetime.now(timezone.utc)
+            if ledger_payload:
+                election_id = int(ledger_payload.get("election_id") or election_id or 0)
+                vote_data_hash = str(ledger_payload.get("vote_data_hash") or vote_data_hash or "")
+                anonymous_voter_hash = str(
+                    ledger_payload.get("anonymous_voter_hash") or anonymous_voter_hash or ""
+                )
+                requested_previous_hash = str(ledger_payload.get("previous_hash") or "").strip()
+                requested_submitted_at = str(ledger_payload.get("submitted_at") or "").strip()
+                if requested_submitted_at:
+                    parsed = datetime.fromisoformat(requested_submitted_at.replace("Z", "+00:00"))
+                    submitted_at = parsed.astimezone(timezone.utc)
+                if requested_previous_hash:
+                    previous_hash = requested_previous_hash
+            current_hash = _compute_expected_block_hash(
+                election_id=election_id,
+                anonymous_voter_hash=anonymous_voter_hash,
+                vote_data_hash=vote_data_hash,
+                previous_hash=previous_hash,
+                submitted_at=submitted_at,
+            )
+
+            cur.execute(
+                """
+                INSERT INTO vote_blocks (
+                    election_id,
+                    vote_id,
+                    anonymous_voter_hash,
+                    vote_data_hash,
+                    previous_hash,
+                    current_hash,
+                    submitted_at,
+                    block_status
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
+                """,
+                [
+                    election_id if election_id > 0 else None,
+                    vote_id,
+                    anonymous_voter_hash,
+                    vote_data_hash,
+                    previous_hash or None,
+                    current_hash,
+                    submitted_at,
+                    "pending",
+                ],
+            )
+            block_row = cur.fetchone()
+            vote_block_id = int(block_row[0]) if block_row and block_row[0] is not None else 0
+            if vote_block_id <= 0:
+                cur.execute("ROLLBACK")
+                return JsonResponse({"ok": False, "error": "Failed to write vote ledger block."}, status=500)
+
+            # Node consensus validation.
+            cur.execute(
+                """
+                SELECT id, node_name
+                FROM validator_nodes
+                WHERE is_active = TRUE
+                ORDER BY id ASC
+                """
+            )
+            validators = cur.fetchall() or []
+            approvals = 0
+            rejections = 0
+            warnings = 0
+            any_hash_mismatch = False
+            expected_previous_hash = ""
+            if vote_block_id > 1:
+                cur.execute(
+                    "SELECT current_hash FROM vote_blocks WHERE id = %s LIMIT 1",
+                    [vote_block_id - 1],
+                )
+                prev_row = cur.fetchone()
+                expected_previous_hash = str(prev_row[0] or "") if prev_row else ""
+
+            for validator_id, _node_name in validators:
+                result = _evaluate_block_checks(
+                    vote_data_hash=vote_data_hash,
+                    previous_hash=previous_hash,
+                    expected_previous_hash=expected_previous_hash,
+                    current_hash=current_hash,
+                    election_id=election_id,
+                    anonymous_voter_hash=anonymous_voter_hash,
+                    submitted_at=submitted_at,
+                )
+                approved = bool(result.get("approved"))
+                hash_mismatch = bool(result.get("hash_mismatch"))
+                failures = result.get("failures") or []
+                msg = "approved" if approved else "; ".join([str(x) for x in failures])[:500]
+                status = "approved" if approved else ("warning" if hash_mismatch else "rejected")
+                if status == "approved":
+                    approvals += 1
+                elif status == "rejected":
+                    rejections += 1
+                else:
+                    warnings += 1
+                if hash_mismatch:
+                    any_hash_mismatch = True
+                cur.execute(
+                    """
+                    INSERT INTO block_validations (
+                        vote_block_id,
+                        validator_node_id,
+                        validation_status,
+                        validation_message,
+                        validated_at
+                    )
+                    VALUES (%s, %s, %s, %s, NOW())
+                    """,
+                    [vote_block_id, int(validator_id), status, msg],
+                )
+
+            active_nodes = len(validators)
+            majority = (active_nodes // 2) + 1 if active_nodes > 0 else 1
+            if any_hash_mismatch:
+                block_status = "warning"
+            elif approvals >= majority:
+                block_status = "accepted"
+            elif rejections >= majority:
+                block_status = "rejected"
+            else:
+                block_status = "warning"
+
+            cur.execute(
+                """
+                UPDATE vote_blocks
+                SET block_status = %s
+                WHERE id = %s
+                """,
+                [block_status, vote_block_id],
+            )
+
             cur.execute("COMMIT")
     except Exception as e:
         try:
@@ -1063,6 +1462,234 @@ def vote_submit_api(request):
         return JsonResponse({"ok": False, "error": "Failed to submit vote."}, status=500)
 
     return JsonResponse({"ok": True})
+
+
+@require_http_methods(["GET"])
+def vote_ledger_api(request):
+    student_id = (request.session.get("student_id") or "").strip()
+    if not student_id:
+        return JsonResponse({"ok": False, "error": "Unauthorized."}, status=401)
+
+    try:
+        _ensure_vote_blocks_table()
+        _ensure_validator_tables()
+        with connection.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, node_name
+                FROM validator_nodes
+                WHERE is_active = TRUE
+                ORDER BY id ASC
+                """
+            )
+            validators = cur.fetchall() or []
+            active_nodes = len(validators)
+
+            cur.execute(
+                """
+                SELECT id, election_id, vote_id, anonymous_voter_hash, vote_data_hash, previous_hash, current_hash, submitted_at, block_status
+                FROM vote_blocks
+                ORDER BY id ASC
+                """
+            )
+            cols = [c[0] for c in cur.description]
+            rows = [dict(zip(cols, r)) for r in cur.fetchall()]
+
+            # Backfill automatic validation for older blocks that have no validations yet.
+            if rows and validators:
+                majority = (active_nodes // 2) + 1 if active_nodes > 0 else 1
+                prev_current_hash = ""
+                for r in rows:
+                    block_id = int(r.get("id") or 0)
+                    if block_id <= 0:
+                        prev_current_hash = str(r.get("current_hash") or "")
+                        continue
+
+                    cur.execute(
+                        "SELECT COUNT(*) FROM block_validations WHERE vote_block_id = %s",
+                        [block_id],
+                    )
+                    has_any = cur.fetchone()
+                    has_any_count = int(has_any[0] or 0) if has_any else 0
+                    if has_any_count > 0:
+                        prev_current_hash = str(r.get("current_hash") or "")
+                        continue
+
+                    approvals = 0
+                    rejections = 0
+                    any_hash_mismatch = False
+                    for validator_id, _node_name in validators:
+                        res = _evaluate_block_checks(
+                            vote_data_hash=str(r.get("vote_data_hash") or ""),
+                            previous_hash=str(r.get("previous_hash") or ""),
+                            expected_previous_hash=prev_current_hash,
+                            current_hash=str(r.get("current_hash") or ""),
+                            election_id=int(r.get("election_id") or 0),
+                            anonymous_voter_hash=str(r.get("anonymous_voter_hash") or ""),
+                            submitted_at=r.get("submitted_at"),
+                        )
+                        approved = bool(res.get("approved"))
+                        hash_mismatch = bool(res.get("hash_mismatch"))
+                        failures = res.get("failures") or []
+                        msg = "approved" if approved else "; ".join([str(x) for x in failures])[:500]
+                        status = "approved" if approved else ("warning" if hash_mismatch else "rejected")
+                        if status == "approved":
+                            approvals += 1
+                        elif status == "rejected":
+                            rejections += 1
+                        if hash_mismatch:
+                            any_hash_mismatch = True
+                        cur.execute(
+                            """
+                            INSERT INTO block_validations (
+                                vote_block_id,
+                                validator_node_id,
+                                validation_status,
+                                validation_message,
+                                validated_at
+                            )
+                            VALUES (%s, %s, %s, %s, NOW())
+                            """,
+                            [block_id, int(validator_id), status, msg],
+                        )
+
+                    if any_hash_mismatch:
+                        block_status = "warning"
+                    elif approvals >= majority:
+                        block_status = "accepted"
+                    elif rejections >= majority:
+                        block_status = "rejected"
+                    else:
+                        block_status = "warning"
+                    cur.execute(
+                        "UPDATE vote_blocks SET block_status = %s WHERE id = %s",
+                        [block_status, block_id],
+                    )
+
+                    prev_current_hash = str(r.get("current_hash") or "")
+
+                # Refresh rows after backfill updates.
+                cur.execute(
+                    """
+                    SELECT id, election_id, vote_id, anonymous_voter_hash, vote_data_hash, previous_hash, current_hash, submitted_at, block_status
+                    FROM vote_blocks
+                    ORDER BY id ASC
+                    """
+                )
+                cols = [c[0] for c in cur.description]
+                rows = [dict(zip(cols, rr)) for rr in cur.fetchall()]
+
+            # Count validations only from ACTIVE system validators, and only the latest
+            # validation per (block, node) to avoid duplicates.
+            cur.execute(
+                """
+                SELECT v.vote_block_id,
+                       SUM(CASE WHEN v.validation_status = 'approved' THEN 1 ELSE 0 END) AS approved_count,
+                       COUNT(*) AS total_count
+                FROM (
+                    SELECT DISTINCT ON (bv.vote_block_id, bv.validator_node_id)
+                        bv.vote_block_id,
+                        bv.validator_node_id,
+                        bv.validation_status,
+                        bv.validated_at
+                    FROM block_validations bv
+                    JOIN validator_nodes vn
+                      ON vn.id = bv.validator_node_id
+                     AND vn.is_active = TRUE
+                    ORDER BY bv.vote_block_id, bv.validator_node_id, bv.validated_at DESC
+                ) v
+                GROUP BY v.vote_block_id
+                """
+            )
+            vote_validation_counts = {
+                int(r[0]): {
+                    "approved": int(r[1] or 0),
+                    "total": int(r[2] or 0),
+                }
+                for r in cur.fetchall()
+            }
+    except Exception as e:
+        if getattr(settings, "DEBUG", False):
+            return JsonResponse({"ok": False, "error": str(e)}, status=500)
+        return JsonResponse({"ok": False, "error": "Failed to load vote ledger."}, status=500)
+
+    valid = True
+    previous_current_hash = ""
+    normalized_rows: list[dict] = []
+
+    for row in rows:
+        block_id = int(row.get("id") or 0)
+        election_id = int(row.get("election_id") or 0)
+        vote_data_hash = str(row.get("vote_data_hash") or "")
+        prev_hash = str(row.get("previous_hash") or "")
+        current_hash = str(row.get("current_hash") or "")
+        submitted_at = row.get("submitted_at")
+        block_status = str(row.get("block_status") or "pending").lower()
+
+        block_ok = True
+        # Chain check: this block must point to previous block hash.
+        if (prev_hash or "") != (previous_current_hash or ""):
+            block_ok = False
+
+        expected_current_hash = _compute_expected_block_hash(
+            election_id=election_id,
+            anonymous_voter_hash=str(row.get("anonymous_voter_hash") or ""),
+            vote_data_hash=vote_data_hash,
+            previous_hash=prev_hash,
+            submitted_at=submitted_at,
+        )
+        if current_hash != expected_current_hash:
+            block_ok = False
+        if not block_ok:
+            valid = False
+
+        previous_current_hash = current_hash
+
+        counts = vote_validation_counts.get(block_id, {"approved": 0, "total": 0})
+        approved_count = int(counts.get("approved") or 0)
+        total_validations = int(counts.get("total") or 0)
+        normalized_rows.append(
+            {
+                "id": block_id,
+                "election_id": election_id,
+                "vote_id": int(row.get("vote_id") or 0),
+                "hash": f"{current_hash[:7]}...{current_hash[-4:]}" if len(current_hash) > 12 else current_hash,
+                "hash_full": current_hash,
+                "previous_hash": f"{prev_hash[:7]}...{prev_hash[-4:]}" if len(prev_hash) > 12 else (prev_hash or "-"),
+                "previous_hash_full": prev_hash or "",
+                "submitted_at": submitted_at.isoformat() if submitted_at else None,
+                "status": "valid" if block_ok else "warning",
+                "block_status": block_status,
+                "node_validation_result": f"{approved_count}/{total_validations if total_validations > 0 else active_nodes} nodes approved",
+            }
+        )
+
+    total = len(normalized_rows)
+    latest = normalized_rows[-1] if normalized_rows else None
+    preview = list(reversed(normalized_rows[-3:]))
+
+    summary = {
+        "ledger_status": "Valid" if valid else "Warning",
+        "total_vote_blocks": total,
+        "active_validator_nodes": active_nodes,
+        "consensus_result": "Consensus reached"
+        if (latest and latest.get("block_status") == "accepted")
+        else "Consensus pending"
+        if latest and latest.get("block_status") == "pending"
+        else "Consensus warning",
+        "latest_hash": latest.get("hash") if latest else "-",
+        "last_verified": latest.get("submitted_at") if latest else None,
+        "latest_block_status": latest.get("block_status") if latest else "pending",
+        "preview_blocks": preview,
+    }
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "summary": summary,
+            "blocks": list(reversed(normalized_rows[-100:])),
+        }
+    )
 
 
 @require_http_methods(["GET"])

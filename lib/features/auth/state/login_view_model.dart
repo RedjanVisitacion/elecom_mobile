@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../core/notifications/push_notification_service.dart';
 import '../../../core/session/user_session.dart';
 import '../../../core/session/session_persistence.dart';
 import '../data/auth_api.dart';
@@ -36,13 +37,19 @@ class LoginViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<LoginResponse> login({required String studentId, required String password}) async {
+  Future<LoginResponse> login({
+    required String studentId,
+    required String password,
+  }) async {
     _error = null;
     _isLoading = true;
     notifyListeners();
 
     try {
-      final res = await _authApi.login(studentId: studentId, password: password);
+      final res = await _authApi.login(
+        studentId: studentId,
+        password: password,
+      );
       UserSession.setFromResponse({
         'studentId': res.studentId,
         'role': res.role,
@@ -50,6 +57,7 @@ class LoginViewModel extends ChangeNotifier {
         'name': res.fullName,
       });
       await SessionPersistence.save();
+      await PushNotificationService.syncForLoggedInUser();
       return res;
     } on AuthException catch (e) {
       _error = e.message;

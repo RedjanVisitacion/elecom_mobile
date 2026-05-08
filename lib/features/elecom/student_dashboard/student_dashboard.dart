@@ -14,6 +14,7 @@ import 'dart:math' as math;
 import '../../../core/config/api_config.dart';
 import '../../../core/notifications/notification_center_store.dart';
 import 'widgets/election_home_countdown.dart';
+import 'widgets/election_transparency_card.dart';
 import 'widgets/home_candidates_strip.dart';
 import 'widgets/omnibus_code_carousel.dart';
 
@@ -33,9 +34,15 @@ class StudentDashboard extends StatefulWidget {
 
 class _StudentDashboardState extends State<StudentDashboard> {
   final ElecomMobileApi _api = ElecomMobileApi();
+  final GlobalKey<RefreshIndicatorState> _homeRefreshKey =
+      GlobalKey<RefreshIndicatorState>();
+  final ScrollController _homeScrollController = ScrollController();
   int _currentIndex = 0;
   int _resultsScreenVersion = 0;
+  int _homeCountdownVersion = 0;
   List<Map<String, dynamic>> _homeCandidates = <Map<String, dynamic>>[];
+  Map<String, dynamic>? _ledgerSummary;
+  bool _loadingLedger = false;
 
   String _displayFirstName() {
     final raw = (UserSession.fullName ?? '').trim();
@@ -90,6 +97,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
     super.initState();
     _ensureProfileBasics();
     _loadHomeCandidates();
+    _loadLedgerSummary();
   }
 
   Future<void> _loadHomeCandidates() async {
@@ -111,6 +119,45 @@ class _StudentDashboardState extends State<StudentDashboard> {
     await _ensureProfileBasics();
     await NotificationCenterStore.refresh();
     await _loadHomeCandidates();
+    await _loadLedgerSummary();
+  }
+
+  Future<void> _loadLedgerSummary() async {
+    if (mounted) {
+      setState(() => _loadingLedger = true);
+    }
+    try {
+      final res = await _api.getVoteLedger();
+      final summary = res['summary'] is Map<String, dynamic>
+          ? Map<String, dynamic>.from(res['summary'] as Map<String, dynamic>)
+          : <String, dynamic>{};
+      if (!mounted) return;
+      setState(() => _ledgerSummary = summary);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _ledgerSummary = <String, dynamic>{});
+    } finally {
+      if (mounted) {
+        setState(() => _loadingLedger = false);
+      }
+    }
+  }
+
+  Future<void> _triggerHomeRefreshWithEffect() async {
+    if (_homeScrollController.hasClients) {
+      await _homeScrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 260),
+        curve: Curves.easeOutCubic,
+      );
+    }
+
+    final indicator = _homeRefreshKey.currentState;
+    if (indicator != null) {
+      await indicator.show();
+      return;
+    }
+    await _refreshHome();
   }
 
   Future<void> _ensureProfileBasics() async {
@@ -261,7 +308,28 @@ class _StudentDashboardState extends State<StudentDashboard> {
               child: BottomNavigationBar(
                 type: BottomNavigationBarType.fixed,
                 currentIndex: _currentIndex,
-                onTap: (i) {
+                onTap: (i) async {
+                  if (i == 0) {
+                    final wasOnHome = _currentIndex == 0;
+                    if (mounted) {
+                      setState(() => _currentIndex = 0);
+                    }
+
+                    if (wasOnHome) {
+                      await _triggerHomeRefreshWithEffect();
+                    } else {
+                      await _refreshHome();
+                    }
+
+                    if (mounted) {
+                      setState(() {
+                        // Recreate countdown widget so it pulls latest election window immediately.
+                        _homeCountdownVersion++;
+                      });
+                    }
+                    return;
+                  }
+
                   setState(() {
                     if (i == 2) {
                       // Recreate ResultsScreen on every Results-tab tap
@@ -322,10 +390,12 @@ class _StudentDashboardState extends State<StudentDashboard> {
 
     return SafeArea(
       child: RefreshIndicator(
+        key: _homeRefreshKey,
         color: Colors.black,
         backgroundColor: Colors.white,
         onRefresh: _refreshHome,
         child: SingleChildScrollView(
+          controller: _homeScrollController,
           physics: const AlwaysScrollableScrollPhysics(),
           child: Center(
             child: ConstrainedBox(
@@ -471,8 +541,9 @@ class _StudentDashboardState extends State<StudentDashboard> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     ElectionHomeCountdown(
+                      key: ValueKey<int>(_homeCountdownVersion),
                       orgName: widget.orgName,
                       embeddedInProfileCard: false,
                       onVoteNow: () {
@@ -492,6 +563,18 @@ class _StudentDashboardState extends State<StudentDashboard> {
                     ),
                     const SizedBox(height: 18),
                     const OmnibusCodeCarousel(),
+                    const SizedBox(height: 14),
+                    ElectionTransparencyCard(
+                      summary: _ledgerSummary,
+                      isLoading: _loadingLedger,
+                      onTapViewLedger: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const ElectionTransparencyScreen(),
+                          ),
+                        );
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -500,6 +583,12 @@ class _StudentDashboardState extends State<StudentDashboard> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _homeScrollController.dispose();
+    super.dispose();
   }
 
   // (previous _displayName removed; home tab now uses profile summary row)

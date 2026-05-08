@@ -25,13 +25,17 @@ class ElecomMobileApi {
     });
   }
 
-  Future<Map<String, dynamic>> setProfilePhotoUrl({required String photoUrl}) async {
+  Future<Map<String, dynamic>> setProfilePhotoUrl({
+    required String photoUrl,
+  }) async {
     return _postJson(MobileApiPaths.accountProfilePhoto, <String, dynamic>{
       'photo_url': photoUrl,
     });
   }
 
-  Future<Map<String, dynamic>> uploadProfilePhoto({required File imageFile}) async {
+  Future<Map<String, dynamic>> uploadProfilePhoto({
+    required File imageFile,
+  }) async {
     final uri = Uri.parse(MobileApiPaths.accountProfilePhoto);
     const fieldNames = ['photo', 'image', 'file', 'profile_photo'];
 
@@ -39,7 +43,9 @@ class ElecomMobileApi {
     for (final field in fieldNames) {
       final request = http.MultipartRequest('POST', uri);
       request.headers['Accept'] = 'application/json';
-      request.files.add(await http.MultipartFile.fromPath(field, imageFile.path));
+      request.files.add(
+        await http.MultipartFile.fromPath(field, imageFile.path),
+      );
 
       http.StreamedResponse streamed;
       try {
@@ -59,7 +65,10 @@ class ElecomMobileApi {
       }
     }
 
-    throw lastErr ?? const ElecomApiException('Request failed: could not upload profile photo');
+    throw lastErr ??
+        const ElecomApiException(
+          'Request failed: could not upload profile photo',
+        );
   }
 
   Future<Map<String, dynamic>> getBallot() async {
@@ -70,30 +79,44 @@ class ElecomMobileApi {
     final uri = Uri.parse(MobileApiPaths.candidatesList);
     http.Response res;
     try {
-      res = await ApiClient.httpClient.get(uri, headers: const {'Accept': 'application/json'});
+      res = await ApiClient.httpClient.get(
+        uri,
+        headers: const {'Accept': 'application/json'},
+      );
     } catch (_) {
       throw const ElecomApiException('Network error: cannot reach server');
     }
     final decoded = _decode(res);
     final raw = decoded['candidates'];
     if (raw is! List) return <Map<String, dynamic>>[];
-    return raw.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+    return raw
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
   }
 
   Future<List<Map<String, dynamic>>> searchCandidates(String query) async {
     final q = query.trim();
     if (q.isEmpty) return <Map<String, dynamic>>[];
-    final uri = Uri.parse(MobileApiPaths.candidatesSearch).replace(queryParameters: {'q': q});
+    final uri = Uri.parse(
+      MobileApiPaths.candidatesSearch,
+    ).replace(queryParameters: {'q': q});
     http.Response res;
     try {
-      res = await ApiClient.httpClient.get(uri, headers: const {'Accept': 'application/json'});
+      res = await ApiClient.httpClient.get(
+        uri,
+        headers: const {'Accept': 'application/json'},
+      );
     } catch (_) {
       throw const ElecomApiException('Network error: cannot reach server');
     }
     final decoded = _decode(res);
     final raw = decoded['candidates'];
     if (raw is! List) return <Map<String, dynamic>>[];
-    return raw.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+    return raw
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
   }
 
   Future<Map<String, dynamic>> getVoteStatus() async {
@@ -112,12 +135,18 @@ class ElecomMobileApi {
     return _postJson(MobileApiPaths.voteSubmit, payload);
   }
 
+  Future<Map<String, dynamic>> getVoteLedger() async {
+    return _getJson(MobileApiPaths.voteLedger);
+  }
+
   Future<Map<String, dynamic>> getCloudinarySignature() async {
     // Use non-admin signature for student profile photo uploads.
     return _getJson(MobileApiPaths.cloudinaryProfileSignature);
   }
 
-  Future<Map<String, dynamic>> updateProfilePhotoUrl({required String photoUrl}) async {
+  Future<Map<String, dynamic>> updateProfilePhotoUrl({
+    required String photoUrl,
+  }) async {
     return _postJson(MobileApiPaths.accountProfileUpdate, <String, dynamic>{
       'photo_url': photoUrl,
       'photoUrl': photoUrl,
@@ -186,19 +215,33 @@ class ElecomMobileApi {
       sig = sigRes['data'] as Map<String, dynamic>;
     }
 
-    final cloudName = (sig['cloud_name'] ?? sig['cloudName'] ?? sig['cloud'] ?? '').toString().trim();
-    final apiKey = (sig['api_key'] ?? sig['apiKey'] ?? sig['key'] ?? '').toString().trim();
+    final cloudName =
+        (sig['cloud_name'] ?? sig['cloudName'] ?? sig['cloud'] ?? '')
+            .toString()
+            .trim();
+    final apiKey = (sig['api_key'] ?? sig['apiKey'] ?? sig['key'] ?? '')
+        .toString()
+        .trim();
     final timestamp = (sig['timestamp'] ?? '').toString().trim();
     final signature = (sig['signature'] ?? '').toString().trim();
 
-    if (cloudName.isEmpty || apiKey.isEmpty || timestamp.isEmpty || signature.isEmpty) {
-      throw const ElecomApiException('Cloudinary signature response missing required fields');
+    if (cloudName.isEmpty ||
+        apiKey.isEmpty ||
+        timestamp.isEmpty ||
+        signature.isEmpty) {
+      throw const ElecomApiException(
+        'Cloudinary signature response missing required fields',
+      );
     }
 
     final folder = (sig['folder'] ?? '').toString().trim();
-    final publicId = (sig['public_id'] ?? sig['publicId'] ?? '').toString().trim();
+    final publicId = (sig['public_id'] ?? sig['publicId'] ?? '')
+        .toString()
+        .trim();
 
-    final uploadUri = Uri.parse('https://api.cloudinary.com/v1_1/$cloudName/image/upload');
+    final uploadUri = Uri.parse(
+      'https://api.cloudinary.com/v1_1/$cloudName/image/upload',
+    );
     final request = http.MultipartRequest('POST', uploadUri);
 
     request.fields['api_key'] = apiKey;
@@ -207,7 +250,9 @@ class ElecomMobileApi {
     if (folder.isNotEmpty) request.fields['folder'] = folder;
     if (publicId.isNotEmpty) request.fields['public_id'] = publicId;
 
-    request.files.add(await http.MultipartFile.fromPath('file', imageFile.path));
+    request.files.add(
+      await http.MultipartFile.fromPath('file', imageFile.path),
+    );
 
     http.StreamedResponse streamed;
     try {
@@ -218,7 +263,9 @@ class ElecomMobileApi {
 
     final body = await streamed.stream.bytesToString();
     if (streamed.statusCode < 200 || streamed.statusCode >= 300) {
-      throw ElecomApiException('Cloudinary upload failed (${streamed.statusCode}): $body');
+      throw ElecomApiException(
+        'Cloudinary upload failed (${streamed.statusCode}): $body',
+      );
     }
 
     final decoded = jsonDecode(body);
@@ -226,9 +273,13 @@ class ElecomMobileApi {
       throw const ElecomApiException('Cloudinary upload failed: invalid JSON');
     }
 
-    final secureUrl = (decoded['secure_url'] ?? decoded['url'] ?? '').toString().trim();
+    final secureUrl = (decoded['secure_url'] ?? decoded['url'] ?? '')
+        .toString()
+        .trim();
     if (secureUrl.isEmpty) {
-      throw const ElecomApiException('Cloudinary upload failed: missing secure_url');
+      throw const ElecomApiException(
+        'Cloudinary upload failed: missing secure_url',
+      );
     }
 
     return secureUrl;
@@ -238,7 +289,10 @@ class ElecomMobileApi {
     final res = await _getJson(MobileApiPaths.notifications);
     final raw = res['notifications'];
     if (raw is! List) return <Map<String, dynamic>>[];
-    return raw.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+    return raw
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
   }
 
   Future<Map<String, dynamic>> createNotification({
@@ -248,13 +302,16 @@ class ElecomMobileApi {
     int? receiptId,
     bool pinned = false,
   }) async {
-    final res = await _postJson(MobileApiPaths.notificationsCreate, <String, dynamic>{
-      'title': title,
-      'body': body,
-      'type': type,
-      'receipt_id': receiptId,
-      'pinned': pinned,
-    });
+    final res = await _postJson(
+      MobileApiPaths.notificationsCreate,
+      <String, dynamic>{
+        'title': title,
+        'body': body,
+        'type': type,
+        'receipt_id': receiptId,
+        'pinned': pinned,
+      },
+    );
     final raw = res['notification'];
     if (raw is Map<String, dynamic>) return raw;
     if (raw is Map) return Map<String, dynamic>.from(raw);
@@ -262,14 +319,21 @@ class ElecomMobileApi {
   }
 
   Future<void> markNotificationRead(int id) async {
-    await _postJson(MobileApiPaths.notificationsRead, <String, dynamic>{'id': id});
+    await _postJson(MobileApiPaths.notificationsRead, <String, dynamic>{
+      'id': id,
+    });
   }
 
   Future<void> markNotificationUnread(int id) async {
-    await _postJson(MobileApiPaths.notificationsUnread, <String, dynamic>{'id': id});
+    await _postJson(MobileApiPaths.notificationsUnread, <String, dynamic>{
+      'id': id,
+    });
   }
 
-  Future<void> setNotificationPinned({required int id, required bool pinned}) async {
+  Future<void> setNotificationPinned({
+    required int id,
+    required bool pinned,
+  }) async {
     await _postJson(MobileApiPaths.notificationsPin, <String, dynamic>{
       'id': id,
       'pinned': pinned,
@@ -277,25 +341,47 @@ class ElecomMobileApi {
   }
 
   Future<void> deleteNotification(int id) async {
-    await _postJson(MobileApiPaths.notificationsDelete, <String, dynamic>{'id': id});
+    await _postJson(MobileApiPaths.notificationsDelete, <String, dynamic>{
+      'id': id,
+    });
   }
 
   Future<void> markAllNotificationsRead() async {
     await _postJson(MobileApiPaths.notificationsReadAll, <String, dynamic>{});
   }
 
+  Future<void> registerPushToken({required String token}) async {
+    await _postJson(MobileApiPaths.pushTokenRegister, <String, dynamic>{
+      'token': token,
+      'platform': Platform.operatingSystem,
+    });
+  }
+
+  Future<void> unregisterPushToken({required String token}) async {
+    await _postJson(MobileApiPaths.pushTokenUnregister, <String, dynamic>{
+      'token': token,
+      'platform': Platform.operatingSystem,
+    });
+  }
+
   Future<Map<String, dynamic>> _getJson(String url) async {
     final uri = Uri.parse(url);
     http.Response res;
     try {
-      res = await ApiClient.httpClient.get(uri, headers: const {'Accept': 'application/json'});
+      res = await ApiClient.httpClient.get(
+        uri,
+        headers: const {'Accept': 'application/json'},
+      );
     } catch (_) {
       throw const ElecomApiException('Network error: cannot reach server');
     }
     return _decode(res);
   }
 
-  Future<Map<String, dynamic>> _postJson(String url, Map<String, dynamic> payload) async {
+  Future<Map<String, dynamic>> _postJson(
+    String url,
+    Map<String, dynamic> payload,
+  ) async {
     final uri = Uri.parse(url);
     http.Response res;
     try {
@@ -318,29 +404,43 @@ class ElecomMobileApi {
       final decoded = jsonDecode(res.body);
       if (decoded is Map<String, dynamic>) {
         if (decoded['ok'] == true) return decoded;
-        final msg = (decoded['error'] ?? decoded['message'] ?? 'Request failed').toString();
+        final msg = (decoded['error'] ?? decoded['message'] ?? 'Request failed')
+            .toString();
         throw ElecomApiException('Request failed (${res.statusCode}): $msg');
       }
-      throw ElecomApiException('Server error (${res.statusCode}): Invalid JSON');
+      throw ElecomApiException(
+        'Server error (${res.statusCode}): Invalid JSON',
+      );
     } catch (e) {
       if (e is ElecomApiException) rethrow;
-      throw ElecomApiException('Server error (${res.statusCode}): Invalid JSON');
+      throw ElecomApiException(
+        'Server error (${res.statusCode}): Invalid JSON',
+      );
     }
   }
 
-  Future<Map<String, dynamic>> _decodeStreamed(http.StreamedResponse streamed) async {
+  Future<Map<String, dynamic>> _decodeStreamed(
+    http.StreamedResponse streamed,
+  ) async {
     try {
       final body = await streamed.stream.bytesToString();
       final decoded = jsonDecode(body);
       if (decoded is Map<String, dynamic>) {
         if (decoded['ok'] == true) return decoded;
-        final msg = (decoded['error'] ?? decoded['message'] ?? 'Request failed').toString();
-        throw ElecomApiException('Request failed (${streamed.statusCode}): $msg');
+        final msg = (decoded['error'] ?? decoded['message'] ?? 'Request failed')
+            .toString();
+        throw ElecomApiException(
+          'Request failed (${streamed.statusCode}): $msg',
+        );
       }
-      throw ElecomApiException('Server error (${streamed.statusCode}): Invalid JSON');
+      throw ElecomApiException(
+        'Server error (${streamed.statusCode}): Invalid JSON',
+      );
     } catch (e) {
       if (e is ElecomApiException) rethrow;
-      throw ElecomApiException('Server error (${streamed.statusCode}): Invalid JSON');
+      throw ElecomApiException(
+        'Server error (${streamed.statusCode}): Invalid JSON',
+      );
     }
   }
 }

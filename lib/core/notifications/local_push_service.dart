@@ -1,19 +1,25 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 class LocalPushService {
   LocalPushService._();
 
-  static final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
+  static final FlutterLocalNotificationsPlugin _plugin =
+      FlutterLocalNotificationsPlugin();
   static bool _initialized = false;
 
   static Future<void> init() async {
     if (_initialized) return;
 
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings(
+      '@mipmap/ic_launcher',
+    );
     const initSettings = InitializationSettings(android: androidSettings);
     await _plugin.initialize(settings: initSettings);
     await _plugin
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.requestNotificationsPermission();
     _initialized = true;
   }
@@ -43,6 +49,19 @@ class LocalPushService {
       title: title,
       body: body,
       notificationDetails: details,
+    );
+  }
+
+  static Future<void> showFromRemoteMessage(RemoteMessage message) async {
+    final title =
+        message.notification?.title ?? (message.data['title'] ?? '').toString();
+    final body =
+        message.notification?.body ?? (message.data['body'] ?? '').toString();
+    if (title.trim().isEmpty && body.trim().isEmpty) return;
+    await show(
+      id: message.hashCode,
+      title: title.isEmpty ? 'ELECOM' : title,
+      body: body,
     );
   }
 }

@@ -47,7 +47,7 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
       setState(() {});
     });
     _pollTicker = Timer.periodic(
-      const Duration(seconds: 45),
+      const Duration(seconds: 10),
       (_) => _refreshFromServer(),
     );
   }
@@ -243,7 +243,7 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SizedBox(height: widget.embeddedInProfileCard ? 12 : 14),
+        SizedBox(height: widget.embeddedInProfileCard ? 10 : 8),
         Text(
           'Election Countdown',
           style: TextStyle(

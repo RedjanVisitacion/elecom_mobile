@@ -11,6 +11,7 @@ class MobileApiPaths {
   static String get voteStatus => '$base/vote/status/';
   static String get voteReceipt => '$base/vote/receipt/';
   static String get voteSubmit => '$base/vote/submit/';
+  static String get voteLedger => '$base/vote/ledger/';
   static String get results => '$base/results/';
 
   static String get accountProfile => '$base/account/profile/';
@@ -25,6 +26,10 @@ class MobileApiPaths {
   static String get notificationsUnread => '$base/notifications/unread/';
   static String get notificationsPin => '$base/notifications/pin/';
   static String get notificationsDelete => '$base/notifications/delete/';
+  static String get pushTokenRegister =>
+      '$base/notifications/push-token/register/';
+  static String get pushTokenUnregister =>
+      '$base/notifications/push-token/unregister/';
 
   static String get networkCheck => '$base/network/check/';
 
@@ -34,15 +39,19 @@ class MobileApiPaths {
   static String get adminReportsSummary => '$base/admin/reports/summary/';
   static String get adminResetStatus => '$base/admin/reset/status/';
   static String get adminResetVotes => '$base/admin/reset/votes/';
-  static String get adminResetNotifications => '$base/admin/reset/notifications/';
+  static String get adminResetNotifications =>
+      '$base/admin/reset/notifications/';
   static String get adminNetworkSettings => '$base/admin/network-settings/';
   static String get adminNetworkLogs => '$base/admin/network-logs/';
-  static String get adminCloudinarySignature => '$base/admin/cloudinary/signature/';
-  static String get cloudinaryProfileSignature => '$rootApi/cloudinary/signature/?type=profile_photo';
+  static String get adminCloudinarySignature =>
+      '$base/admin/cloudinary/signature/';
+  static String get cloudinaryProfileSignature =>
+      '$rootApi/cloudinary/signature/?type=profile_photo';
   static String get adminCandidatesList => '$base/admin/candidates/list/';
   static String get adminCandidatesDetail => '$base/admin/candidates/detail/';
   static String get adminCandidatesCreate => '$base/admin/candidates/create/';
   static String get adminCandidatesUpdate => '$base/admin/candidates/update/';
   static String get adminCandidatesDelete => '$base/admin/candidates/delete/';
-  static String get adminCandidatesBulkDelete => '$base/admin/candidates/bulk-delete/';
+  static String get adminCandidatesBulkDelete =>
+      '$base/admin/candidates/bulk-delete/';
 }

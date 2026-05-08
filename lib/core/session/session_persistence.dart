@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../notifications/notification_center_store.dart';
+import '../notifications/push_notification_service.dart';
 import '../network/api_client.dart';
 import 'user_session.dart';
 
@@ -61,6 +62,7 @@ class SessionPersistence {
   }
 
   static Future<void> clear() async {
+    await PushNotificationService.disableForLoggedOutOrDisabled();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_kCookies);
     await prefs.remove(_kUser);

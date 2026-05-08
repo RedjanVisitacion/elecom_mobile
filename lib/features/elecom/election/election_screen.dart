@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 
+import '../../../core/ledger/vote_ledger_crypto.dart';
 import '../../../core/notifications/local_push_service.dart';
 import '../../../core/notifications/notification_center_store.dart';
 import '../../../core/session/notification_preferences.dart';
+import '../../../core/session/user_session.dart';
 import '../candidates/candidate_profile_screen.dart';
 import '../data/elecom_mobile_api.dart';
 import 'election_transparency_screen.dart';
@@ -27,7 +30,8 @@ class ElectionScreen extends StatefulWidget {
   State<ElectionScreen> createState() => _ElectionScreenState();
 }
 
-class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProviderStateMixin {
+class _ElectionScreenState extends State<ElectionScreen>
+    with SingleTickerProviderStateMixin {
   final ElecomMobileApi _api = ElecomMobileApi();
 
   bool _loading = true;
@@ -35,7 +39,9 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
   bool _checkingReceipt = false;
   String? _loadError;
   Map<String, dynamic> _ballotPayload = const {};
+  Map<String, dynamic> _electionWindow = const {};
   late final AnimationController _successIconController;
+  Timer? _windowTicker;
 
   final Map<String, dynamic> _selections = {};
 
@@ -43,7 +49,8 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
       '${org.toUpperCase().trim()}::${position.trim()}';
 
   bool _isMultiSelect(String org, String position) =>
-      org.toUpperCase() == 'USG' && position.toUpperCase().contains('REPRESENTATIVE');
+      org.toUpperCase() == 'USG' &&
+      position.toUpperCase().contains('REPRESENTATIVE');
 
   List<Map<String, dynamic>> get _orgList {
     final b = _ballotPayload['ballot'];
@@ -54,7 +61,10 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
   List<String> _eligibleOrganizationLabels() {
     final raw = _ballotPayload['eligible_organizations'];
     if (raw is! List) return <String>[];
-    return raw.map((e) => e.toString().trim()).where((s) => s.isNotEmpty).toList();
+    return raw
+        .map((e) => e.toString().trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
   }
 
   String _whoYouCanVoteForExplanation() {
@@ -95,24 +105,113 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
       duration: const Duration(milliseconds: 2400),
     )..repeat(reverse: true);
     _load();
+    _windowTicker = Timer.periodic(const Duration(seconds: 30), (_) {
+      _refreshWindowOnly();
+    });
   }
 
   @override
   void dispose() {
     _successIconController.dispose();
+    _windowTicker?.cancel();
     super.dispose();
   }
 
-  Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _loadError = null;
-    });
+  DateTime? _parseIso(dynamic raw) {
+    final s = (raw ?? '').toString().trim();
+    if (s.isEmpty || s.toLowerCase() == 'null') return null;
+    return DateTime.tryParse(s);
+  }
+
+  Map<String, dynamic> _normalizeElectionWindow(Map<String, dynamic> payload) {
+    final e = payload['election'];
+    if (e is Map<String, dynamic>) return e;
+    if (e is Map) return Map<String, dynamic>.from(e);
+    return const <String, dynamic>{};
+  }
+
+  bool _isResultsPublishedByStatus(Map<String, dynamic> election) {
+    final rs = (election['results_status'] ?? election['results_state'] ?? '')
+        .toString()
+        .toLowerCase();
+    return rs == 'published';
+  }
+
+  bool _isElectionActiveNow(Map<String, dynamic> election) {
+    final status = (election['status'] ?? '').toString().toLowerCase();
+    final start = _parseIso(election['start_at'])?.toLocal();
+    final end = _parseIso(election['end_at'])?.toLocal();
+    final now = DateTime.now();
+
+    if (_isResultsPublishedByStatus(election)) return false;
+    if (status == 'closed' || status == 'ended') return false;
+    if (start != null && now.isBefore(start)) return false;
+    if (end != null && now.isAfter(end)) return false;
+    if (status == 'active') return true;
+    if (start != null && end != null) {
+      return !now.isBefore(start) && !now.isAfter(end);
+    }
+    return false;
+  }
+
+  bool _isElectionUpcoming(Map<String, dynamic> election) {
+    final status = (election['status'] ?? '').toString().toLowerCase();
+    final start = _parseIso(election['start_at'])?.toLocal();
+    final now = DateTime.now();
+    if (_isResultsPublishedByStatus(election)) return false;
+    if (status == 'upcoming') return true;
+    if (start != null && now.isBefore(start)) return true;
+    return false;
+  }
+
+  Future<void> _refreshWindowOnly() async {
     try {
+      final payload = await _api.getElectionWindow();
+      if (!mounted) return;
+      final election = _normalizeElectionWindow(payload);
+      final wasActive = _isElectionActiveNow(_electionWindow);
+      final nowActive = _isElectionActiveNow(election);
+      setState(() {
+        _electionWindow = election;
+      });
+      if (wasActive != nowActive) {
+        await _load(showLoading: false);
+      }
+    } catch (_) {
+      // Keep existing state when periodic refresh fails.
+    }
+  }
+
+  Future<void> _load({bool showLoading = true}) async {
+    if (showLoading) {
+      setState(() {
+        _loading = true;
+        _loadError = null;
+      });
+    }
+    try {
+      final windowPayload = await _api.getElectionWindow();
+      final election = _normalizeElectionWindow(windowPayload);
+      final activeNow = _isElectionActiveNow(election);
+
+      if (!activeNow) {
+        if (!mounted) return;
+        setState(() {
+          _electionWindow = election;
+          _alreadyVoted = false;
+          _loading = false;
+          _ballotPayload = const {};
+          _selections.clear();
+          _loadError = null;
+        });
+        return;
+      }
+
       final status = await _api.getVoteStatus();
       if (!mounted) return;
       if (status['ok'] == true && status['voted'] == true) {
         setState(() {
+          _electionWindow = election;
           _alreadyVoted = true;
           _loading = false;
           _ballotPayload = const {};
@@ -125,6 +224,7 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
       if (!mounted) return;
       if (ballot['ok'] != true) {
         setState(() {
+          _electionWindow = election;
           _loadError = (ballot['error'] ?? 'Could not load ballot').toString();
           _loading = false;
         });
@@ -132,6 +232,7 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
       }
 
       setState(() {
+        _electionWindow = election;
         _alreadyVoted = false;
         _ballotPayload = ballot;
         _selections.clear();
@@ -183,7 +284,9 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
   }
 
   ElectionThemePalette _electionPalette(BuildContext context, bool isDark) =>
-      ElectionThemePalette.fromBrightness(isDark ? Brightness.dark : Brightness.light);
+      ElectionThemePalette.fromBrightness(
+        isDark ? Brightness.dark : Brightness.light,
+      );
 
   Map<int, Map<String, dynamic>> _candidateIndex() {
     final out = <int, Map<String, dynamic>>{};
@@ -229,6 +332,63 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
     return '${local.year}-${two(local.month)}-${two(local.day)} ${two(local.hour)}:${two(local.minute)}';
   }
 
+  int _resolveElectionId(Map<String, dynamic> election) {
+    final raw = election['id'];
+    if (raw is num) return raw.toInt();
+    return int.tryParse('${raw ?? ''}') ?? 0;
+  }
+
+  Future<Map<String, dynamic>> _buildLedgerPayload({
+    required Map<String, dynamic> selectionsPayload,
+    required Map<String, dynamic> election,
+  }) async {
+    final electionId = _resolveElectionId(election);
+    final submittedAtIsoUtc = DateTime.now().toUtc().toIso8601String();
+    final studentId = (UserSession.studentId ?? '').trim();
+    final anonymousVoterHash = VoteLedgerCrypto.buildAnonymousVoterHash(
+      studentId: studentId,
+      electionId: electionId,
+      submittedAtIsoUtc: submittedAtIsoUtc,
+    );
+    final voteDataHash = VoteLedgerCrypto.buildVoteDataHash(selectionsPayload);
+
+    String previousHash = '';
+    try {
+      final ledger = await _api.getVoteLedger();
+      final blocksRaw = ledger['blocks'];
+      if (blocksRaw is List && blocksRaw.isNotEmpty) {
+        final latest = blocksRaw.first;
+        if (latest is Map) {
+          final full = (latest['hash_full'] ?? latest['current_hash'] ?? '')
+              .toString()
+              .trim();
+          if (full.isNotEmpty && full.toLowerCase() != 'null') {
+            previousHash = full;
+          }
+        }
+      }
+    } catch (_) {
+      // Use empty previous hash if ledger endpoint is temporarily unavailable.
+    }
+
+    final currentHash = VoteLedgerCrypto.buildCurrentHash(
+      electionId: electionId,
+      anonymousVoterHash: anonymousVoterHash,
+      voteDataHash: voteDataHash,
+      previousHash: previousHash,
+      submittedAtIsoUtc: submittedAtIsoUtc,
+    );
+
+    return <String, dynamic>{
+      'election_id': electionId,
+      'anonymous_voter_hash': anonymousVoterHash,
+      'vote_data_hash': voteDataHash,
+      'previous_hash': previousHash,
+      'current_hash': currentHash,
+      'submitted_at': submittedAtIsoUtc,
+    };
+  }
+
   Future<void> _showVoteReceiptSheet({
     required Map receipt,
     required ElectionThemePalette palette,
@@ -245,15 +405,26 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
     final totalSelections = receipt['total_selections'];
 
     final selectionsRaw = receipt['selections'];
-    final selections = selectionsRaw is Map ? Map<String, dynamic>.from(selectionsRaw) : <String, dynamic>{};
+    final selections = selectionsRaw is Map
+        ? Map<String, dynamic>.from(selectionsRaw)
+        : <String, dynamic>{};
 
     final candidatesRaw = receipt['candidates'];
-    final candidates = candidatesRaw is Map ? Map<String, dynamic>.from(candidatesRaw) : <String, dynamic>{};
+    final candidates = candidatesRaw is Map
+        ? Map<String, dynamic>.from(candidatesRaw)
+        : <String, dynamic>{};
 
     final ballotDataRaw = receipt['ballot_data'];
-    final ballotData = ballotDataRaw is Map ? Map<String, dynamic>.from(ballotDataRaw) : <String, dynamic>{};
+    final ballotData = ballotDataRaw is Map
+        ? Map<String, dynamic>.from(ballotDataRaw)
+        : <String, dynamic>{};
     final ballotRaw = ballotData['ballot'];
-    final ballot = ballotRaw is List ? ballotRaw.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList() : <Map<String, dynamic>>[];
+    final ballot = ballotRaw is List
+        ? ballotRaw
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList()
+        : <Map<String, dynamic>>[];
 
     Widget receiptAvatar(dynamic photoUrlRaw) {
       final photo = resolvedCandidatePhotoUrl(photoUrlRaw);
@@ -268,7 +439,13 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
           radius: 20, // ~40px photo (same feel as Election)
           backgroundColor: isDark ? Colors.white12 : const Color(0xFFEAF1FF),
           backgroundImage: photo != null ? NetworkImage(photo) : null,
-          child: photo == null ? Icon(Icons.person, size: 18, color: isDark ? Colors.white54 : Colors.black54) : null,
+          child: photo == null
+              ? Icon(
+                  Icons.person,
+                  size: 18,
+                  color: isDark ? Colors.white54 : Colors.black54,
+                )
+              : null,
         ),
       );
     }
@@ -283,9 +460,27 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
             padding: const EdgeInsets.only(top: 8),
             child: Row(
               children: [
-                Expanded(child: Text(left, style: TextStyle(color: sub, fontWeight: FontWeight.w600, fontSize: 12.5))),
+                Expanded(
+                  child: Text(
+                    left,
+                    style: TextStyle(
+                      color: sub,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12.5,
+                    ),
+                  ),
+                ),
                 const SizedBox(width: 12),
-                Flexible(child: Text(right, style: TextStyle(color: fg, fontWeight: FontWeight.w800, fontSize: 12.5))),
+                Flexible(
+                  child: Text(
+                    right,
+                    style: TextStyle(
+                      color: fg,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12.5,
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -294,12 +489,29 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
 
       addLine('Reference', ref);
       addLine('Voted at', votedAt);
-      addLine('Selections', totalSelections == null ? '' : totalSelections.toString());
+      addLine(
+        'Selections',
+        totalSelections == null ? '' : totalSelections.toString(),
+      );
 
       lines.add(const SizedBox(height: 14));
-      lines.add(Divider(color: isDark ? Colors.white12 : const Color(0xFFE6E6E6), height: 1));
+      lines.add(
+        Divider(
+          color: isDark ? Colors.white12 : const Color(0xFFE6E6E6),
+          height: 1,
+        ),
+      );
       lines.add(const SizedBox(height: 10));
-      lines.add(Text('Summary', style: TextStyle(color: fg, fontWeight: FontWeight.w900, fontSize: 14)));
+      lines.add(
+        Text(
+          'Summary',
+          style: TextStyle(
+            color: fg,
+            fontWeight: FontWeight.w900,
+            fontSize: 14,
+          ),
+        ),
+      );
       lines.add(const SizedBox(height: 6));
 
       // Render selected items (position -> candidate(s)).
@@ -334,26 +546,39 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
             : <String>[v?.toString() ?? ''].where((x) => x.isNotEmpty).toList();
         if (ids.isEmpty) continue;
 
-        final orgLabel = posKey.contains('::') ? posKey.split('::').first.trim() : '';
-        final posLabel = posKey.contains('::') ? posKey.split('::').last.trim() : posKey;
+        final orgLabel = posKey.contains('::')
+            ? posKey.split('::').first.trim()
+            : '';
+        final posLabel = posKey.contains('::')
+            ? posKey.split('::').last.trim()
+            : posKey;
 
         lines.add(
           Padding(
             padding: const EdgeInsets.only(top: 10, bottom: 6),
             child: Text(
               posLabel,
-              style: TextStyle(color: fg, fontWeight: FontWeight.w900, fontSize: 13.5),
+              style: TextStyle(
+                color: fg,
+                fontWeight: FontWeight.w900,
+                fontSize: 13.5,
+              ),
             ),
           ),
         );
 
         for (final id in ids) {
           final candRaw = candidates[id];
-          final cand = candRaw is Map ? Map<String, dynamic>.from(candRaw) : <String, dynamic>{};
+          final cand = candRaw is Map
+              ? Map<String, dynamic>.from(candRaw)
+              : <String, dynamic>{};
           final name = (cand['name'] ?? '').toString().trim();
           final party = (cand['party_name'] ?? '').toString().trim();
           final photoUrl = cand['photo_url'];
-          final subtitle = [if (party.isNotEmpty) party, if (orgLabel.isNotEmpty) orgLabel].join(' · ');
+          final subtitle = [
+            if (party.isNotEmpty) party,
+            if (orgLabel.isNotEmpty) orgLabel,
+          ].join(' · ');
 
           lines.add(
             Container(
@@ -361,7 +586,9 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: isDark ? Colors.white12 : const Color(0xFFD7D7D7)),
+                border: Border.all(
+                  color: isDark ? Colors.white12 : const Color(0xFFD7D7D7),
+                ),
               ),
               child: Row(
                 children: [
@@ -375,7 +602,12 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
                           name.isEmpty ? 'Candidate' : name,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: fg, fontWeight: FontWeight.w800, fontSize: 13.5, height: 1.15),
+                          style: TextStyle(
+                            color: fg,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13.5,
+                            height: 1.15,
+                          ),
                         ),
                         if (subtitle.trim().isNotEmpty) ...[
                           const SizedBox(height: 3),
@@ -383,7 +615,11 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
                             subtitle,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(color: sub, fontWeight: FontWeight.w500, fontSize: 12),
+                            style: TextStyle(
+                              color: sub,
+                              fontWeight: FontWeight.w500,
+                              fontSize: 12,
+                            ),
                           ),
                         ],
                       ],
@@ -430,7 +666,11 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
                       Expanded(
                         child: Text(
                           'Vote receipt',
-                          style: TextStyle(color: fg, fontWeight: FontWeight.w900, fontSize: 16),
+                          style: TextStyle(
+                            color: fg,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 16,
+                          ),
                         ),
                       ),
                       IconButton(
@@ -442,7 +682,12 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
                   ),
                   Text(
                     'Thank you for voting. Your vote has been successfully recorded.',
-                    style: TextStyle(color: sub, fontWeight: FontWeight.w500, height: 1.35, fontSize: 12.5),
+                    style: TextStyle(
+                      color: sub,
+                      fontWeight: FontWeight.w500,
+                      height: 1.35,
+                      fontSize: 12.5,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Expanded(
@@ -456,9 +701,17 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
                     width: double.infinity,
                     height: 46,
                     child: FilledButton(
-                      style: FilledButton.styleFrom(backgroundColor: palette.accent),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: palette.accent,
+                      ),
                       onPressed: () => Navigator.pop(ctx),
-                      child: Text('Done', style: TextStyle(color: palette.onAccent, fontWeight: FontWeight.w900)),
+                      child: Text(
+                        'Done',
+                        style: TextStyle(
+                          color: palette.onAccent,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -471,12 +724,76 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
   }
 
   Future<void> _submit(ElectionThemePalette palette) async {
+    try {
+      final windowPayload = await _api.getElectionWindow();
+      final election = _normalizeElectionWindow(windowPayload);
+      if (!_isElectionActiveNow(election)) {
+        if (!mounted) return;
+        setState(() {
+          _electionWindow = election;
+          _ballotPayload = const {};
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: palette.snackNeutral,
+            content: Text(
+              'Election has ended. Your vote was not submitted.',
+              style: TextStyle(color: palette.snackFg),
+            ),
+          ),
+        );
+        return;
+      }
+
+      final status = await _api.getVoteStatus();
+      if (!mounted) return;
+      if (status['ok'] == true && status['voted'] == true) {
+        setState(() {
+          _alreadyVoted = true;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: palette.snackNeutral,
+            content: Text(
+              'You already submitted your vote.',
+              style: TextStyle(color: palette.snackFg),
+            ),
+          ),
+        );
+        return;
+      }
+    } on ElecomApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: palette.snackNeutral,
+          content: Text(e.message, style: TextStyle(color: palette.snackFg)),
+        ),
+      );
+      return;
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: palette.snackNeutral,
+          content: Text(
+            'Unable to validate election status. Please try again.',
+            style: TextStyle(color: palette.snackFg),
+          ),
+        ),
+      );
+      return;
+    }
+
     final payload = _payloadOnlyFilled();
     if (payload.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: palette.snackNeutral,
-          content: Text('Select at least one candidate before submitting.', style: TextStyle(color: palette.snackFg)),
+          content: Text(
+            'Select at least one candidate before submitting.',
+            style: TextStyle(color: palette.snackFg),
+          ),
         ),
       );
       return;
@@ -489,8 +806,12 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
       context: context,
       barrierDismissible: false,
       builder: (ctx) {
-        final fg = Theme.of(ctx).brightness == Brightness.dark ? Colors.white : Colors.black;
-        final sub = Theme.of(ctx).brightness == Brightness.dark ? Colors.white70 : Colors.black54;
+        final fg = Theme.of(ctx).brightness == Brightness.dark
+            ? Colors.white
+            : Colors.black;
+        final sub = Theme.of(ctx).brightness == Brightness.dark
+            ? Colors.white70
+            : Colors.black54;
         final screenH = MediaQuery.sizeOf(ctx).height;
         final dialogH = (screenH * 0.82).clamp(screenH * 0.75, screenH * 0.85);
         final listController = ScrollController();
@@ -507,9 +828,17 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
             padding: const EdgeInsets.all(1.5),
             child: CircleAvatar(
               radius: 20, // ~40px photo, compact but readable
-              backgroundColor: isDark ? Colors.white12 : const Color(0xFFEAF1FF),
+              backgroundColor: isDark
+                  ? Colors.white12
+                  : const Color(0xFFEAF1FF),
               backgroundImage: photo != null ? NetworkImage(photo) : null,
-              child: photo == null ? Icon(Icons.person, size: 18, color: isDark ? Colors.white54 : Colors.black54) : null,
+              child: photo == null
+                  ? Icon(
+                      Icons.person,
+                      size: 18,
+                      color: isDark ? Colors.white54 : Colors.black54,
+                    )
+                  : null,
             ),
           );
         }
@@ -527,7 +856,11 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
                 padding: const EdgeInsets.only(top: 10, bottom: 6),
                 child: Text(
                   pos,
-                  style: TextStyle(fontWeight: FontWeight.w900, color: fg, fontSize: 13.5),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    color: fg,
+                    fontSize: 13.5,
+                  ),
                 ),
               ),
             );
@@ -539,7 +872,11 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
                   padding: const EdgeInsets.only(bottom: 2),
                   child: Text(
                     'No candidate selected',
-                    style: TextStyle(color: sub, fontWeight: FontWeight.w500, fontSize: 12),
+                    style: TextStyle(
+                      color: sub,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 12,
+                    ),
                   ),
                 ),
               );
@@ -547,8 +884,13 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
             }
 
             final ids = v is List
-                ? v.map((e) => e is int ? e : int.tryParse(e.toString())).whereType<int>().toList()
-                : <int>[v is int ? v : (int.tryParse(v.toString()) ?? 0)].where((x) => x != 0).toList();
+                ? v
+                      .map((e) => e is int ? e : int.tryParse(e.toString()))
+                      .whereType<int>()
+                      .toList()
+                : <int>[
+                    v is int ? v : (int.tryParse(v.toString()) ?? 0),
+                  ].where((x) => x != 0).toList();
 
             for (final id in ids) {
               final c = index[id] ?? <String, dynamic>{'id': id};
@@ -557,11 +899,16 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
               widgets.add(
                 Container(
                   margin: const EdgeInsets.only(bottom: 6),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: Theme.of(ctx).brightness == Brightness.dark ? Colors.white12 : const Color(0xFFD7D7D7),
+                      color: Theme.of(ctx).brightness == Brightness.dark
+                          ? Colors.white12
+                          : const Color(0xFFD7D7D7),
                     ),
                   ),
                   child: Row(
@@ -576,17 +923,23 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
                               name,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(fontWeight: FontWeight.w800, color: fg, fontSize: 14, height: 1.15),
+                              style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                color: fg,
+                                fontSize: 14,
+                                height: 1.15,
+                              ),
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              [
-                                if (party.isNotEmpty) party,
-                                org,
-                              ].join(' · '),
+                              [if (party.isNotEmpty) party, org].join(' · '),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(color: sub, fontWeight: FontWeight.w500, fontSize: 12),
+                              style: TextStyle(
+                                color: sub,
+                                fontWeight: FontWeight.w500,
+                                fontSize: 12,
+                              ),
                             ),
                           ],
                         ),
@@ -603,7 +956,9 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
         // Avoid nested scrollables (can cause jank/ANR on some devices).
         final isDark = Theme.of(ctx).brightness == Brightness.dark;
         final dialogBg = isDark ? const Color(0xFF18191A) : Colors.white;
-        final noteColor = isDark ? const Color(0xFFFF6B6B) : const Color(0xFFB00020);
+        final noteColor = isDark
+            ? const Color(0xFFFF6B6B)
+            : const Color(0xFFB00020);
 
         bool isAtBottom() {
           if (!listController.hasClients) return false;
@@ -618,7 +973,10 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
               var canContinue = isAtBottom();
 
               void syncBottom() {
-                final next = isAtBottom() || (listController.hasClients && listController.position.maxScrollExtent <= 0);
+                final next =
+                    isAtBottom() ||
+                    (listController.hasClients &&
+                        listController.position.maxScrollExtent <= 0);
                 if (next != canContinue) setState(() => canContinue = next);
               }
 
@@ -626,10 +984,15 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
               WidgetsBinding.instance.addPostFrameCallback((_) => syncBottom());
 
               return Dialog(
-                insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                insetPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 24,
+                ),
                 backgroundColor: dialogBg,
                 surfaceTintColor: Colors.transparent,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
                 child: SizedBox(
                   height: dialogH.toDouble(),
                   width: double.maxFinite,
@@ -640,26 +1003,43 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
                       children: [
                         Text(
                           'Confirm your vote',
-                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: fg),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 18,
+                            color: fg,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           'You are about to submit your ballot. Please review your selected candidates before continuing. '
                           'Once submitted, your vote cannot be changed.',
-                          style: TextStyle(color: sub, height: 1.35, fontWeight: FontWeight.w500, fontSize: 12.5),
+                          style: TextStyle(
+                            color: sub,
+                            height: 1.35,
+                            fontWeight: FontWeight.w500,
+                            fontSize: 12.5,
+                          ),
                         ),
                         if (blankCount > 0) ...[
                           const SizedBox(height: 8),
                           Text(
                             'Note: $blankCount position(s) will be left blank.',
-                            style: TextStyle(color: noteColor, height: 1.25, fontWeight: FontWeight.w700, fontSize: 12.5),
+                            style: TextStyle(
+                              color: noteColor,
+                              height: 1.25,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12.5,
+                            ),
                           ),
                         ],
                         const SizedBox(height: 12),
                         Expanded(
                           child: NotificationListener<ScrollNotification>(
                             onNotification: (n) {
-                              if (n is ScrollUpdateNotification || n is ScrollEndNotification) syncBottom();
+                              if (n is ScrollUpdateNotification ||
+                                  n is ScrollEndNotification) {
+                                syncBottom();
+                              }
                               return false;
                             },
                             child: ListView(
@@ -677,7 +1057,13 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
                                 height: 44,
                                 child: TextButton(
                                   onPressed: () => Navigator.pop(ctx, false),
-                                  child: Text('Cancel', style: TextStyle(color: fg, fontWeight: FontWeight.w700)),
+                                  child: Text(
+                                    'Cancel',
+                                    style: TextStyle(
+                                      color: fg,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
@@ -686,9 +1072,19 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
                               child: SizedBox(
                                 height: 44,
                                 child: FilledButton(
-                                  style: FilledButton.styleFrom(backgroundColor: palette.accent),
-                                  onPressed: canContinue ? () => Navigator.pop(ctx, true) : null,
-                                  child: Text('Continue', style: TextStyle(color: palette.onAccent, fontWeight: FontWeight.w800)),
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: palette.accent,
+                                  ),
+                                  onPressed: canContinue
+                                      ? () => Navigator.pop(ctx, true)
+                                      : null,
+                                  child: Text(
+                                    'Continue',
+                                    style: TextStyle(
+                                      color: palette.onAccent,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
@@ -722,7 +1118,9 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
               decoration: BoxDecoration(
                 color: bg,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: isDark ? Colors.white12 : const Color(0xFFD7D7D7)),
+                border: Border.all(
+                  color: isDark ? Colors.white12 : const Color(0xFFD7D7D7),
+                ),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -730,10 +1128,16 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
                   SizedBox(
                     width: 18,
                     height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2.2, color: palette.accent),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.2,
+                      color: palette.accent,
+                    ),
                   ),
                   const SizedBox(width: 12),
-                  Text('Submitting...', style: TextStyle(color: fg, fontWeight: FontWeight.w700)),
+                  Text(
+                    'Submitting...',
+                    style: TextStyle(color: fg, fontWeight: FontWeight.w700),
+                  ),
                 ],
               ),
             ),
@@ -743,9 +1147,19 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
     );
 
     try {
-      await _api.submitVote(<String, dynamic>{'selections': payload});
+      final ledgerPayload = await _buildLedgerPayload(
+        selectionsPayload: payload,
+        election: _electionWindow,
+      );
+      await _api.submitVote(<String, dynamic>{
+        'selections': payload,
+        'ledger_payload': ledgerPayload,
+      });
       if (!mounted) return;
-      Navigator.of(context, rootNavigator: true).pop(); // close submitting dialog
+      Navigator.of(
+        context,
+        rootNavigator: true,
+      ).pop(); // close submitting dialog
 
       // Fetch receipt once to ensure it's available right away.
       Map<String, dynamic>? receiptMap;
@@ -778,7 +1192,11 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
       if (await NotificationPreferences.isPushEnabled()) {
         try {
           final id = DateTime.now().millisecondsSinceEpoch.remainder(1 << 30);
-          await LocalPushService.show(id: id, title: notifTitle, body: notifBody);
+          await LocalPushService.show(
+            id: id,
+            title: notifTitle,
+            body: notifBody,
+          );
         } catch (_) {}
       }
 
@@ -786,7 +1204,10 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: palette.snackNeutral,
-          content: Text('Your vote has been recorded.', style: TextStyle(color: palette.snackFg)),
+          content: Text(
+            'Your vote has been recorded.',
+            style: TextStyle(color: palette.snackFg),
+          ),
         ),
       );
 
@@ -797,7 +1218,10 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
       await _load();
     } on ElecomApiException catch (e) {
       if (!mounted) return;
-      Navigator.of(context, rootNavigator: true).pop(); // close submitting dialog
+      Navigator.of(
+        context,
+        rootNavigator: true,
+      ).pop(); // close submitting dialog
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: palette.snackNeutral,
@@ -806,7 +1230,10 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
       );
     } catch (e) {
       if (!mounted) return;
-      Navigator.of(context, rootNavigator: true).pop(); // close submitting dialog
+      Navigator.of(
+        context,
+        rootNavigator: true,
+      ).pop(); // close submitting dialog
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: palette.snackNeutral,
@@ -821,10 +1248,103 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final titleColor = isDark ? Colors.white : Colors.black;
     final subtitleColor = isDark ? Colors.white70 : Colors.black54;
+    final electionState = _isElectionActiveNow(_electionWindow)
+        ? _ElectionAccessState.active
+        : (_isElectionUpcoming(_electionWindow)
+              ? _ElectionAccessState.upcoming
+              : _ElectionAccessState.closed);
 
     if (_loading) {
       return Center(
-        child: CircularProgressIndicator(color: isDark ? Colors.white : Colors.black),
+        child: CircularProgressIndicator(
+          color: isDark ? Colors.white : Colors.black,
+        ),
+      );
+    }
+
+    if (electionState != _ElectionAccessState.active) {
+      final title = electionState == _ElectionAccessState.upcoming
+          ? 'Election Not Started'
+          : 'Election Closed';
+      final message = electionState == _ElectionAccessState.upcoming
+          ? 'Election has not started yet.\nVoting will open once the election begins.'
+          : 'Election has ended.\nVoting is now closed. You may view the results when available.';
+      return RefreshIndicator(
+        color: Colors.black,
+        backgroundColor: Colors.white,
+        onRefresh: _load,
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 520),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Icon(
+                            electionState == _ElectionAccessState.upcoming
+                                ? Icons.schedule
+                                : Icons.lock_clock_outlined,
+                            size: 56,
+                            color: subtitleColor,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            title,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w900,
+                              color: titleColor,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            message,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: subtitleColor,
+                              fontWeight: FontWeight.w700,
+                              height: 1.35,
+                            ),
+                          ),
+                          if (electionState == _ElectionAccessState.closed) ...[
+                            const SizedBox(height: 18),
+                            FilledButton.icon(
+                              style: FilledButton.styleFrom(
+                                backgroundColor: isDark
+                                    ? Colors.white
+                                    : Colors.black,
+                                foregroundColor: isDark
+                                    ? Colors.black
+                                    : Colors.white,
+                              ),
+                              onPressed: () =>
+                                  widget.onRequestTabIndex?.call(2),
+                              icon: const Icon(Icons.bar_chart_outlined),
+                              label: const Text(
+                                'View Results',
+                                style: TextStyle(fontWeight: FontWeight.w800),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       );
     }
 
@@ -850,19 +1370,27 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
                 child: SafeArea(
                   top: false,
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 18,
+                    ),
                     child: Center(
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 520),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 18,
+                            vertical: 18,
+                          ),
                           decoration: BoxDecoration(
                             color: cardBg,
                             borderRadius: BorderRadius.circular(22),
                             border: Border.all(color: cardBorder),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.10),
+                                color: Colors.black.withValues(
+                                  alpha: isDark ? 0.30 : 0.10,
+                                ),
                                 blurRadius: 24,
                                 offset: const Offset(0, 10),
                               ),
@@ -876,7 +1404,9 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
                                 child: AnimatedBuilder(
                                   animation: _successIconController,
                                   builder: (context, child) {
-                                    final t = Curves.easeInOut.transform(_successIconController.value);
+                                    final t = Curves.easeInOut.transform(
+                                      _successIconController.value,
+                                    );
                                     final dy = (t - 0.5) * 5;
                                     final scale = 1 + (0.035 * t);
                                     final glow = 0.14 + (0.12 * t);
@@ -892,13 +1422,19 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
                                             shape: BoxShape.circle,
                                             border: Border.all(
                                               color: isDark
-                                                  ? const Color(0xFF22C55E).withValues(alpha: 0.35)
-                                                  : const Color(0xFF22C55E).withValues(alpha: 0.28),
+                                                  ? const Color(
+                                                      0xFF22C55E,
+                                                    ).withValues(alpha: 0.35)
+                                                  : const Color(
+                                                      0xFF22C55E,
+                                                    ).withValues(alpha: 0.28),
                                               width: 1,
                                             ),
                                             boxShadow: [
                                               BoxShadow(
-                                                color: const Color(0xFF22C55E).withValues(alpha: glow),
+                                                color: const Color(
+                                                  0xFF22C55E,
+                                                ).withValues(alpha: glow),
                                                 blurRadius: 16,
                                                 offset: const Offset(0, 7),
                                               ),
@@ -941,7 +1477,9 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
                                 'You can view your receipt once available.',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
-                                  color: isDark ? Colors.white60 : Colors.black45,
+                                  color: isDark
+                                      ? Colors.white60
+                                      : Colors.black45,
                                   fontWeight: FontWeight.w700,
                                   height: 1.35,
                                 ),
@@ -952,7 +1490,9 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
                                 label: 'View Receipt',
                                 icon: Icons.receipt_long_outlined,
                                 background: const Color(0xFF0D0D0D),
-                                gold: isDark ? Colors.white12 : const Color(0xFFE5E7EB),
+                                gold: isDark
+                                    ? Colors.white12
+                                    : const Color(0xFFE5E7EB),
                                 onPressed: () async {
                                   setState(() => _checkingReceipt = true);
                                   try {
@@ -965,16 +1505,23 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
                                         widget.onRequestTabIndex!.call(3);
                                       } else {
                                         Navigator.of(context).push(
-                                          MaterialPageRoute(builder: (_) => const ReceiptScreen()),
+                                          MaterialPageRoute(
+                                            builder: (_) =>
+                                                const ReceiptScreen(),
+                                          ),
                                         );
                                       }
                                     } else {
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
                                         SnackBar(
                                           backgroundColor: Colors.black,
                                           content: const Text(
                                             'Your receipt is not yet available.',
-                                            style: TextStyle(color: Colors.white),
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                            ),
                                           ),
                                         ),
                                       );
@@ -991,7 +1538,9 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
                                       ),
                                     );
                                   } finally {
-                                    if (mounted) setState(() => _checkingReceipt = false);
+                                    if (mounted) {
+                                      setState(() => _checkingReceipt = false);
+                                    }
                                   }
                                 },
                               ),
@@ -1003,19 +1552,30 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
                                     return;
                                   }
                                   Navigator.of(context).push(
-                                    MaterialPageRoute(builder: (_) => const ElectionTransparencyScreen()),
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          const ElectionTransparencyScreen(),
+                                    ),
                                   );
                                 },
                                 icon: Icon(
                                   Icons.link_rounded,
                                   size: 16,
-                                  color: isDark ? Colors.white60 : Colors.black54,
+                                  color: isDark
+                                      ? Colors.white60
+                                      : Colors.black54,
                                 ),
                                 label: const Text('View Transparency'),
                                 style: TextButton.styleFrom(
-                                  foregroundColor: isDark ? Colors.white70 : const Color(0xFF4B5563),
-                                  padding: const EdgeInsets.symmetric(vertical: 8),
-                                  textStyle: const TextStyle(fontWeight: FontWeight.w800),
+                                  foregroundColor: isDark
+                                      ? Colors.white70
+                                      : const Color(0xFF4B5563),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 8,
+                                  ),
+                                  textStyle: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                  ),
                                 ),
                               ),
                             ],
@@ -1039,10 +1599,17 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(_loadError!, textAlign: TextAlign.center, style: TextStyle(color: subtitleColor)),
+              Text(
+                _loadError!,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: subtitleColor),
+              ),
               const SizedBox(height: 16),
               FilledButton(
-                style: FilledButton.styleFrom(backgroundColor: Colors.black, foregroundColor: Colors.white),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.black,
+                  foregroundColor: Colors.white,
+                ),
                 onPressed: _load,
                 child: const Text('Retry'),
               ),
@@ -1052,7 +1619,9 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
       );
     }
 
-    final programCode = (_ballotPayload['program_code'] ?? '').toString().trim();
+    final programCode = (_ballotPayload['program_code'] ?? '')
+        .toString()
+        .trim();
 
     final palette = _electionPalette(context, isDark);
 
@@ -1067,12 +1636,19 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
           children: [
             Text(
               'No ballot positions are available for your account.',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: titleColor),
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 16,
+                color: titleColor,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
               'If you expect to vote, confirm your program is set correctly on your profile.',
-              style: TextStyle(color: subtitleColor, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: subtitleColor,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),
@@ -1081,9 +1657,9 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
 
     final electionThemeData = Theme.of(context).copyWith(
       colorScheme: Theme.of(context).colorScheme.copyWith(
-            primary: palette.accent,
-            secondary: palette.accent,
-          ),
+        primary: palette.accent,
+        secondary: palette.accent,
+      ),
       radioTheme: RadioThemeData(
         fillColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) return palette.accent;
@@ -1099,7 +1675,9 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
       ),
       listTileTheme: ListTileThemeData(
         iconColor: palette.accent,
-        selectedTileColor: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.04),
+        selectedTileColor: isDark
+            ? Colors.white10
+            : Colors.black.withValues(alpha: 0.04),
       ),
     );
 
@@ -1118,7 +1696,11 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
                 children: [
                   Text(
                     'Election',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: titleColor),
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                      color: titleColor,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -1143,7 +1725,8 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
                     ),
                   ),
                   const SizedBox(height: 16),
-                  for (final org in _orgList) ..._orgSection(context, org, isDark, palette),
+                  for (final org in _orgList)
+                    ..._orgSection(context, org, isDark, palette),
                 ],
               ),
             ),
@@ -1160,8 +1743,17 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
                     foregroundColor: palette.onAccent,
                   ),
                   onPressed: () => _submit(palette),
-                  icon: Icon(Icons.how_to_vote_outlined, color: palette.onAccent),
-                  label: Text('Submit ballot', style: TextStyle(fontWeight: FontWeight.w800, color: palette.onAccent)),
+                  icon: Icon(
+                    Icons.how_to_vote_outlined,
+                    color: palette.onAccent,
+                  ),
+                  label: Text(
+                    'Submit ballot',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: palette.onAccent,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -1189,7 +1781,11 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
       const SizedBox(height: 8),
       Text(
         orgName,
-        style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: titleColor),
+        style: TextStyle(
+          fontSize: 17,
+          fontWeight: FontWeight.w900,
+          color: titleColor,
+        ),
       ),
       const SizedBox(height: 8),
     ];
@@ -1222,28 +1818,41 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
                   Expanded(
                     child: Text(
                       pos,
-                      style: TextStyle(fontWeight: FontWeight.w800, color: titleColor, fontSize: 15),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: titleColor,
+                        fontSize: 15,
+                      ),
                     ),
                   ),
-                  if (!multi &&
-                      ((_selections[key] != null)))
+                  if (!multi && ((_selections[key] != null)))
                     TextButton(
                       style: TextButton.styleFrom(
-                        foregroundColor: isDark ? Colors.white70 : palette.accent,
+                        foregroundColor: isDark
+                            ? Colors.white70
+                            : palette.accent,
                         padding: const EdgeInsets.symmetric(horizontal: 8),
                       ),
                       onPressed: () => setState(() => _selections.remove(key)),
-                      child: const Text('Clear', style: TextStyle(fontWeight: FontWeight.w700)),
+                      child: const Text(
+                        'Clear',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
                     ),
                   if (multi &&
                       ((_selections[key] as List?)?.isNotEmpty ?? false))
                     TextButton(
                       style: TextButton.styleFrom(
-                        foregroundColor: isDark ? Colors.white70 : palette.accent,
+                        foregroundColor: isDark
+                            ? Colors.white70
+                            : palette.accent,
                         padding: const EdgeInsets.symmetric(horizontal: 8),
                       ),
                       onPressed: () => setState(() => _selections.remove(key)),
-                      child: const Text('Clear', style: TextStyle(fontWeight: FontWeight.w700)),
+                      child: const Text(
+                        'Clear',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
                     ),
                 ],
               ),
@@ -1264,7 +1873,9 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
               ...cands.whereType<Map>().map((c) {
                 final m = Map<String, dynamic>.from(c);
                 final idVal = m['id'];
-                final id = idVal is int ? idVal : int.tryParse(idVal.toString()) ?? 0;
+                final id = idVal is int
+                    ? idVal
+                    : int.tryParse(idVal.toString()) ?? 0;
                 if (id == 0) return const SizedBox.shrink();
                 final name = _candidateName(m) ?? 'Candidate';
                 final photo = resolvedCandidatePhotoUrl(m['photo_url']);
@@ -1281,17 +1892,30 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
                     padding: const EdgeInsets.all(2),
                     child: CircleAvatar(
                       radius: 20,
-                      backgroundColor: isDark ? Colors.white12 : const Color(0xFFEAF1FF),
-                      backgroundImage: photo != null ? NetworkImage(photo) : null,
+                      backgroundColor: isDark
+                          ? Colors.white12
+                          : const Color(0xFFEAF1FF),
+                      backgroundImage: photo != null
+                          ? NetworkImage(photo)
+                          : null,
                       child: photo == null
-                          ? Icon(Icons.person, size: 20, color: isDark ? Colors.white54 : palette.accent)
+                          ? Icon(
+                              Icons.person,
+                              size: 20,
+                              color: isDark ? Colors.white54 : palette.accent,
+                            )
                           : null,
                     ),
                   );
                 }
 
-                Widget rowShell({required Widget control, required VoidCallback onTap}) {
-                  final rowBorder = isDark ? Colors.white12 : const Color(0xFFD7D7D7);
+                Widget rowShell({
+                  required Widget control,
+                  required VoidCallback onTap,
+                }) {
+                  final rowBorder = isDark
+                      ? Colors.white12
+                      : const Color(0xFFD7D7D7);
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: Material(
@@ -1304,7 +1928,10 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(color: rowBorder),
                           ),
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
                           child: Row(
                             children: [
                               avatar(),
@@ -1333,7 +1960,9 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
                                         overflow: TextOverflow.ellipsis,
                                         style: TextStyle(
                                           fontWeight: FontWeight.w600,
-                                          color: isDark ? Colors.white60 : Colors.black54,
+                                          color: isDark
+                                              ? Colors.white60
+                                              : Colors.black54,
                                           fontSize: 12.5,
                                           height: 1.1,
                                         ),
@@ -1343,7 +1972,13 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
                                 ),
                               ),
                               const SizedBox(width: 6),
-                              SizedBox(width: 44, child: Align(alignment: Alignment.centerRight, child: control)),
+                              SizedBox(
+                                width: 44,
+                                child: Align(
+                                  alignment: Alignment.centerRight,
+                                  child: control,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -1353,10 +1988,14 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
                 }
 
                 if (multi) {
-                  final list = (_selections[key] as List<dynamic>?)?.map((e) => e as int).toList() ?? <int>[];
+                  final list =
+                      (_selections[key] as List<dynamic>?)
+                          ?.map((e) => e as int)
+                          .toList() ??
+                      <int>[];
                   final checked = list.contains(id);
-                return rowShell(
-                  control: Checkbox(
+                  return rowShell(
+                    control: Checkbox(
                       value: checked,
                       activeColor: palette.accent,
                       checkColor: palette.onAccent,
@@ -1413,6 +2052,8 @@ class _ElectionScreenState extends State<ElectionScreen> with SingleTickerProvid
     return widgets;
   }
 }
+
+enum _ElectionAccessState { upcoming, active, closed }
 
 /// Black/white-only control colors for the Election tab (avoids seed/brown Material tints).
 class ElectionThemePalette {
@@ -1493,10 +2134,15 @@ class _SecureActionButtonState extends State<_SecureActionButton> {
             decoration: BoxDecoration(
               color: widget.background,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: widget.gold.withValues(alpha: disabled ? 0.25 : 0.75), width: 1),
+              border: Border.all(
+                color: widget.gold.withValues(alpha: disabled ? 0.25 : 0.75),
+                width: 1,
+              ),
               boxShadow: [
                 BoxShadow(
-                  color: widget.gold.withValues(alpha: disabled ? 0.0 : (isDark ? 0.10 : 0.12)),
+                  color: widget.gold.withValues(
+                    alpha: disabled ? 0.0 : (isDark ? 0.10 : 0.12),
+                  ),
                   blurRadius: 18,
                   offset: const Offset(0, 10),
                 ),
@@ -1507,7 +2153,10 @@ class _SecureActionButtonState extends State<_SecureActionButton> {
                   ? const SizedBox(
                       width: 18,
                       height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.4,
+                        color: Colors.white,
+                      ),
                     )
                   : Row(
                       mainAxisSize: MainAxisSize.min,
@@ -1531,4 +2180,3 @@ class _SecureActionButtonState extends State<_SecureActionButton> {
     );
   }
 }
-
