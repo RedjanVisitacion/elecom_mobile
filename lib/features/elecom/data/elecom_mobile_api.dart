@@ -127,6 +127,10 @@ class ElecomMobileApi {
     return _getJson(MobileApiPaths.results);
   }
 
+  Future<Map<String, dynamic>> getResultsAnalytics() async {
+    return _getJson(MobileApiPaths.resultsAnalytics);
+  }
+
   Future<Map<String, dynamic>> getVoteReceipt() async {
     return _getJson(MobileApiPaths.voteReceipt);
   }

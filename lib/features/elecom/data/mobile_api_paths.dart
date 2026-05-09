@@ -13,6 +13,7 @@ class MobileApiPaths {
   static String get voteSubmit => '$base/vote/submit/';
   static String get voteLedger => '$base/vote/ledger/';
   static String get results => '$base/results/';
+  static String get resultsAnalytics => '$base/results/analytics/';
 
   static String get accountProfile => '$base/account/profile/';
   static String get accountProfilePhoto => '$base/account/profile/photo/';

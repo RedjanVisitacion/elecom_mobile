@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 
-import '../../../core/ledger/vote_ledger_crypto.dart';
 import '../../../core/notifications/local_push_service.dart';
 import '../../../core/notifications/notification_center_store.dart';
 import '../../../core/session/notification_preferences.dart';
-import '../../../core/session/user_session.dart';
 import '../candidates/candidate_profile_screen.dart';
 import '../data/elecom_mobile_api.dart';
 import 'election_transparency_screen.dart';
@@ -330,63 +328,6 @@ class _ElectionScreenState extends State<ElectionScreen>
     final local = dt.isUtc ? dt.toLocal() : dt;
     String two(int n) => n.toString().padLeft(2, '0');
     return '${local.year}-${two(local.month)}-${two(local.day)} ${two(local.hour)}:${two(local.minute)}';
-  }
-
-  int _resolveElectionId(Map<String, dynamic> election) {
-    final raw = election['id'];
-    if (raw is num) return raw.toInt();
-    return int.tryParse('${raw ?? ''}') ?? 0;
-  }
-
-  Future<Map<String, dynamic>> _buildLedgerPayload({
-    required Map<String, dynamic> selectionsPayload,
-    required Map<String, dynamic> election,
-  }) async {
-    final electionId = _resolveElectionId(election);
-    final submittedAtIsoUtc = DateTime.now().toUtc().toIso8601String();
-    final studentId = (UserSession.studentId ?? '').trim();
-    final anonymousVoterHash = VoteLedgerCrypto.buildAnonymousVoterHash(
-      studentId: studentId,
-      electionId: electionId,
-      submittedAtIsoUtc: submittedAtIsoUtc,
-    );
-    final voteDataHash = VoteLedgerCrypto.buildVoteDataHash(selectionsPayload);
-
-    String previousHash = '';
-    try {
-      final ledger = await _api.getVoteLedger();
-      final blocksRaw = ledger['blocks'];
-      if (blocksRaw is List && blocksRaw.isNotEmpty) {
-        final latest = blocksRaw.first;
-        if (latest is Map) {
-          final full = (latest['hash_full'] ?? latest['current_hash'] ?? '')
-              .toString()
-              .trim();
-          if (full.isNotEmpty && full.toLowerCase() != 'null') {
-            previousHash = full;
-          }
-        }
-      }
-    } catch (_) {
-      // Use empty previous hash if ledger endpoint is temporarily unavailable.
-    }
-
-    final currentHash = VoteLedgerCrypto.buildCurrentHash(
-      electionId: electionId,
-      anonymousVoterHash: anonymousVoterHash,
-      voteDataHash: voteDataHash,
-      previousHash: previousHash,
-      submittedAtIsoUtc: submittedAtIsoUtc,
-    );
-
-    return <String, dynamic>{
-      'election_id': electionId,
-      'anonymous_voter_hash': anonymousVoterHash,
-      'vote_data_hash': voteDataHash,
-      'previous_hash': previousHash,
-      'current_hash': currentHash,
-      'submitted_at': submittedAtIsoUtc,
-    };
   }
 
   Future<void> _showVoteReceiptSheet({
@@ -1147,13 +1088,8 @@ class _ElectionScreenState extends State<ElectionScreen>
     );
 
     try {
-      final ledgerPayload = await _buildLedgerPayload(
-        selectionsPayload: payload,
-        election: _electionWindow,
-      );
       await _api.submitVote(<String, dynamic>{
         'selections': payload,
-        'ledger_payload': ledgerPayload,
       });
       if (!mounted) return;
       Navigator.of(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -19,6 +20,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
   bool _refreshInFlight = false;
   int _chartAnimSeed = 0;
   String _viewerDepartment = '';
+  bool _analyticsExpanded = true;
 
   /// `'ALL'` or organization key matching filter chips (e.g. `USG`).
   String _orgFilter = 'ALL';
@@ -32,6 +34,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
   Map<String, dynamic> _orgTotals = const <String, dynamic>{};
   Map<String, dynamic> _positionTotals = const <String, dynamic>{};
   List<Map<String, dynamic>> _grouped = const <Map<String, dynamic>>[];
+  Map<String, dynamic> _analytics = const <String, dynamic>{};
 
   static const List<String> _fixedOrgFilters = <String>[
     'ALL',
@@ -89,6 +92,12 @@ class _ResultsScreenState extends State<ResultsScreen> {
     }
     try {
       final res = await _api.getResults();
+      Map<String, dynamic> analyticsRes = const <String, dynamic>{};
+      try {
+        analyticsRes = await _api.getResultsAnalytics();
+      } catch (_) {
+        analyticsRes = const <String, dynamic>{};
+      }
       if (!mounted) return;
       setState(() {
         _loading = false;
@@ -99,6 +108,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
         _grouped = res['grouped'] is List
             ? (res['grouped'] as List).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList()
             : <Map<String, dynamic>>[];
+        _analytics = analyticsRes;
         _chartAnimSeed++;
       });
     } catch (e) {
@@ -114,6 +124,517 @@ class _ResultsScreenState extends State<ResultsScreen> {
     }
   }
 
+  Map<String, dynamic> _m(Map<String, dynamic> src, String key) {
+    final v = src[key];
+    if (v is Map) return Map<String, dynamic>.from(v);
+    return <String, dynamic>{};
+  }
+
+  String _s(Map<String, dynamic> src, String key, {String fallback = '-'}) {
+    final v = src[key];
+    if (v == null) return fallback;
+    final out = v.toString().trim();
+    return out.isEmpty ? fallback : out;
+  }
+
+  Widget _analyticsSection({
+    required bool isDark,
+    required Color fg,
+    required Color sub,
+    required Color card,
+    required Color border,
+  }) {
+    final turnout = _m(_analytics, 'turnout');
+    final prog = _analytics['participation_by_program'] is Map
+        ? Map<String, dynamic>.from(_analytics['participation_by_program'] as Map)
+        : <String, dynamic>{};
+    final completion = _m(_analytics, 'vote_completion');
+    final peak = _m(_analytics, 'peak_voting_time');
+
+    final eligible = _toInt(turnout['eligible_voters']);
+    final voted = _toInt(turnout['voted_students']);
+    final turnoutPctRaw = turnout['turnout_percentage'];
+    final turnoutPct = turnoutPctRaw is num
+        ? turnoutPctRaw.toDouble()
+        : double.tryParse('${turnoutPctRaw ?? ''}') ?? 0.0;
+
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      decoration: BoxDecoration(
+        color: card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Election Analytics',
+                  style: TextStyle(
+                    color: fg,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+              IconButton(
+                onPressed: () => setState(() => _analyticsExpanded = !_analyticsExpanded),
+                icon: Icon(
+                  _analyticsExpanded ? Icons.expand_less : Icons.expand_more,
+                  color: sub,
+                ),
+                tooltip: _analyticsExpanded ? 'Collapse' : 'Expand',
+              ),
+            ],
+          ),
+          AnimatedCrossFade(
+            duration: const Duration(milliseconds: 180),
+            crossFadeState: _analyticsExpanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            firstChild: const SizedBox(width: double.infinity, height: 0),
+            secondChild: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 6),
+                // Turnout
+                _miniCard(
+                  icon: Icons.groups_rounded,
+                  title: 'Voter Turnout',
+                  value: '${turnoutPct.toStringAsFixed(turnoutPct == turnoutPct.roundToDouble() ? 0 : 1)}%',
+                  subtitle: eligible > 0 ? '$voted of $eligible eligible voters' : '$voted voted',
+                  fg: fg,
+                  sub: sub,
+                  border: border,
+                ),
+                const SizedBox(height: 8),
+                // Program participation
+                _rowCard(
+                  icon: Icons.school_rounded,
+                  title: 'Participation by Program',
+                  fg: fg,
+                  sub: sub,
+                  border: border,
+                  rows: [
+                    _kv('BSIT', _toInt(prog['BSIT']).toString()),
+                    _kv('BTLED', _toInt(prog['BTLED']).toString()),
+                    _kv('BFPT', _toInt(prog['BFPT']).toString()),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                // Completion
+                _rowCard(
+                  icon: Icons.checklist_rounded,
+                  title: 'Position Participation',
+                  fg: fg,
+                  sub: sub,
+                  border: border,
+                  rows: [
+                    _kv('Most Voted', _s(completion, 'most_voted_position')),
+                    _kv('Least Voted', _s(completion, 'least_voted_position')),
+                    _kv(
+                      'Skipped Positions',
+                      '${_toInt(completion['skipped_positions'])} (${_s(completion, 'skipped_positions_percentage', fallback: '0')}%)',
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                // Peak time
+                _peakVotingCard(
+                  icon: Icons.schedule_rounded,
+                  title: 'Voting Trend',
+                  value: _s(peak, 'label', fallback: 'Not enough data yet'),
+                  note: _toInt(peak['votes_submitted']) > 0
+                      ? '${_toInt(peak['votes_submitted'])} votes submitted'
+                      : _s(peak, 'note', fallback: 'Not enough data yet'),
+                  subtitle: 'Votes submitted over time',
+                  trend: peak['trend'],
+                  hasEnoughData: peak['has_enough_data'] == true,
+                  fg: fg,
+                  sub: sub,
+                  border: border,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  ({String label, String value, Color? valueColor}) _kv(
+    String label,
+    String value, {
+    Color? valueColor,
+  }) =>
+      (label: label, value: value, valueColor: valueColor);
+
+  Widget _miniCard({
+    required IconData icon,
+    required String title,
+    required String value,
+    required String subtitle,
+    required Color fg,
+    required Color sub,
+    required Color border,
+  }) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: border),
+        color: Colors.transparent,
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.04),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: sub, size: 20),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: TextStyle(color: fg, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 1),
+                Text(subtitle, style: TextStyle(color: sub, fontWeight: FontWeight.w600, fontSize: 12)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(value, style: TextStyle(color: fg, fontWeight: FontWeight.w900, fontSize: 18)),
+        ],
+      ),
+    );
+  }
+
+  Widget _rowCard({
+    required IconData icon,
+    required String title,
+    required Color fg,
+    required Color sub,
+    required Color border,
+    required List<({String label, String value, Color? valueColor})> rows,
+    Color? highlightColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: border),
+        color: Colors.transparent,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: (highlightColor ?? Colors.black).withValues(alpha: 0.06),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: highlightColor ?? sub, size: 20),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(title, style: TextStyle(color: fg, fontWeight: FontWeight.w900)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ...rows.asMap().entries.map((entry) {
+            final r = entry.value;
+            return Padding(
+              padding: EdgeInsets.only(bottom: entry.key == rows.length - 1 ? 0 : 6),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(r.label, style: TextStyle(color: sub, fontWeight: FontWeight.w700)),
+                  ),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      r.value,
+                      textAlign: TextAlign.right,
+                      style: TextStyle(
+                        color: r.valueColor ?? fg,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _peakVotingCard({
+    required IconData icon,
+    required String title,
+    required String value,
+    required String subtitle,
+    required String note,
+    required dynamic trend,
+    required bool hasEnoughData,
+    required Color fg,
+    required Color sub,
+    required Color border,
+  }) {
+    final trendRows = trend is List
+        ? trend
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList()
+        : <Map<String, dynamic>>[];
+    final spots = <FlSpot>[];
+    final labels = <int, String>{};
+    final peakXs = <double>{};
+    final shownTimeLabels = <String>{};
+    final pointCount = trendRows.length;
+    final visibleLabelIndices = <int>{};
+    if (pointCount == 1) {
+      visibleLabelIndices.add(0);
+    } else if (pointCount == 2) {
+      visibleLabelIndices.addAll(<int>{0, 1});
+    } else if (pointCount > 2) {
+      visibleLabelIndices
+        ..add(0)
+        ..add(pointCount - 1);
+      if (pointCount <= 4) {
+        visibleLabelIndices.add((pointCount / 2).floor());
+      } else {
+        visibleLabelIndices.add(((pointCount - 1) / 2).round());
+      }
+    }
+    for (var i = 0; i < trendRows.length; i++) {
+      final row = trendRows[i];
+      final votes = _toInt(row['votes']);
+      final x = i.toDouble();
+      spots.add(FlSpot(x, votes.toDouble()));
+      final cleaned = _cleanTimeLabel(_s(row, 'x_label', fallback: '${i + 1}'));
+      final shouldRender = visibleLabelIndices.contains(i);
+      labels[i] = shouldRender && shownTimeLabels.add(cleaned) ? cleaned : '';
+      if (row['is_peak'] == true) peakXs.add(x);
+    }
+    final maxY = spots.isEmpty
+        ? 1.0
+        : spots.map((s) => s.y).reduce(math.max).clamp(1.0, 1e9).toDouble();
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: border),
+        color: Colors.transparent,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: sub, size: 20),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(color: fg, fontWeight: FontWeight.w900),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            style: TextStyle(
+              color: sub,
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 4),
+          if (!hasEnoughData || spots.isEmpty) ...[
+            Text(
+              'Not enough data yet',
+              style: TextStyle(color: fg, fontWeight: FontWeight.w900, fontSize: 18),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              note,
+              style: TextStyle(color: sub, fontWeight: FontWeight.w600, fontSize: 12),
+            ),
+          ] else ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(6, 0, 6, 0),
+              child: SizedBox(
+              height: 170,
+              child: LineChart(
+                LineChartData(
+                  minX: pointCount <= 1 ? -0.5 : -0.15,
+                  maxX: pointCount <= 1 ? 0.5 : (spots.length - 1).toDouble() + 0.15,
+                  minY: 0,
+                  maxY: maxY * 1.25,
+                  gridData: FlGridData(
+                    show: true,
+                    drawVerticalLine: true,
+                    horizontalInterval: math.max(1, (maxY / 4).ceilToDouble()),
+                    verticalInterval: 1,
+                    getDrawingHorizontalLine: (_) => FlLine(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      strokeWidth: 1,
+                    ),
+                    getDrawingVerticalLine: (_) => FlLine(
+                      color: Colors.black.withValues(alpha: 0.06),
+                      strokeWidth: 1,
+                    ),
+                  ),
+                  borderData: FlBorderData(
+                    show: true,
+                    border: Border.all(color: border),
+                  ),
+                  titlesData: FlTitlesData(
+                    rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 30,
+                        interval: math.max(1, (maxY / 4).ceilToDouble()),
+                        getTitlesWidget: (v, meta) => Text(
+                          v.toInt().toString(),
+                          style: TextStyle(
+                            color: sub,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        interval: 1,
+                        reservedSize: 32,
+                        getTitlesWidget: (v, meta) {
+                          // Avoid duplicate labels caused by non-integer tick positions.
+                          if ((v - v.roundToDouble()).abs() > 0.001) {
+                            return const SizedBox.shrink();
+                          }
+                          final idx = v.round();
+                          final label = labels[idx];
+                          if (label == null || label.isEmpty) return const SizedBox.shrink();
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              label,
+                              style: TextStyle(
+                                color: sub,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  lineBarsData: [
+                    LineChartBarData(
+                      spots: spots,
+                      isCurved: true,
+                      color: const Color(0xFF2563EB),
+                      barWidth: 2.5,
+                      dotData: FlDotData(
+                        show: true,
+                        getDotPainter: (spot, percent, barData, index) {
+                          final isPeak = peakXs.contains(spot.x);
+                          return FlDotCirclePainter(
+                            radius: isPeak ? 4.5 : 3,
+                            color: isPeak ? const Color(0xFF16A34A) : const Color(0xFF2563EB),
+                            strokeWidth: isPeak ? 1.5 : 1,
+                            strokeColor: Colors.white,
+                          );
+                        },
+                      ),
+                      belowBarData: BarAreaData(
+                        show: true,
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            const Color(0xFF2563EB).withValues(alpha: 0.28),
+                            const Color(0xFF2563EB).withValues(alpha: 0.04),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                  lineTouchData: LineTouchData(
+                    touchTooltipData: LineTouchTooltipData(
+                      getTooltipColor: (_) => Colors.black87,
+                      fitInsideHorizontally: true,
+                      fitInsideVertically: true,
+                      maxContentWidth: 120,
+                      getTooltipItems: (items) => items.map((it) {
+                        final idx = it.x.round();
+                        final w = trendRows[idx]['window_label']?.toString() ?? '';
+                        return LineTooltipItem(
+                          '$w\n${it.y.toInt()} votes',
+                          const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 11,
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+              ),
+            )),
+            const SizedBox(height: 6),
+            Text(
+              'Peak Time: $value',
+              style: TextStyle(color: fg, fontWeight: FontWeight.w800, fontSize: 14),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'Peak Votes: $note',
+              style: TextStyle(color: sub, fontWeight: FontWeight.w600, fontSize: 12),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   int _toInt(dynamic v) {
     if (v is int) return v;
     if (v is num) return v.toInt();
@@ -125,6 +646,19 @@ class _ResultsScreenState extends State<ResultsScreen> {
     final rounded = p.roundToDouble();
     if ((p - rounded).abs() < 0.05) return '${rounded.toInt()}%';
     return '${p.toStringAsFixed(1)}%';
+  }
+
+  String _cleanTimeLabel(String raw) {
+    var label = raw.trim().toUpperCase();
+    if (label.isEmpty) return '';
+    label = label.replaceAll(RegExp(r'\s+'), ' ');
+    final amPmMatch = RegExp(r'^(\d{1,2})(?::00)?\s*(AM|PM)$').firstMatch(label);
+    if (amPmMatch != null) {
+      final hour = amPmMatch.group(1);
+      final suffix = amPmMatch.group(2);
+      return '$hour $suffix';
+    }
+    return label;
   }
 
   String _candidateName(Map<String, dynamic> c) {
@@ -466,6 +1000,16 @@ class _ResultsScreenState extends State<ResultsScreen> {
                               ],
                             ],
                           ),
+                        ),
+
+                        /// Election analytics (privacy-safe summaries)
+                        const SizedBox(height: 12),
+                        _analyticsSection(
+                          isDark: isDark,
+                          fg: fg,
+                          sub: sub,
+                          card: card,
+                          border: border,
                         ),
 
                         /// Organization filters

@@ -555,6 +555,9 @@ class _StudentDashboardState extends State<StudentDashboard> {
                           _currentIndex = 2;
                         });
                       },
+                      onViewReceipt: () {
+                        setState(() => _currentIndex = 3);
+                      },
                     ),
                     const SizedBox(height: 12),
                     HomeCandidatesStrip(

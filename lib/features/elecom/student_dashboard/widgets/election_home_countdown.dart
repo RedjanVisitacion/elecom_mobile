@@ -16,6 +16,7 @@ class ElectionHomeCountdown extends StatefulWidget {
     this.embeddedInProfileCard = false,
     this.onVoteNow,
     this.onViewResults,
+    this.onViewReceipt,
   });
 
   final String orgName;
@@ -26,6 +27,7 @@ class ElectionHomeCountdown extends StatefulWidget {
   /// Opens voting (e.g. switch bottom nav to Election).
   final VoidCallback? onVoteNow;
   final VoidCallback? onViewResults;
+  final VoidCallback? onViewReceipt;
 
   @override
   State<ElectionHomeCountdown> createState() => _ElectionHomeCountdownState();
@@ -35,6 +37,7 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
   final ElecomMobileApi _api = ElecomMobileApi();
   Map<String, dynamic> _election = const <String, dynamic>{};
   String? _loadError;
+  bool _hasVoted = false;
   Timer? _secondTicker;
   Timer? _pollTicker;
 
@@ -83,6 +86,18 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
     if (status == 'Closed' && rs == 'pending' && results != null)
       return results.toLocal();
     return null;
+  }
+
+  String _countdownLabel(Map<String, dynamic> e) {
+    final status = (e['status'] ?? '').toString();
+    final rs = (e['results_status'] ?? e['results_state'] ?? '')
+        .toString()
+        .toLowerCase();
+    if (status == 'Upcoming') return 'Countdown to election start';
+    if (status == 'Active') return 'Countdown to election end';
+    if (status == 'Closed' && rs == 'pending') return 'Countdown to results time';
+    if (status == 'Closed' && rs == 'published') return 'Results are published';
+    return 'Election countdown';
   }
 
   String _statusLine(Map<String, dynamic> e, Duration? remaining) {
@@ -203,14 +218,17 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
   Future<void> _refreshFromServer() async {
     try {
       final res = await _api.getElectionWindow();
+      final voteRes = await _api.getVoteStatus();
       final election = res['election'];
       final map = election is Map<String, dynamic>
           ? election
           : const <String, dynamic>{};
+      final voted = voteRes['voted'] == true;
       if (!mounted) return;
       setState(() {
         _election = map;
         _loadError = null;
+        _hasVoted = voted;
       });
       await _maybeReactToPhaseChange(map);
     } catch (e) {
@@ -238,14 +256,17 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
     final isActive = _isActive(e);
     final showViewResults =
         _isClosedWithoutPublishedResults(e) || _isResultsPublished(e);
-    final ctaText = isActive ? 'Vote Now' : (showViewResults ? 'View Results' : 'Vote Now');
+    final ctaText = _hasVoted
+        ? 'View Receipt'
+        : (isActive ? 'Vote Now' : (showViewResults ? 'View Results' : 'Vote Now'));
+    final headline = _countdownLabel(e);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SizedBox(height: widget.embeddedInProfileCard ? 10 : 8),
         Text(
-          'Election Countdown',
+          headline,
           style: TextStyle(
             color: titleColor,
             fontWeight: FontWeight.w900,
@@ -326,7 +347,11 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
                 ),
               ),
               const SizedBox(height: 14),
-              _voteNowButton(context, ctaText: ctaText, showViewResults: showViewResults),
+              _voteNowButton(
+                context,
+                ctaText: ctaText,
+                showViewResults: showViewResults,
+              ),
             ],
           ),
         ),
@@ -346,6 +371,10 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         onTap: () {
+          if (_hasVoted) {
+            widget.onViewReceipt?.call();
+            return;
+          }
           if (showViewResults) {
             widget.onViewResults?.call();
             return;
