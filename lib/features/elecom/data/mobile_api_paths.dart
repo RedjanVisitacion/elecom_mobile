@@ -48,6 +48,13 @@ class MobileApiPaths {
       '$base/admin/cloudinary/signature/';
   static String get cloudinaryProfileSignature =>
       '$rootApi/cloudinary/signature/?type=profile_photo';
+  static String get cloudinaryFaceEnrollmentSignature =>
+      '$rootApi/cloudinary/signature/?type=face_enrollment';
+  static String get faceEnrollmentStatus => '$base/face/enrollment/status/';
+  static String get faceEnrollmentSave => '$base/face/enrollment/save/';
+  /// Legacy alias; Face++ verification uses [faceVerificationVerify].
+  static String get faceVerify => '$base/face/verify/';
+  static String get faceVerificationVerify => '$base/face/verification/verify/';
   static String get adminCandidatesList => '$base/admin/candidates/list/';
   static String get adminCandidatesDetail => '$base/admin/candidates/detail/';
   static String get adminCandidatesCreate => '$base/admin/candidates/create/';

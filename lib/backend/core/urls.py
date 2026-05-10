@@ -36,6 +36,8 @@ from .views import (
     admin_network_logs_api,
     check_network_access_api,
     login_view,
+    face_enrollment_status_api,
+    face_enrollment_save_api,
 )
 
 urlpatterns = [
@@ -86,6 +88,8 @@ urlpatterns = [
     path('api/mobile/account/profile/update/', account_profile_update_api, name='mobile_account_profile_update_api'),
     path('api/mobile/account/profile/password/', account_profile_password_api, name='mobile_account_profile_password_api'),
     path('api/mobile/network/check/', check_network_access_api, name='mobile_check_network_access_api'),
+    path('api/mobile/face/enrollment/status/', face_enrollment_status_api, name='face_enrollment_status_api'),
+    path('api/mobile/face/enrollment/save/', face_enrollment_save_api, name='face_enrollment_save_api'),
     path('api/mobile/notifications/', user_notifications_list_api, name='mobile_user_notifications_list_api'),
     path('api/mobile/notifications/create/', user_notifications_create_api, name='mobile_user_notifications_create_api'),
     path('api/mobile/notifications/read/', user_notifications_mark_read_api, name='mobile_user_notifications_mark_read_api'),

@@ -40,6 +40,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
   int _currentIndex = 0;
   int _resultsScreenVersion = 0;
   int _homeCountdownVersion = 0;
+  int _voteIntentNonce = 0;
   List<Map<String, dynamic>> _homeCandidates = <Map<String, dynamic>>[];
   Map<String, dynamic>? _ledgerSummary;
   bool _loadingLedger = false;
@@ -283,6 +284,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
               children: [
                 _homeTab(context),
                 ElectionScreen(
+                  voteIntentNonce: _voteIntentNonce,
                   onRequestTabIndex: (i) {
                     if (!mounted) return;
                     setState(() => _currentIndex = i);
@@ -327,6 +329,16 @@ class _StudentDashboardState extends State<StudentDashboard> {
                         _homeCountdownVersion++;
                       });
                     }
+                    return;
+                  }
+
+                  if (i == 1) {
+                    // Entering Election should force the same gates as "Vote Now":
+                    // enrollment check + face verification before ballot loads.
+                    setState(() {
+                      _voteIntentNonce++;
+                      _currentIndex = 1;
+                    });
                     return;
                   }
 
@@ -547,7 +559,10 @@ class _StudentDashboardState extends State<StudentDashboard> {
                       orgName: widget.orgName,
                       embeddedInProfileCard: false,
                       onVoteNow: () {
-                        setState(() => _currentIndex = 1);
+                        setState(() {
+                          _voteIntentNonce++;
+                          _currentIndex = 1;
+                        });
                       },
                       onViewResults: () {
                         setState(() {

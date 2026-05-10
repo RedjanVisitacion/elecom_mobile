@@ -7,6 +7,10 @@ import '../../../core/network/api_client.dart';
 import 'mobile_api_paths.dart';
 
 class ElecomMobileApi {
+  /// Returned by [saveFaceEnrollment] when the server rejects enrollment because
+  /// this face matches another user's enrollment (`ok: false`, JSON `code`).
+  static const String codeFaceAlreadyEnrolled = 'face_already_enrolled';
+
   Future<Map<String, dynamic>> getElectionWindow() async {
     return _getJson(MobileApiPaths.electionWindow);
   }
@@ -148,6 +152,59 @@ class ElecomMobileApi {
     return _getJson(MobileApiPaths.cloudinaryProfileSignature);
   }
 
+  Future<Map<String, dynamic>> getFaceCloudinarySignature() async {
+    return _getJson(MobileApiPaths.cloudinaryFaceEnrollmentSignature);
+  }
+
+  Future<Map<String, dynamic>> getFaceEnrollmentStatus() async {
+    return _getJson(MobileApiPaths.faceEnrollmentStatus);
+  }
+
+  /// Persists enrollment via backend (Face++, Cloudinary, DB). Sends image bytes only —
+  /// no Face++ credentials on device.
+  Future<Map<String, dynamic>> saveFaceEnrollment({
+    required File capturedImageFile,
+  }) async {
+    final uri = Uri.parse(MobileApiPaths.faceEnrollmentSave);
+    final request = http.MultipartRequest('POST', uri)
+      ..headers['Accept'] = 'application/json'
+      ..files.add(
+        await http.MultipartFile.fromPath('face_image', capturedImageFile.path),
+      );
+    http.StreamedResponse streamed;
+    try {
+      streamed = await ApiClient.httpClient.send(request);
+    } catch (_) {
+      throw const ElecomApiException('Network error: cannot reach server');
+    }
+    return _decodeStreamed(streamed);
+  }
+
+  /// Face verification for voting: image sent to backend; Face++ Compare runs server-side only.
+  Future<Map<String, dynamic>> verifyFaceForVote({
+    required File liveFaceImageFile,
+    required bool livenessPassed,
+    int? electionId,
+  }) async {
+    final uri = Uri.parse(MobileApiPaths.faceVerificationVerify);
+    final request = http.MultipartRequest('POST', uri)
+      ..headers['Accept'] = 'application/json'
+      ..fields['liveness_passed'] = livenessPassed ? 'true' : 'false'
+      ..files.add(
+        await http.MultipartFile.fromPath('face_image', liveFaceImageFile.path),
+      );
+    if (electionId != null) {
+      request.fields['election_id'] = '$electionId';
+    }
+    http.StreamedResponse streamed;
+    try {
+      streamed = await ApiClient.httpClient.send(request);
+    } catch (_) {
+      throw const ElecomApiException('Network error: cannot reach server');
+    }
+    return _decodeStreamed(streamed);
+  }
+
   Future<Map<String, dynamic>> updateProfilePhotoUrl({
     required String photoUrl,
   }) async {
@@ -212,7 +269,20 @@ class ElecomMobileApi {
   }
 
   Future<String> uploadImageToCloudinary({required File imageFile}) async {
-    final sigRes = await getCloudinarySignature();
+    final uploaded = await uploadImageToCloudinaryDetailed(
+      imageFile: imageFile,
+      signatureType: CloudinarySignatureType.profilePhoto,
+    );
+    return (uploaded['secure_url'] ?? '').toString();
+  }
+
+  Future<Map<String, dynamic>> uploadImageToCloudinaryDetailed({
+    required File imageFile,
+    CloudinarySignatureType signatureType = CloudinarySignatureType.profilePhoto,
+  }) async {
+    final sigRes = signatureType == CloudinarySignatureType.faceEnrollment
+        ? await getFaceCloudinarySignature()
+        : await getCloudinarySignature();
 
     Map<String, dynamic> sig = sigRes;
     if (sigRes['data'] is Map<String, dynamic>) {
@@ -286,7 +356,11 @@ class ElecomMobileApi {
       );
     }
 
-    return secureUrl;
+    return <String, dynamic>{
+      'secure_url': secureUrl,
+      'public_id': (decoded['public_id'] ?? '').toString().trim(),
+      'raw': decoded,
+    };
   }
 
   Future<List<Map<String, dynamic>>> getNotifications() async {
@@ -410,7 +484,10 @@ class ElecomMobileApi {
         if (decoded['ok'] == true) return decoded;
         final msg = (decoded['error'] ?? decoded['message'] ?? 'Request failed')
             .toString();
-        throw ElecomApiException('Request failed (${res.statusCode}): $msg');
+        throw ElecomApiException(
+          'Request failed (${res.statusCode}): $msg',
+          code: _parseApiErrorCode(decoded),
+        );
       }
       throw ElecomApiException(
         'Server error (${res.statusCode}): Invalid JSON',
@@ -435,6 +512,7 @@ class ElecomMobileApi {
             .toString();
         throw ElecomApiException(
           'Request failed (${streamed.statusCode}): $msg',
+          code: _parseApiErrorCode(decoded),
         );
       }
       throw ElecomApiException(
@@ -447,13 +525,35 @@ class ElecomMobileApi {
       );
     }
   }
+
+  static String? _parseApiErrorCode(Map<String, dynamic> decoded) {
+    final direct = (decoded['code'] ?? decoded['error_code'] ?? '').toString().trim();
+    if (direct.isNotEmpty) return direct;
+    final detail = decoded['detail'];
+    if (detail is Map<String, dynamic>) {
+      final c = (detail['code'] ?? '').toString().trim();
+      if (c.isNotEmpty) return c;
+    }
+    return null;
+  }
+
+  /// Server-indicated duplicate face (supports alternate codes some backends use).
+  static bool isFaceAlreadyEnrolled(ElecomApiException e) {
+    final c = (e.code ?? '').trim().toLowerCase();
+    return c == codeFaceAlreadyEnrolled ||
+        c == 'duplicate_face' ||
+        c == 'face_duplicate';
+  }
 }
 
 class ElecomApiException implements Exception {
-  const ElecomApiException(this.message);
+  const ElecomApiException(this.message, {this.code});
 
   final String message;
+  final String? code;
 
   @override
-  String toString() => 'ElecomApiException(message: $message)';
+  String toString() => 'ElecomApiException(message: $message, code: $code)';
 }
+
+enum CloudinarySignatureType { profilePhoto, faceEnrollment }

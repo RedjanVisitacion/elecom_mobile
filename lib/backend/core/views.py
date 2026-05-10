@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 import json
 import hashlib
 from datetime import datetime, timezone
@@ -1709,10 +1710,12 @@ def cloudinary_signature_api(request):
         )
 
     upload_type = (request.GET.get("type") or "").strip() or "profile_photo"
-    if upload_type != "profile_photo":
+    if upload_type == "profile_photo":
+        folder = "elecom/users/photos"
+    elif upload_type == "face_enrollment":
+        folder = "elecom/faces/enrollment"
+    else:
         return JsonResponse({"ok": False, "error": "Forbidden."}, status=403)
-
-    folder = "elecom/users/photos"
 
     try:
         import time
@@ -3183,3 +3186,244 @@ def check_network_access_api(request):
                 
     except Exception as e:
         return JsonResponse({"ok": False, "error": str(e)}, status=500)
+
+
+# --- Face enrollment (mobile): block the same face on multiple accounts ----------
+# Requires Pillow on the server: pip install Pillow
+
+_FACE_DHASH_MAX_HAMMING = 17
+
+
+def _ensure_face_enrollments_schema(cur) -> None:
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS face_enrollments (
+            id BIGSERIAL PRIMARY KEY,
+            user_id BIGINT NOT NULL,
+            student_id VARCHAR(64) NOT NULL,
+            face_image_url TEXT NOT NULL,
+            cloudinary_public_id TEXT,
+            face_dhash VARCHAR(32),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+    try:
+        cur.execute(
+            """
+            ALTER TABLE face_enrollments
+            ADD COLUMN IF NOT EXISTS cloudinary_public_id TEXT
+            """
+        )
+    except Exception:
+        pass
+    try:
+        cur.execute(
+            """
+            ALTER TABLE face_enrollments
+            ADD COLUMN IF NOT EXISTS face_dhash VARCHAR(32)
+            """
+        )
+    except Exception:
+        pass
+    try:
+        cur.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS ux_face_enrollments_user_id
+            ON face_enrollments (user_id)
+            """
+        )
+    except Exception:
+        pass
+
+
+def _download_binary(url: str, max_bytes: int = 8 * 1024 * 1024) -> bytes:
+    import ssl
+    import urllib.request
+
+    u = (url or "").strip()
+    if not u.startswith(("http://", "https://")):
+        raise ValueError("invalid image URL")
+    ctx = ssl.create_default_context()
+    req = urllib.request.Request(u, headers={"User-Agent": "ElecomFaceEnrollment/1.0"})
+    with urllib.request.urlopen(req, timeout=25, context=ctx) as resp:
+        chunks: list[bytes] = []
+        total = 0
+        while True:
+            block = resp.read(65536)
+            if not block:
+                break
+            total += len(block)
+            if total > max_bytes:
+                raise ValueError("image too large")
+            chunks.append(block)
+    return b"".join(chunks)
+
+
+def _face_dhash_int(image_bytes: bytes) -> int:
+    from io import BytesIO
+
+    try:
+        from PIL import Image
+    except ImportError as e:
+        raise RuntimeError(
+            "Install Pillow on the server for face enrollment (pip install Pillow)."
+        ) from e
+
+    im = Image.open(BytesIO(image_bytes))
+    im.load()
+    try:
+        resample = Image.Resampling.LANCZOS
+    except AttributeError:
+        resample = Image.LANCZOS
+    gray = im.convert("L").resize((9, 8), resample)
+    bits = 0
+    bit = 0
+    for y in range(8):
+        for x in range(8):
+            if gray.getpixel((x, y)) > gray.getpixel((x + 1, y)):
+                bits |= 1 << bit
+            bit += 1
+    return bits & ((1 << 64) - 1)
+
+
+def _hamming_u64(a: int, b: int) -> int:
+    mask = (1 << 64) - 1
+    return bin((a ^ b) & mask).count("1")
+
+
+def _dhash_hex(h: int) -> str:
+    return f"{h & ((1 << 64) - 1):016x}"
+
+
+def _dhash_from_hex(s: str):
+    t = (s or "").strip().lower()
+    if len(t) != 16:
+        return None
+    try:
+        return int(t, 16)
+    except ValueError:
+        return None
+
+
+@functools.lru_cache(maxsize=512)
+def _cached_dhash_for_url(url: str) -> int:
+    return _face_dhash_int(_download_binary(url))
+
+
+@csrf_exempt
+@require_http_methods(["GET"])
+def face_enrollment_status_api(request):
+    student_id = (request.session.get("student_id") or "").strip()
+    if not student_id:
+        return JsonResponse({"ok": False, "error": "Unauthorized."}, status=401)
+
+    try:
+        with connection.cursor() as cur:
+            _ensure_face_enrollments_schema(cur)
+            cur.execute(
+                """
+                SELECT 1 FROM face_enrollments
+                WHERE student_id::text = %s
+                LIMIT 1
+                """,
+                [student_id],
+            )
+            enrolled = cur.fetchone() is not None
+        return JsonResponse({"ok": True, "enrolled": enrolled})
+    except Exception as e:
+        if getattr(settings, "DEBUG", False):
+            return JsonResponse({"ok": False, "error": str(e)}, status=500)
+        return JsonResponse({"ok": False, "error": "Could not load enrollment status."}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def face_enrollment_save_api(request):
+    student_id = (request.session.get("student_id") or "").strip()
+    if not student_id:
+        return JsonResponse({"ok": False, "error": "Unauthorized."}, status=401)
+
+    try:
+        payload = json.loads((request.body or b"{}").decode("utf-8"))
+    except Exception:
+        payload = {}
+
+    face_image_url = str(payload.get("face_image_url") or "").strip()
+    cloudinary_public_id = str(payload.get("cloudinary_public_id") or "").strip()
+
+    if not face_image_url or len(face_image_url) > 2500:
+        return JsonResponse({"ok": False, "error": "Invalid face_image_url."}, status=400)
+
+    user = ElecomUser.objects.filter(student_id=student_id).first()
+    if not user:
+        return JsonResponse({"ok": False, "error": "User not found."}, status=401)
+
+    uid = int(user.pk)
+
+    try:
+        raw_new = _download_binary(face_image_url)
+        new_hash = _face_dhash_int(raw_new)
+        new_hex = _dhash_hex(new_hash)
+    except RuntimeError as e:
+        return JsonResponse({"ok": False, "error": str(e)}, status=500)
+    except Exception as e:
+        msg = str(e) or "Could not read enrollment image."
+        return JsonResponse({"ok": False, "error": msg}, status=400)
+
+    try:
+        with transaction.atomic():
+            with connection.cursor() as cur:
+                _ensure_face_enrollments_schema(cur)
+                cur.execute(
+                    """
+                    SELECT user_id, student_id, face_image_url, face_dhash
+                    FROM face_enrollments
+                    WHERE user_id <> %s
+                    """,
+                    [uid],
+                )
+                rows = cur.fetchall()
+                for row in rows:
+                    _, _, other_url, other_hex = row[0], row[1], row[2], row[3]
+                    oh = _dhash_from_hex(str(other_hex)) if other_hex else None
+                    if oh is None and other_url:
+                        try:
+                            oh = _cached_dhash_for_url(str(other_url).strip())
+                        except Exception:
+                            continue
+                    if oh is None:
+                        continue
+                    if _hamming_u64(new_hash, oh) <= _FACE_DHASH_MAX_HAMMING:
+                        return JsonResponse(
+                            {
+                                "ok": False,
+                                "error": "This face is already enrolled to another account.",
+                                "code": "face_already_enrolled",
+                            },
+                            status=409,
+                        )
+
+                cur.execute(
+                    "DELETE FROM face_enrollments WHERE user_id = %s",
+                    [uid],
+                )
+                cur.execute(
+                    """
+                    INSERT INTO face_enrollments
+                        (user_id, student_id, face_image_url, cloudinary_public_id, face_dhash)
+                    VALUES (%s, %s, %s, %s, %s)
+                    """,
+                    [
+                        uid,
+                        student_id,
+                        face_image_url,
+                        cloudinary_public_id or None,
+                        new_hex,
+                    ],
+                )
+        return JsonResponse({"ok": True})
+    except Exception as e:
+        if getattr(settings, "DEBUG", False):
+            return JsonResponse({"ok": False, "error": str(e)}, status=500)
+        return JsonResponse({"ok": False, "error": "Could not save enrollment."}, status=500)

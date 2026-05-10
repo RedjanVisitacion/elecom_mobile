@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/notifications/notification_center_store.dart';
+import '../../elecom/data/elecom_mobile_api.dart';
+import '../../elecom/face/face_enrollment_screen.dart';
 import '../../elecom/profile/elecom_terms_conditions_screen.dart';
 import '../../elecom/presentation/elecom_dashboard.dart';
 import '../state/login_view_model.dart';
@@ -19,6 +21,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
 
   bool _termsShownOnce = false;
+  final ElecomMobileApi _mobileApi = ElecomMobileApi();
 
   Future<void> _showTerms() async {
     await showModalBottomSheet<void>(
@@ -60,12 +63,14 @@ class _LoginScreenState extends State<LoginScreen> {
         password: _passwordController.text,
       );
       await NotificationCenterStore.init(forceRefresh: true);
+      final enrollment = await _mobileApi.getFaceEnrollmentStatus();
+      final isEnrolled = enrollment['enrolled'] == true;
 
       if (!mounted) return;
 
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (_) => const ElecomDashboard(),
+          builder: (_) => isEnrolled ? const ElecomDashboard() : const FaceEnrollmentScreen(isMandatory: true),
         ),
       );
     } catch (_) {

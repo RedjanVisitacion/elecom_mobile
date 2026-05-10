@@ -6,6 +6,8 @@ import '../../../core/notifications/notification_center_store.dart';
 import '../../../core/session/notification_preferences.dart';
 import '../candidates/candidate_profile_screen.dart';
 import '../data/elecom_mobile_api.dart';
+import '../face/face_enrollment_screen.dart';
+import '../face/live_face_capture_screen.dart';
 import 'election_transparency_screen.dart';
 import 'receipt_screen.dart';
 
@@ -16,6 +18,7 @@ class ElectionScreen extends StatefulWidget {
     super.key,
     this.onRequestTabIndex,
     this.onViewTransparency,
+    this.voteIntentNonce = 0,
   });
 
   /// Optional hook for the parent dashboard to switch tabs (e.g. go to Receipt).
@@ -23,6 +26,9 @@ class ElectionScreen extends StatefulWidget {
 
   /// Optional hook to open an Election Transparency / Voting Ledger screen.
   final VoidCallback? onViewTransparency;
+
+  /// Incremented when the user taps **Vote Now** on Home so this tab can run gates + face verification before loading the ballot.
+  final int voteIntentNonce;
 
   @override
   State<ElectionScreen> createState() => _ElectionScreenState();
@@ -113,6 +119,19 @@ class _ElectionScreenState extends State<ElectionScreen>
     _successIconController.dispose();
     _windowTicker?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(ElectionScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.voteIntentNonce != oldWidget.voteIntentNonce &&
+        widget.voteIntentNonce > 0) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          unawaited(_handleVoteNowFromHome());
+        }
+      });
+    }
   }
 
   DateTime? _parseIso(dynamic raw) {
@@ -235,6 +254,116 @@ class _ElectionScreenState extends State<ElectionScreen>
         _ballotPayload = ballot;
         _selections.clear();
         _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loadError = e.toString();
+        _loading = false;
+      });
+    }
+  }
+
+  /// Home **Vote Now** drives enrollment check, face verification, then ballot load (not done on a plain Election tab open).
+  Future<void> _handleVoteNowFromHome() async {
+    setState(() {
+      _loading = true;
+      _loadError = null;
+    });
+    try {
+      final windowPayload = await _api.getElectionWindow();
+      final election = _normalizeElectionWindow(windowPayload);
+      if (!_isElectionActiveNow(election)) {
+        if (!mounted) return;
+        setState(() {
+          _electionWindow = election;
+          _loading = false;
+          _ballotPayload = const {};
+          _selections.clear();
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            backgroundColor: Colors.black87,
+            content: Text(
+              'Election is not active.',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        );
+        return;
+      }
+
+      final voteStatus = await _api.getVoteStatus();
+      if (!mounted) return;
+      if (voteStatus['ok'] == true && voteStatus['voted'] == true) {
+        setState(() {
+          _electionWindow = election;
+          _alreadyVoted = true;
+          _loading = false;
+          _ballotPayload = const {};
+          _selections.clear();
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            backgroundColor: Colors.black87,
+            content: Text(
+              'You already submitted your vote.',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        );
+        return;
+      }
+
+      final enroll = await _api.getFaceEnrollmentStatus();
+      if (!mounted) return;
+      if (enroll['enrolled'] != true) {
+        setState(() => _loading = false);
+        final enrolled = await Navigator.of(context).push<bool>(
+          MaterialPageRoute(
+            builder: (_) => const FaceEnrollmentScreen(
+              isMandatory: false,
+              navigateToDashboardOnSuccess: false,
+            ),
+          ),
+        );
+        if (!mounted) return;
+        if (enrolled != true) {
+          setState(() {
+            _loadError = 'Face enrollment is required before you can vote.';
+          });
+          return;
+        }
+      }
+
+      final verified = await _runFaceVerificationBeforeVote();
+      if (!mounted) return;
+      if (!verified) {
+        setState(() {
+          _loading = false;
+          _loadError = 'Face verification did not complete.';
+        });
+        return;
+      }
+
+      final ballot = await _api.getBallot();
+      if (!mounted) return;
+      if (ballot['ok'] != true) {
+        setState(() {
+          _electionWindow = election;
+          _loadError = (ballot['error'] ?? 'Could not load ballot').toString();
+          _loading = false;
+        });
+        return;
+      }
+
+      setState(() {
+        _electionWindow = election;
+        _alreadyVoted = false;
+        _ballotPayload = ballot;
+        _selections.clear();
+        _loading = false;
+        _loadError = null;
       });
     } catch (e) {
       if (!mounted) return;
@@ -1043,6 +1172,9 @@ class _ElectionScreenState extends State<ElectionScreen>
     );
     if (ok != true || !mounted) return;
 
+    final verified = await _runFaceVerificationBeforeVote();
+    if (!verified || !mounted) return;
+
     // Show a blocking progress dialog while we submit (prevents perceived \"freeze\").
     showDialog<void>(
       context: context,
@@ -1176,6 +1308,83 @@ class _ElectionScreenState extends State<ElectionScreen>
           content: Text(e.toString(), style: TextStyle(color: palette.snackFg)),
         ),
       );
+    }
+  }
+
+  Future<bool> _runFaceVerificationBeforeVote() async {
+    const mismatchMsg =
+        'Face verification failed. This face does not match the enrolled voter.';
+
+    final status = await _api.getFaceEnrollmentStatus();
+    if (status['enrolled'] != true) {
+      if (!mounted) return false;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: Colors.black87,
+          content: Text(
+            'Face enrollment is required before voting.',
+            style: TextStyle(color: Colors.white),
+          ),
+        ),
+      );
+      return false;
+    }
+
+    if (!mounted) return false;
+
+    final capture = await Navigator.of(context).push<LiveFaceCaptureResult>(
+      MaterialPageRoute(
+        builder: (_) => const LiveFaceCaptureScreen(mode: LiveFaceMode.verification),
+      ),
+    );
+    if (capture == null || !mounted) {
+      return false;
+    }
+    if (capture.livenessPassed != true) {
+      if (!mounted) return false;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: Colors.black87,
+          content: Text(
+            'Blink/liveness check did not complete.',
+            style: TextStyle(color: Colors.white),
+          ),
+        ),
+      );
+      return false;
+    }
+
+    try {
+      if (!mounted) return false;
+      final verify = await _api.verifyFaceForVote(
+        liveFaceImageFile: capture.capturedImage,
+        livenessPassed: true,
+      );
+      final allow = verify['allow_to_vote'] == true;
+      if (!allow && mounted) {
+        final reason = (verify['failure_reason'] ?? '').toString().trim();
+        final text = reason.isEmpty ? mismatchMsg : reason;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: Colors.black87,
+            content: Text(text, style: const TextStyle(color: Colors.white)),
+          ),
+        );
+      }
+      return allow;
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: Colors.black87,
+            content: Text(
+              'Face verification error: $e',
+              style: const TextStyle(color: Colors.white),
+            ),
+          ),
+        );
+      }
+      return false;
     }
   }
 

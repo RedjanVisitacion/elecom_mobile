@@ -488,13 +488,13 @@ class _ResultsScreenState extends State<ResultsScreen> {
             ),
           ] else ...[
             Padding(
-              padding: const EdgeInsets.fromLTRB(6, 0, 6, 0),
+              padding: const EdgeInsets.fromLTRB(6, 0, 10, 0),
               child: SizedBox(
               height: 170,
               child: LineChart(
                 LineChartData(
                   minX: pointCount <= 1 ? -0.5 : -0.15,
-                  maxX: pointCount <= 1 ? 0.5 : (spots.length - 1).toDouble() + 0.15,
+                  maxX: pointCount <= 1 ? 0.5 : (spots.length - 1).toDouble(),
                   minY: 0,
                   maxY: maxY * 1.25,
                   gridData: FlGridData(
@@ -556,7 +556,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
                               label,
                               style: TextStyle(
                                 color: sub,
-                                fontSize: 9,
+                                fontSize: 8.5,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
