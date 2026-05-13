@@ -5,7 +5,7 @@ class ApiConfig {
 
   static String get baseUrl {
     if (_envBaseUrl.isNotEmpty) return _envBaseUrl;
-    if (Platform.isAndroid) return 'http://192.168.101.7:8000';
+    if (Platform.isAndroid) return 'http://192.168.1.171:8000';
     return 'http://127.0.0.1:8000';
   }
 }
