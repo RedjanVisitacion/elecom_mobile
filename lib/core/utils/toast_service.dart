@@ -40,21 +40,13 @@ abstract final class AppToast {
     ),
   ];
 
-  // ── Bottom margin (shared) ────────────────────────────────────────────────
-  static const EdgeInsets _bottomMargin =
-      EdgeInsets.only(bottom: 16, left: 14, right: 14);
-
   // ── Top margin: computed below the status bar + AppBar ───────────────────
-  /// Returns a top margin that clears the status bar and the standard AppBar
-  /// (kToolbarHeight = 56 dp) plus a small gap so the toast floats visibly
-  /// below the header without touching it.
+  /// Clears the status bar + standard AppBar (kToolbarHeight = 56 dp) plus
+  /// 8 dp breathing room so the toast floats visibly below the header.
   static EdgeInsets _topMargin(BuildContext context) {
     final statusBarHeight = MediaQuery.of(context).padding.top;
-    // kToolbarHeight is the Material standard AppBar height (56 dp).
-    // Add 8 dp breathing room between the AppBar bottom and the toast.
-    const appBarHeight = kToolbarHeight;
     const gap = 8.0;
-    final top = statusBarHeight + appBarHeight + gap;
+    final top = statusBarHeight + kToolbarHeight + gap;
     return EdgeInsets.only(top: top, left: 14, right: 14);
   }
 
@@ -67,7 +59,6 @@ abstract final class AppToast {
       message: message,
       type: ToastificationType.success,
       icon: Icons.check_circle_outline_rounded,
-      alignment: Alignment.topCenter,
       margin: _topMargin(context),
       duration: _short,
     );
@@ -80,34 +71,31 @@ abstract final class AppToast {
       message: message,
       type: ToastificationType.info,
       icon: Icons.info_outline_rounded,
-      alignment: Alignment.topCenter,
       margin: _topMargin(context),
       duration: _short,
     );
   }
 
-  /// Bottom — caution or validation message.
+  /// Top (below AppBar) — caution or validation message.
   static void warning(BuildContext context, String message) {
     _show(
       context,
       message: message,
       type: ToastificationType.warning,
       icon: Icons.warning_amber_rounded,
-      alignment: Alignment.bottomCenter,
-      margin: _bottomMargin,
+      margin: _topMargin(context),
       duration: _long,
     );
   }
 
-  /// Bottom — something went wrong.
+  /// Top (below AppBar) — something went wrong.
   static void error(BuildContext context, String message) {
     _show(
       context,
       message: message,
       type: ToastificationType.error,
       icon: Icons.error_outline_rounded,
-      alignment: Alignment.bottomCenter,
-      margin: _bottomMargin,
+      margin: _topMargin(context),
       duration: _long,
     );
   }
@@ -119,7 +107,6 @@ abstract final class AppToast {
     required String message,
     required ToastificationType type,
     required IconData icon,
-    required Alignment alignment,
     required EdgeInsets margin,
     required Duration duration,
   }) {
@@ -145,13 +132,12 @@ abstract final class AppToast {
       showProgressBar: false,
       closeButtonShowType: CloseButtonShowType.none,
       autoCloseDuration: duration,
-      alignment: alignment,
+      alignment: Alignment.topCenter,
       margin: margin,
       animationDuration: const Duration(milliseconds: 280),
       animationBuilder: (context, animation, alignment, child) {
-        final isTop = alignment == Alignment.topCenter;
         final slide = Tween<Offset>(
-          begin: Offset(0, isTop ? -0.5 : 0.5),
+          begin: const Offset(0, -0.5),
           end: Offset.zero,
         ).animate(CurvedAnimation(
           parent: animation,
