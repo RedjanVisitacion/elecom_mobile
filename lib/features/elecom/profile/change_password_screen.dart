@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/notifications/local_push_service.dart';
+import '../../../core/utils/toast_service.dart';
 import '../../../core/notifications/notification_center_store.dart';
 import '../../../core/session/notification_preferences.dart';
 import '../data/elecom_mobile_api.dart';
@@ -71,18 +72,14 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       if (!mounted) return;
 
       if (inAppEnabled) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text(notifBody)),
-        );
+        AppToast.success(context, notifBody);
       }
 
       if (!mounted) return;
       Navigator.of(context).pop();
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to change password. Please check your old password.')),
-      );
+      AppToast.error(context, 'Failed to change password. Please check your old password.');
     } finally {
       if (mounted) {
         setState(() {

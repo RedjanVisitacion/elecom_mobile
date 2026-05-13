@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+
+import '../../../core/utils/toast_service.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/config/api_config.dart';
@@ -168,14 +170,10 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
 
       if (!mounted) return;
       await _notifyProfilePhotoUpdateSuccess();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profile photo updated.')),
-      );
+      AppToast.success(context, 'Profile photo updated.');
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to update profile photo.')),
-      );
+      AppToast.error(context, 'Failed to update profile photo.');
     } finally {
       if (mounted) {
         setState(() {
@@ -201,14 +199,10 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
       setState(() {
         _isEditing = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profile updated.')),
-      );
+      AppToast.success(context, 'Profile updated.');
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to update profile.')),
-      );
+      AppToast.error(context, 'Failed to update profile.');
     } finally {
       if (mounted) {
         setState(() {

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 
+import '../../../core/utils/toast_service.dart';
+
 import '../../../core/notifications/local_push_service.dart';
 import '../../../core/notifications/notification_center_store.dart';
 import '../../../core/session/notification_preferences.dart';
@@ -281,15 +283,7 @@ class _ElectionScreenState extends State<ElectionScreen>
           _ballotPayload = const {};
           _selections.clear();
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            backgroundColor: Colors.black87,
-            content: Text(
-              'Election is not active.',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        );
+        AppToast.warning(context, 'Election is not active.');
         return;
       }
 
@@ -303,15 +297,7 @@ class _ElectionScreenState extends State<ElectionScreen>
           _ballotPayload = const {};
           _selections.clear();
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            backgroundColor: Colors.black87,
-            content: Text(
-              'You already submitted your vote.',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        );
+        AppToast.info(context, 'You already submitted your vote.');
         return;
       }
 
@@ -803,15 +789,7 @@ class _ElectionScreenState extends State<ElectionScreen>
           _electionWindow = election;
           _ballotPayload = const {};
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: palette.snackNeutral,
-            content: Text(
-              'Election has ended. Your vote was not submitted.',
-              style: TextStyle(color: palette.snackFg),
-            ),
-          ),
-        );
+        AppToast.warning(context, 'Election has ended. Your vote was not submitted.');
         return;
       }
 
@@ -821,51 +799,22 @@ class _ElectionScreenState extends State<ElectionScreen>
         setState(() {
           _alreadyVoted = true;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: palette.snackNeutral,
-            content: Text(
-              'You already submitted your vote.',
-              style: TextStyle(color: palette.snackFg),
-            ),
-          ),
-        );
+        AppToast.info(context, 'You already submitted your vote.');
         return;
       }
     } on ElecomApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: palette.snackNeutral,
-          content: Text(e.message, style: TextStyle(color: palette.snackFg)),
-        ),
-      );
+      AppToast.error(context, e.message);
       return;
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: palette.snackNeutral,
-          content: Text(
-            'Unable to validate election status. Please try again.',
-            style: TextStyle(color: palette.snackFg),
-          ),
-        ),
-      );
+      AppToast.error(context, 'Unable to validate election status. Please try again.');
       return;
     }
 
     final payload = _payloadOnlyFilled();
     if (payload.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: palette.snackNeutral,
-          content: Text(
-            'Select at least one candidate before submitting.',
-            style: TextStyle(color: palette.snackFg),
-          ),
-        ),
-      );
+      AppToast.warning(context, 'Select at least one candidate before submitting.');
       return;
     }
 
@@ -1269,15 +1218,7 @@ class _ElectionScreenState extends State<ElectionScreen>
       }
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: palette.snackNeutral,
-          content: Text(
-            'Your vote has been recorded.',
-            style: TextStyle(color: palette.snackFg),
-          ),
-        ),
-      );
+      AppToast.success(context, 'Your vote has been recorded.');
 
       if (receiptMap != null) {
         await _showVoteReceiptSheet(receipt: receiptMap, palette: palette);
@@ -1290,24 +1231,14 @@ class _ElectionScreenState extends State<ElectionScreen>
         context,
         rootNavigator: true,
       ).pop(); // close submitting dialog
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: palette.snackNeutral,
-          content: Text(e.message, style: TextStyle(color: palette.snackFg)),
-        ),
-      );
+      AppToast.error(context, e.message);
     } catch (e) {
       if (!mounted) return;
       Navigator.of(
         context,
         rootNavigator: true,
       ).pop(); // close submitting dialog
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: palette.snackNeutral,
-          content: Text(e.toString(), style: TextStyle(color: palette.snackFg)),
-        ),
-      );
+      AppToast.error(context, e.toString());
     }
   }
 
@@ -1318,15 +1249,7 @@ class _ElectionScreenState extends State<ElectionScreen>
     final status = await _api.getFaceEnrollmentStatus();
     if (status['enrolled'] != true) {
       if (!mounted) return false;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          backgroundColor: Colors.black87,
-          content: Text(
-            'Face enrollment is required before voting.',
-            style: TextStyle(color: Colors.white),
-          ),
-        ),
-      );
+      AppToast.warning(context, 'Face enrollment is required before voting.');
       return false;
     }
 
@@ -1342,15 +1265,7 @@ class _ElectionScreenState extends State<ElectionScreen>
     }
     if (capture.livenessPassed != true) {
       if (!mounted) return false;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          backgroundColor: Colors.black87,
-          content: Text(
-            'Blink/liveness check did not complete.',
-            style: TextStyle(color: Colors.white),
-          ),
-        ),
-      );
+      AppToast.warning(context, 'Blink/liveness check did not complete.');
       return false;
     }
 
@@ -1364,25 +1279,12 @@ class _ElectionScreenState extends State<ElectionScreen>
       if (!allow && mounted) {
         final reason = (verify['failure_reason'] ?? '').toString().trim();
         final text = reason.isEmpty ? mismatchMsg : reason;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: Colors.black87,
-            content: Text(text, style: const TextStyle(color: Colors.white)),
-          ),
-        );
+        AppToast.error(context, text);
       }
       return allow;
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: Colors.black87,
-            content: Text(
-              'Face verification error: $e',
-              style: const TextStyle(color: Colors.white),
-            ),
-          ),
-        );
+        AppToast.error(context, 'Face verification error: $e');
       }
       return false;
     }
@@ -1657,31 +1559,11 @@ class _ElectionScreenState extends State<ElectionScreen>
                                         );
                                       }
                                     } else {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          backgroundColor: Colors.black,
-                                          content: const Text(
-                                            'Your receipt is not yet available.',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ),
-                                      );
+                                      AppToast.info(context, 'Your receipt is not yet available.');
                                     }
                                   } catch (_) {
                                     if (!mounted) return;
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        backgroundColor: Colors.black,
-                                        content: const Text(
-                                          'Your receipt is not yet available.',
-                                          style: TextStyle(color: Colors.white),
-                                        ),
-                                      ),
-                                    );
+                                    AppToast.info(context, 'Your receipt is not yet available.');
                                   } finally {
                                     if (mounted) {
                                       setState(() => _checkingReceipt = false);

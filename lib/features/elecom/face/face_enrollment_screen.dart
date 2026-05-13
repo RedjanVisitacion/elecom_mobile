@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/utils/toast_service.dart';
+
 import '../../../core/session/session_persistence.dart';
 import '../../auth/presentation/login_screen.dart';
 import '../data/elecom_mobile_api.dart';
@@ -119,16 +121,14 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
         _uploadFailed = true;
         _status = msg;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(msg)));
+      AppToast.error(context, msg);
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _uploadFailed = true;
         _status = 'Upload failed. Check your internet connection.';
       });
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Upload failed: $e')));
+      AppToast.error(context, 'Upload failed: $e');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -176,15 +176,11 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
       final opened = await launchUrl(_supportMessengerUri,
           mode: LaunchMode.externalApplication);
       if (!opened && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('Unable to open Messenger support.')));
+        AppToast.error(context, 'Unable to open Messenger support.');
       }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('Unable to open Messenger support.')));
+        AppToast.error(context, 'Unable to open Messenger support.');
       }
     }
   }
@@ -194,13 +190,11 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
       final opened = await launchUrl(_supportEmailUri,
           mode: LaunchMode.externalApplication);
       if (!opened && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Unable to open email app.')));
+        AppToast.error(context, 'Unable to open email app.');
       }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Unable to open email app.')));
+        AppToast.error(context, 'Unable to open email app.');
       }
     }
   }

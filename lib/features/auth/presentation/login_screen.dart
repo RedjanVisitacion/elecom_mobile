@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/utils/toast_service.dart';
+
 import '../../../core/notifications/notification_center_store.dart';
 import '../../elecom/data/elecom_mobile_api.dart';
 import '../../elecom/face/face_enrollment_screen.dart';
@@ -47,11 +49,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!ok) return;
 
     if (!vm.acceptedTerms) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please accept the Terms & Conditions'),
-        ),
-      );
+      AppToast.warning(context, 'Please accept the Terms & Conditions.');
       return;
     }
 
@@ -76,7 +74,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (_) {
       if (!mounted) return;
       final msg = vm.error ?? 'Login failed';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      AppToast.error(context, msg);
     }
   }
 

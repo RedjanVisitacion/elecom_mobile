@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:toastification/toastification.dart';
 
 import '../features/auth/presentation/splash_screen.dart';
 import '../features/auth/state/login_view_model.dart';
@@ -17,30 +18,32 @@ class ElecomApp extends StatelessWidget {
       ],
       child: Consumer<ThemeNotifier>(
         builder: (context, themeState, _) {
-          return MaterialApp(
-            debugShowCheckedModeBanner: false,
-            title: 'Elecom',
-            theme: ThemeData(
-              useMaterial3: true,
-              colorScheme: ColorScheme.fromSeed(seedColor: Colors.black),
-              scaffoldBackgroundColor: Colors.white,
-              appBarTheme: const AppBarTheme(
-                backgroundColor: Colors.white,
-                foregroundColor: Colors.black,
+          return ToastificationWrapper(
+            child: MaterialApp(
+              debugShowCheckedModeBanner: false,
+              title: 'Elecom',
+              theme: ThemeData(
+                useMaterial3: true,
+                colorScheme: ColorScheme.fromSeed(seedColor: Colors.black),
+                scaffoldBackgroundColor: Colors.white,
+                appBarTheme: const AppBarTheme(
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.black,
+                ),
+                textSelectionTheme: const TextSelectionThemeData(
+                  cursorColor: Colors.black,
+                ),
               ),
-              textSelectionTheme: const TextSelectionThemeData(
-                cursorColor: Colors.black,
+              darkTheme: ThemeData(
+                useMaterial3: true,
+                colorScheme: ColorScheme.fromSeed(
+                  seedColor: Colors.black,
+                  brightness: Brightness.dark,
+                ),
               ),
+              themeMode: themeState.themeMode,
+              home: const SplashScreen(),
             ),
-            darkTheme: ThemeData(
-              useMaterial3: true,
-              colorScheme: ColorScheme.fromSeed(
-                seedColor: Colors.black,
-                brightness: Brightness.dark,
-              ),
-            ),
-            themeMode: themeState.themeMode,
-            home: const SplashScreen(),
           );
         },
       ),

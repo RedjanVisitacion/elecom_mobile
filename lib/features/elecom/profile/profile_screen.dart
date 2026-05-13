@@ -5,6 +5,8 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/utils/toast_service.dart';
+
 import '../../../core/config/api_config.dart';
 import '../../../core/session/user_session.dart';
 import '../../../core/session/session_persistence.dart';
@@ -326,15 +328,11 @@ class _AccountBodyState extends State<AccountBody> {
             try {
               await _api.submitAppRating(rating: rating, label: label);
               if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Thanks for your feedback!')),
-                );
+                AppToast.success(context, 'Thanks for your feedback!');
               }
             } catch (_) {
               if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Could not submit rating. Please try again later.')),
-                );
+                AppToast.error(context, 'Could not submit rating. Please try again later.');
               }
             }
           },
@@ -520,9 +518,7 @@ class _AccountBodyState extends State<AccountBody> {
       );
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not open Messenger.')),
-      );
+      AppToast.error(context, 'Could not open Messenger.');
     }
   }
 
@@ -547,9 +543,7 @@ class _AccountBodyState extends State<AccountBody> {
       );
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not open email app.')),
-      );
+      AppToast.error(context, 'Could not open email app.');
     }
   }
 
@@ -1131,13 +1125,13 @@ class _ProfileBodyState extends State<ProfileBody> {
 
       final newUrl = _resolvePhotoUrl();
       if (newUrl.isNotEmpty && newUrl != oldUrl) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile photo updated')));
+        AppToast.success(context, 'Profile photo updated.');
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Upload finished, but photo URL was not returned yet')));
+        AppToast.info(context, 'Upload finished, but photo URL was not returned yet.');
       }
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to update profile photo')));
+      AppToast.error(context, 'Failed to update profile photo.');
     } finally {
       if (mounted) {
         setState(() {

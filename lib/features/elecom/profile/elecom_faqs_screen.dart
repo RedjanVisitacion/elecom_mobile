@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/utils/toast_service.dart';
+
 class ElecomFaqsScreen extends StatelessWidget {
   const ElecomFaqsScreen({super.key});
 
@@ -47,9 +49,7 @@ class ElecomFaqsScreen extends StatelessWidget {
       );
     } catch (_) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not open Messenger.')),
-      );
+      AppToast.error(context, 'Could not open Messenger.');
     }
   }
 
@@ -86,9 +86,7 @@ class ElecomFaqsScreen extends StatelessWidget {
       );
     } catch (_) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not open email app.')),
-      );
+      AppToast.error(context, 'Could not open email app.');
     }
   }
 

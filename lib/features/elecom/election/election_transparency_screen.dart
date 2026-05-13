@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/utils/toast_service.dart';
+
 import '../data/elecom_mobile_api.dart';
 
 class ElectionTransparencyScreen extends StatefulWidget {
@@ -367,19 +369,11 @@ class _ElectionTransparencyScreenState
                                     fallback: _s(b, 'hash'),
                                   );
                                   if (fullHash == '-') return;
-                                  final messenger = ScaffoldMessenger.of(
-                                    context,
-                                  );
                                   await Clipboard.setData(
                                     ClipboardData(text: fullHash),
                                   );
                                   if (!mounted) return;
-                                  messenger.showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Hash copied.'),
-                                      duration: Duration(milliseconds: 1200),
-                                    ),
-                                  );
+                                  AppToast.info(context, 'Hash copied.');
                                 },
                                 icon: Icon(
                                   Icons.copy_rounded,
