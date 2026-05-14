@@ -1,0 +1,14 @@
+# Local ML face recognition dependencies
+# Install with: pip install -r requirements-ml.txt
+#
+# insightface downloads the buffalo_l ONNX model (~280 MB) on first use
+# into ~/.insightface/models/buffalo_l/
+# Model files:
+#   det_10g.onnx      — RetinaFace detection
+#   w600k_r50.onnx    — ArcFace R50 recognition (512-d embeddings)
+
+insightface==0.7.3
+onnxruntime==1.18.1          # CPU inference; use onnxruntime-gpu for CUDA
+opencv-python-headless==4.9.0.80   # image decode (headless = no GUI deps)
+numpy>=1.24,<2.0
+Pillow>=10.0                 # PIL fallback image decode

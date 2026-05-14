@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../../core/utils/toast_service.dart';
-
 import '../../../core/notifications/notification_center_store.dart';
+import '../../../core/utils/toast_service.dart';
 import '../../elecom/data/elecom_mobile_api.dart';
 import '../../elecom/face/face_enrollment_screen.dart';
-import '../../elecom/profile/elecom_terms_conditions_screen.dart';
 import '../../elecom/presentation/elecom_dashboard.dart';
+import '../../elecom/profile/elecom_terms_conditions_screen.dart';
+import '../presentation/forgot_password_screen.dart';
 import '../state/login_view_model.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -49,7 +49,8 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!ok) return;
 
     if (!vm.acceptedTerms) {
-      AppToast.warning(context, 'Please accept the Terms & Conditions.');
+      AppToast.warning(context, 'Please accept the Terms & Conditions.',
+          isLoginScreen: true);
       return;
     }
 
@@ -66,6 +67,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (!mounted) return;
 
+      // Clear any lingering toasts (e.g. previous login error) before navigating.
+      AppToast.dismissAll();
+
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (_) => isEnrolled ? const ElecomDashboard() : const FaceEnrollmentScreen(isMandatory: true),
@@ -74,7 +78,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (_) {
       if (!mounted) return;
       final msg = vm.error ?? 'Login failed';
-      AppToast.error(context, msg);
+      AppToast.error(context, msg, isLoginScreen: true);
     }
   }
 
@@ -244,7 +248,14 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           const SizedBox(height: 6),
                           TextButton(
-                            onPressed: () {},
+                            onPressed: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      const ForgotPasswordScreen(),
+                                ),
+                              );
+                            },
                             child: const Text(
                               'FORGOT PASSWORD?',
                               style: TextStyle(

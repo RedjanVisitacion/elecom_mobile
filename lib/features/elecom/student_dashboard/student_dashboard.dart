@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/session/user_session.dart';
+import '../../../core/utils/toast_service.dart';
 import '../profile/profile_screen.dart';
 import '../data/elecom_mobile_api.dart';
 import 'utils/theme_notifier.dart';
@@ -311,6 +312,9 @@ class _StudentDashboardState extends State<StudentDashboard> {
                 type: BottomNavigationBarType.fixed,
                 currentIndex: _currentIndex,
                 onTap: (i) async {
+                  // Clear any lingering toasts when switching tabs.
+                  AppToast.dismissAll();
+
                   if (i == 0) {
                     final wasOnHome = _currentIndex == 0;
                     if (mounted) {
