@@ -20,6 +20,7 @@ class MobileApiPaths {
   static String get accountProfileUpdate => '$base/account/profile/update/';
   static String get accountProfilePassword => '$base/account/profile/password/';
   static String get accountAppRating => '$base/account/app-rating/';
+  static String get tutorialState => '$base/tutorial/state/';
   static String get notifications => '$base/notifications/';
   static String get notificationsCreate => '$base/notifications/create/';
   static String get notificationsRead => '$base/notifications/read/';

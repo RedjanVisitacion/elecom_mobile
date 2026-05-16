@@ -6,6 +6,7 @@ import 'dart:math' as math;
 import '../../../core/session/user_session.dart';
 import '../candidates/candidate_profile_screen.dart';
 import '../data/elecom_mobile_api.dart';
+import '../data/election_window_utils.dart';
 
 class ResultsScreen extends StatefulWidget {
   const ResultsScreen({super.key});
@@ -30,6 +31,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
   bool _loading = true;
   String? _error;
   bool _published = true;
+  bool _canViewResults = false;
   String _message = '';
   Map<String, dynamic> _orgTotals = const <String, dynamic>{};
   Map<String, dynamic> _positionTotals = const <String, dynamic>{};
@@ -91,6 +93,26 @@ class _ResultsScreenState extends State<ResultsScreen> {
       });
     }
     try {
+      final windowRes = await _api.getElectionWindow();
+      final election = ElectionWindowUtils.normalizePayload(windowRes);
+      ElectionWindowUtils.debugLog(election, source: 'results screen');
+      final canViewResults = ElectionWindowUtils.canViewResultsNow(election);
+      if (!canViewResults) {
+        if (!mounted) return;
+        setState(() {
+          _loading = false;
+          _published = false;
+          _canViewResults = false;
+          _message =
+              'Results will be available after the election results time.';
+          _orgTotals = const <String, dynamic>{};
+          _positionTotals = const <String, dynamic>{};
+          _grouped = const <Map<String, dynamic>>[];
+          _analytics = const <String, dynamic>{};
+        });
+        return;
+      }
+
       final res = await _api.getResults();
       Map<String, dynamic> analyticsRes = const <String, dynamic>{};
       try {
@@ -102,6 +124,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
       setState(() {
         _loading = false;
         _published = res['published'] != false;
+        _canViewResults = true;
         _message = (res['message'] ?? '').toString();
         _orgTotals = res['org_totals'] is Map ? Map<String, dynamic>.from(res['org_totals']) : <String, dynamic>{};
         _positionTotals = res['position_totals'] is Map ? Map<String, dynamic>.from(res['position_totals']) : <String, dynamic>{};
@@ -827,7 +850,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
       );
     }
 
-    if (!_published) {
+    if (!_published || !_canViewResults) {
       return ColoredBox(
         color: pageBg,
         child: RefreshIndicator(

@@ -6,8 +6,10 @@ import '../../../core/utils/toast_service.dart';
 import '../../../core/notifications/local_push_service.dart';
 import '../../../core/notifications/notification_center_store.dart';
 import '../../../core/session/notification_preferences.dart';
+import '../../../services/tutorial_service.dart';
 import '../candidates/candidate_profile_screen.dart';
 import '../data/elecom_mobile_api.dart';
+import '../data/election_window_utils.dart';
 import '../face/face_enrollment_screen.dart';
 import '../face/live_face_capture_screen.dart';
 import 'election_transparency_screen.dart';
@@ -21,6 +23,7 @@ class ElectionScreen extends StatefulWidget {
     this.onRequestTabIndex,
     this.onViewTransparency,
     this.voteIntentNonce = 0,
+    this.isActive = false,
   });
 
   /// Optional hook for the parent dashboard to switch tabs (e.g. go to Receipt).
@@ -31,6 +34,9 @@ class ElectionScreen extends StatefulWidget {
 
   /// Incremented when the user taps **Vote Now** on Home so this tab can run gates + face verification before loading the ballot.
   final int voteIntentNonce;
+
+  /// True while the dashboard is showing this tab. Used to avoid showing coach marks behind another tab.
+  final bool isActive;
 
   @override
   State<ElectionScreen> createState() => _ElectionScreenState();
@@ -43,6 +49,8 @@ class _ElectionScreenState extends State<ElectionScreen>
   bool _loading = true;
   bool _alreadyVoted = false;
   bool _checkingReceipt = false;
+  bool _votingTutorialRequested = false;
+  bool _submitInFlight = false;
   String? _loadError;
   Map<String, dynamic> _ballotPayload = const {};
   Map<String, dynamic> _electionWindow = const {};
@@ -126,6 +134,11 @@ class _ElectionScreenState extends State<ElectionScreen>
   @override
   void didUpdateWidget(ElectionScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.isActive && !oldWidget.isActive) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _maybeStartVotingTutorial();
+      });
+    }
     if (widget.voteIntentNonce != oldWidget.voteIntentNonce &&
         widget.voteIntentNonce > 0) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -136,51 +149,18 @@ class _ElectionScreenState extends State<ElectionScreen>
     }
   }
 
-  DateTime? _parseIso(dynamic raw) {
-    final s = (raw ?? '').toString().trim();
-    if (s.isEmpty || s.toLowerCase() == 'null') return null;
-    return DateTime.tryParse(s);
-  }
-
   Map<String, dynamic> _normalizeElectionWindow(Map<String, dynamic> payload) {
-    final e = payload['election'];
-    if (e is Map<String, dynamic>) return e;
-    if (e is Map) return Map<String, dynamic>.from(e);
-    return const <String, dynamic>{};
-  }
-
-  bool _isResultsPublishedByStatus(Map<String, dynamic> election) {
-    final rs = (election['results_status'] ?? election['results_state'] ?? '')
-        .toString()
-        .toLowerCase();
-    return rs == 'published';
+    final election = ElectionWindowUtils.normalizePayload(payload);
+    ElectionWindowUtils.debugLog(election, source: 'voting screen');
+    return election;
   }
 
   bool _isElectionActiveNow(Map<String, dynamic> election) {
-    final status = (election['status'] ?? '').toString().toLowerCase();
-    final start = _parseIso(election['start_at'])?.toLocal();
-    final end = _parseIso(election['end_at'])?.toLocal();
-    final now = DateTime.now();
-
-    if (_isResultsPublishedByStatus(election)) return false;
-    if (status == 'closed' || status == 'ended') return false;
-    if (start != null && now.isBefore(start)) return false;
-    if (end != null && now.isAfter(end)) return false;
-    if (status == 'active') return true;
-    if (start != null && end != null) {
-      return !now.isBefore(start) && !now.isAfter(end);
-    }
-    return false;
+    return ElectionWindowUtils.isActiveNow(election);
   }
 
   bool _isElectionUpcoming(Map<String, dynamic> election) {
-    final status = (election['status'] ?? '').toString().toLowerCase();
-    final start = _parseIso(election['start_at'])?.toLocal();
-    final now = DateTime.now();
-    if (_isResultsPublishedByStatus(election)) return false;
-    if (status == 'upcoming') return true;
-    if (start != null && now.isBefore(start)) return true;
-    return false;
+    return ElectionWindowUtils.isUpcoming(election);
   }
 
   Future<void> _refreshWindowOnly() async {
@@ -257,6 +237,9 @@ class _ElectionScreenState extends State<ElectionScreen>
         _selections.clear();
         _loading = false;
       });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _maybeStartVotingTutorial();
+      });
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -305,6 +288,7 @@ class _ElectionScreenState extends State<ElectionScreen>
       if (!mounted) return;
       if (enroll['enrolled'] != true) {
         setState(() => _loading = false);
+        TutorialService.dismissActiveTutorial();
         final enrolled = await Navigator.of(context).push<bool>(
           MaterialPageRoute(
             builder: (_) => const FaceEnrollmentScreen(
@@ -350,6 +334,9 @@ class _ElectionScreenState extends State<ElectionScreen>
         _selections.clear();
         _loading = false;
         _loadError = null;
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _maybeStartVotingTutorial();
       });
     } catch (e) {
       if (!mounted) return;
@@ -400,6 +387,19 @@ class _ElectionScreenState extends State<ElectionScreen>
       ElectionThemePalette.fromBrightness(
         isDark ? Brightness.dark : Brightness.light,
       );
+
+  Future<void> _maybeStartVotingTutorial({bool force = false}) async {
+    if (!mounted || !widget.isActive) return;
+    if (ModalRoute.of(context)?.isCurrent != true) return;
+    if (_loading || _alreadyVoted || _loadError != null) return;
+    if (_expectedKeys.isEmpty) return;
+    if (_votingTutorialRequested && !force) return;
+    if (!force) _votingTutorialRequested = true;
+    await TutorialService.showVotingTutorialIfNeeded(
+      context: context,
+      force: force,
+    );
+  }
 
   Map<int, Map<String, dynamic>> _candidateIndex() {
     final out = <int, Map<String, dynamic>>{};
@@ -780,6 +780,20 @@ class _ElectionScreenState extends State<ElectionScreen>
   }
 
   Future<void> _submit(ElectionThemePalette palette) async {
+    if (_submitInFlight) return;
+    setState(() => _submitInFlight = true);
+    try {
+      await _submitLocked(palette);
+    } finally {
+      if (mounted) {
+        setState(() => _submitInFlight = false);
+      } else {
+        _submitInFlight = false;
+      }
+    }
+  }
+
+  Future<void> _submitLocked(ElectionThemePalette palette) async {
     try {
       final windowPayload = await _api.getElectionWindow();
       final election = _normalizeElectionWindow(windowPayload);
@@ -789,7 +803,10 @@ class _ElectionScreenState extends State<ElectionScreen>
           _electionWindow = election;
           _ballotPayload = const {};
         });
-        AppToast.warning(context, 'Election has ended. Your vote was not submitted.');
+        AppToast.warning(
+          context,
+          'Election is not open. Your vote was not submitted.',
+        );
         return;
       }
 
@@ -1124,8 +1141,39 @@ class _ElectionScreenState extends State<ElectionScreen>
     final verified = await _runFaceVerificationBeforeVote();
     if (!verified || !mounted) return;
 
+    try {
+      final windowPayload = await _api.getElectionWindow();
+      final election = _normalizeElectionWindow(windowPayload);
+      if (!_isElectionActiveNow(election)) {
+        if (!mounted) return;
+        setState(() {
+          _electionWindow = election;
+          _ballotPayload = const {};
+        });
+        AppToast.warning(
+          context,
+          'Election is not open. Your vote was not submitted.',
+        );
+        return;
+      }
+    } on ElecomApiException catch (e) {
+      if (!mounted) return;
+      AppToast.error(context, e.message);
+      return;
+    } catch (_) {
+      if (!mounted) return;
+      AppToast.error(
+        context,
+        'Unable to validate election status. Please try again.',
+      );
+      return;
+    }
+
+    if (!context.mounted) return;
+
     // Show a blocking progress dialog while we submit (prevents perceived \"freeze\").
     showDialog<void>(
+      // ignore: use_build_context_synchronously
       context: context,
       barrierDismissible: false,
       builder: (ctx) {
@@ -1231,6 +1279,9 @@ class _ElectionScreenState extends State<ElectionScreen>
         context,
         rootNavigator: true,
       ).pop(); // close submitting dialog
+      await _refreshWindowOnly();
+      if (!context.mounted) return;
+      // ignore: use_build_context_synchronously
       AppToast.error(context, e.message);
     } catch (e) {
       if (!mounted) return;
@@ -1255,9 +1306,11 @@ class _ElectionScreenState extends State<ElectionScreen>
 
     if (!mounted) return false;
 
+    TutorialService.dismissActiveTutorial();
     final capture = await Navigator.of(context).push<LiveFaceCaptureResult>(
       MaterialPageRoute(
-        builder: (_) => const LiveFaceCaptureScreen(mode: LiveFaceMode.verification),
+        builder: (_) =>
+            const LiveFaceCaptureScreen(mode: LiveFaceMode.verification),
       ),
     );
     if (capture == null || !mounted) {
@@ -1721,39 +1774,52 @@ class _ElectionScreenState extends State<ElectionScreen>
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                 children: [
-                  Text(
-                    'Election',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                      color: titleColor,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    programCode.isEmpty
-                        ? 'Your program: not detected from your account'
-                        : 'Your program: $programCode',
-                    style: TextStyle(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w800,
-                      color: titleColor,
-                      height: 1.3,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    _whoYouCanVoteForExplanation(),
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
-                      color: subtitleColor,
-                      height: 1.45,
+                  Container(
+                    key: ElecomTutorialKeys.votingHeader,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Election',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                            color: titleColor,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          programCode.isEmpty
+                              ? 'Your program: not detected from your account'
+                              : 'Your program: $programCode',
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w800,
+                            color: titleColor,
+                            height: 1.3,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          _whoYouCanVoteForExplanation(),
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            color: subtitleColor,
+                            height: 1.45,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 16),
-                  for (final org in _orgList)
-                    ..._orgSection(context, org, isDark, palette),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final org in _orgList)
+                        ..._orgSection(context, org, isDark, palette),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -1763,19 +1829,22 @@ class _ElectionScreenState extends State<ElectionScreen>
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
               child: SizedBox(
+                key: ElecomTutorialKeys.votingSubmit,
                 width: double.infinity,
                 child: FilledButton.icon(
                   style: FilledButton.styleFrom(
                     backgroundColor: palette.accent,
                     foregroundColor: palette.onAccent,
                   ),
-                  onPressed: () => _submit(palette),
+                  onPressed: _submitInFlight ? null : () => _submit(palette),
                   icon: Icon(
-                    Icons.how_to_vote_outlined,
+                    _submitInFlight
+                        ? Icons.hourglass_top_rounded
+                        : Icons.how_to_vote_outlined,
                     color: palette.onAccent,
                   ),
                   label: Text(
-                    'Submit ballot',
+                    _submitInFlight ? 'Submitting...' : 'Submit ballot',
                     style: TextStyle(
                       fontWeight: FontWeight.w800,
                       color: palette.onAccent,
@@ -1829,6 +1898,9 @@ class _ElectionScreenState extends State<ElectionScreen>
 
       widgets.add(
         Container(
+          key: key == _expectedKeys.first
+              ? ElecomTutorialKeys.votingBallot
+              : null,
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
           decoration: BoxDecoration(

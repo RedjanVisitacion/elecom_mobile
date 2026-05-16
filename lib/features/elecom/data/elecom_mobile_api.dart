@@ -29,6 +29,22 @@ class ElecomMobileApi {
     });
   }
 
+  Future<Map<String, dynamic>> getTutorialState() async {
+    return _getJson(MobileApiPaths.tutorialState);
+  }
+
+  Future<Map<String, dynamic>> updateTutorialState({
+    bool? loginDone,
+    bool? homeDone,
+    bool? votingDone,
+  }) async {
+    final payload = <String, dynamic>{};
+    if (loginDone != null) payload['login_done'] = loginDone;
+    if (homeDone != null) payload['home_done'] = homeDone;
+    if (votingDone != null) payload['voting_done'] = votingDone;
+    return _postJson(MobileApiPaths.tutorialState, payload);
+  }
+
   Future<Map<String, dynamic>> setProfilePhotoUrl({
     required String photoUrl,
   }) async {

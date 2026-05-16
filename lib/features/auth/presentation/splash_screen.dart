@@ -6,6 +6,7 @@ import '../../../core/notifications/notification_center_store.dart';
 import '../../../core/notifications/push_notification_service.dart';
 import '../../elecom/presentation/elecom_dashboard.dart';
 import '../../../core/session/session_persistence.dart';
+import '../../../screens/get_started_screen.dart';
 import 'login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -74,7 +75,17 @@ class _SplashScreenState extends State<SplashScreen>
     }
 
     if (!mounted) return;
-    Navigator.of(context).pushReplacement(
+    final navigator = Navigator.of(context);
+    if (!hasSession && await GetStartedScreen.shouldShow()) {
+      if (!navigator.mounted) return;
+      navigator.pushReplacement(
+        MaterialPageRoute(builder: (_) => const GetStartedScreen()),
+      );
+      return;
+    }
+
+    if (!navigator.mounted) return;
+    navigator.pushReplacement(
       MaterialPageRoute(
         builder: (_) =>
             hasSession ? const ElecomDashboard() : const LoginScreen(),

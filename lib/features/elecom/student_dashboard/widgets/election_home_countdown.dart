@@ -7,6 +7,7 @@ import '../../../../core/notifications/local_push_service.dart';
 import '../../../../core/notifications/notification_center_store.dart';
 import '../../../../core/session/user_session.dart';
 import '../../data/elecom_mobile_api.dart';
+import '../../data/election_window_utils.dart';
 
 /// Home-tab election countdown fed by [GET /api/mobile/election/window/] (same schedule as the web).
 class ElectionHomeCountdown extends StatefulWidget {
@@ -14,6 +15,7 @@ class ElectionHomeCountdown extends StatefulWidget {
     super.key,
     required this.orgName,
     this.embeddedInProfileCard = false,
+    this.tutorialPrimaryActionKey,
     this.onVoteNow,
     this.onViewResults,
     this.onViewReceipt,
@@ -23,6 +25,9 @@ class ElectionHomeCountdown extends StatefulWidget {
 
   /// When true, spacing is tightened for use directly under the profile row.
   final bool embeddedInProfileCard;
+
+  /// Optional coach-mark target for the primary CTA (Vote / View Results / Receipt).
+  final GlobalKey? tutorialPrimaryActionKey;
 
   /// Opens voting (e.g. switch bottom nav to Election).
   final VoidCallback? onVoteNow;
@@ -62,83 +67,52 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
     super.dispose();
   }
 
-  DateTime? _parseIso(String? raw) {
-    if (raw == null) return null;
-    final s = raw.trim();
-    if (s.isEmpty || s.toLowerCase() == 'null') return null;
-    try {
-      return DateTime.parse(s);
-    } catch (_) {
-      return null;
-    }
-  }
-
   DateTime? _countdownTarget(Map<String, dynamic> e) {
-    final status = (e['status'] ?? '').toString();
-    final rs = (e['results_status'] ?? e['results_state'] ?? '')
-        .toString()
-        .toLowerCase();
-    final start = _parseIso(e['start_at']?.toString());
-    final end = _parseIso(e['end_at']?.toString());
-    final results = _parseIso(e['results_at']?.toString());
-    if (status == 'Upcoming' && start != null) return start.toLocal();
-    if (status == 'Active' && end != null) return end.toLocal();
-    if (status == 'Closed' && rs == 'pending' && results != null)
-      return results.toLocal();
-    return null;
+    return ElectionWindowUtils.countdownTargetUtc(e);
   }
 
   String _countdownLabel(Map<String, dynamic> e) {
-    final status = (e['status'] ?? '').toString();
+    final status = ElectionWindowUtils.computedStatus(e);
     final rs = (e['results_status'] ?? e['results_state'] ?? '')
         .toString()
         .toLowerCase();
-    if (status == 'Upcoming') return 'Countdown to election start';
-    if (status == 'Active') return 'Countdown to election end';
-    if (status == 'Closed' && rs == 'pending') return 'Countdown to results time';
-    if (status == 'Closed' && rs == 'published') return 'Results are published';
+    if (status == 'upcoming') return 'Countdown to election start';
+    if (status == 'active') return 'Countdown to election end';
+    if (status == 'closed' && rs == 'pending') {
+      return 'Countdown to results time';
+    }
+    if (status == 'closed' && rs == 'published') return 'Results are published';
     return 'Election countdown';
   }
 
   String _statusLine(Map<String, dynamic> e, Duration? remaining) {
-    final status = (e['status'] ?? '').toString();
+    final status = ElectionWindowUtils.computedStatus(e);
     final rs = (e['results_status'] ?? e['results_state'] ?? '')
         .toString()
         .toLowerCase();
     final days = remaining?.inDays ?? 0;
-    if (status == 'Active') {
+    if (status == 'active') {
       return 'You have ${days.clamp(0, 9999)} days left to vote. Don\'t miss your chance!';
     }
-    if (status == 'Upcoming') {
+    if (status == 'upcoming') {
       return 'Voting has not started yet. Get ready before the window opens.';
     }
-    if (status == 'Closed' && rs == 'pending') {
+    if (status == 'closed' && rs == 'pending') {
       return 'Voting is closed. Results will be published soon.';
     }
-    if (status == 'Closed' && rs == 'published') {
+    if (status == 'closed' && rs == 'published') {
       return 'Results are published. Open the Results tab for details.';
     }
     return 'Election schedule will appear here when it is configured.';
   }
 
   bool _isActive(Map<String, dynamic> e) {
-    return (e['status'] ?? '').toString() == 'Active';
+    return ElectionWindowUtils.isActiveNow(e);
   }
 
   bool _isResultsPublished(Map<String, dynamic> e) {
-    final status = (e['status'] ?? '').toString();
-    final rs = (e['results_status'] ?? e['results_state'] ?? '')
-        .toString()
-        .toLowerCase();
-    return status == 'Closed' && rs == 'published';
-  }
-
-  bool _isClosedWithoutPublishedResults(Map<String, dynamic> e) {
-    final status = (e['status'] ?? '').toString();
-    final rs = (e['results_status'] ?? e['results_state'] ?? '')
-        .toString()
-        .toLowerCase();
-    return status == 'Closed' && rs != 'published';
+    return ElectionWindowUtils.computedStatus(e) == 'closed' &&
+        ElectionWindowUtils.canViewResultsNow(e);
   }
 
   Future<void> _maybeReactToPhaseChange(Map<String, dynamic> e) async {
@@ -220,9 +194,12 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
       final res = await _api.getElectionWindow();
       final voteRes = await _api.getVoteStatus();
       final election = res['election'];
-      final map = election is Map<String, dynamic>
-          ? election
+      final map = election is Map
+          ? ElectionWindowUtils.normalizeElection(
+              Map<String, dynamic>.from(election),
+            )
           : const <String, dynamic>{};
+      ElectionWindowUtils.debugLog(map, source: 'home countdown');
       final voted = voteRes['voted'] == true;
       if (!mounted) return;
       setState(() {
@@ -246,7 +223,7 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
     final e = _election;
 
     final target = _countdownTarget(e);
-    final now = DateTime.now();
+    final now = DateTime.now().toUtc();
     Duration diff = target != null ? target.difference(now) : Duration.zero;
     if (diff.isNegative) diff = Duration.zero;
     final d = diff.inDays;
@@ -254,11 +231,12 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
     final m = diff.inMinutes.remainder(60);
     final s = diff.inSeconds.remainder(60);
     final isActive = _isActive(e);
-    final showViewResults =
-        _isClosedWithoutPublishedResults(e) || _isResultsPublished(e);
+    final showViewResults = _isResultsPublished(e);
     final ctaText = _hasVoted
         ? 'View Receipt'
-        : (isActive ? 'Vote Now' : (showViewResults ? 'View Results' : 'Vote Now'));
+        : (isActive
+              ? 'Vote Now'
+              : (showViewResults ? 'View Results' : 'Vote Now'));
     final headline = _countdownLabel(e);
 
     return Column(
@@ -365,6 +343,7 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
     required bool showViewResults,
   }) {
     return Material(
+      key: widget.tutorialPrimaryActionKey,
       color: Colors.white,
       elevation: 3,
       shadowColor: Colors.black.withValues(alpha: 0.2),

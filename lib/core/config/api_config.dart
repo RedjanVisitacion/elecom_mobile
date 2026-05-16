@@ -1,11 +1,9 @@
-import 'dart:io' show Platform;
-
 class ApiConfig {
   static const String _envBaseUrl = String.fromEnvironment('API_BASE_URL');
+  static const String _defaultBaseUrl = 'http://45.130.164.201:8000';
 
   static String get baseUrl {
     if (_envBaseUrl.isNotEmpty) return _envBaseUrl;
-    if (Platform.isAndroid) return 'http://192.168.1.171:8000';
-    return 'http://127.0.0.1:8000';
+    return _defaultBaseUrl;
   }
 }

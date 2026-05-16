@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/session/user_session.dart';
 import '../../../core/utils/toast_service.dart';
+import '../../../services/tutorial_service.dart';
 import '../profile/profile_screen.dart';
 import '../data/elecom_mobile_api.dart';
 import 'utils/theme_notifier.dart';
@@ -45,6 +46,26 @@ class _StudentDashboardState extends State<StudentDashboard> {
   List<Map<String, dynamic>> _homeCandidates = <Map<String, dynamic>>[];
   Map<String, dynamic>? _ledgerSummary;
   bool _loadingLedger = false;
+  bool _homeTutorialRequested = false;
+
+  void _onReplayDashboardTutorial() {
+    if (!mounted) return;
+    setState(() => _currentIndex = 0);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _tryScheduleHomeTutorial(force: true);
+    });
+  }
+
+  Future<void> _tryScheduleHomeTutorial({bool force = false}) async {
+    if (!mounted) return;
+    if (_currentIndex != 0) return;
+    if (_homeTutorialRequested && !force) return;
+    if (!force) _homeTutorialRequested = true;
+    await TutorialService.showHomeTutorialIfNeeded(
+      context: context,
+      force: force,
+    );
+  }
 
   String _displayFirstName() {
     final raw = (UserSession.fullName ?? '').trim();
@@ -97,9 +118,13 @@ class _StudentDashboardState extends State<StudentDashboard> {
   @override
   void initState() {
     super.initState();
+    TutorialReplayBus.register(_onReplayDashboardTutorial);
     _ensureProfileBasics();
     _loadHomeCandidates();
     _loadLedgerSummary();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _tryScheduleHomeTutorial();
+    });
   }
 
   Future<void> _loadHomeCandidates() async {
@@ -286,6 +311,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                 _homeTab(context),
                 ElectionScreen(
                   voteIntentNonce: _voteIntentNonce,
+                  isActive: _currentIndex == 1,
                   onRequestTabIndex: (i) {
                     if (!mounted) return;
                     setState(() => _currentIndex = i);
@@ -309,6 +335,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
             bottomNavigationBar: SafeArea(
               top: false,
               child: BottomNavigationBar(
+                key: ElecomTutorialKeys.homeBottomNav,
                 type: BottomNavigationBarType.fixed,
                 currentIndex: _currentIndex,
                 onTap: (i) async {
@@ -333,6 +360,9 @@ class _StudentDashboardState extends State<StudentDashboard> {
                         _homeCountdownVersion++;
                       });
                     }
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      _tryScheduleHomeTutorial();
+                    });
                     return;
                   }
 
@@ -364,25 +394,28 @@ class _StudentDashboardState extends State<StudentDashboard> {
                 backgroundColor: shouldUseDarkMode
                     ? const Color(0xFF242433)
                     : Colors.white,
-                items: const [
-                  BottomNavigationBarItem(
+                items: [
+                  const BottomNavigationBarItem(
                     icon: Icon(Icons.home_outlined),
                     label: 'Home',
                   ),
-                  BottomNavigationBarItem(
+                  const BottomNavigationBarItem(
                     icon: Icon(Icons.how_to_vote_outlined),
                     label: 'Election',
                   ),
-                  BottomNavigationBarItem(
+                  const BottomNavigationBarItem(
                     icon: Icon(Icons.bar_chart_outlined),
                     label: 'Results',
                   ),
-                  BottomNavigationBarItem(
+                  const BottomNavigationBarItem(
                     icon: Icon(Icons.receipt_long_outlined),
                     label: 'Receipt',
                   ),
                   BottomNavigationBarItem(
-                    icon: Icon(Icons.person_outline),
+                    icon: Icon(
+                      Icons.person_outline,
+                      key: ElecomTutorialKeys.homeSettings,
+                    ),
                     label: 'Me',
                   ),
                 ],
@@ -562,6 +595,8 @@ class _StudentDashboardState extends State<StudentDashboard> {
                       key: ValueKey<int>(_homeCountdownVersion),
                       orgName: widget.orgName,
                       embeddedInProfileCard: false,
+                      tutorialPrimaryActionKey:
+                          ElecomTutorialKeys.homePrimaryAction,
                       onVoteNow: () {
                         setState(() {
                           _voteIntentNonce++;
@@ -586,16 +621,20 @@ class _StudentDashboardState extends State<StudentDashboard> {
                     const SizedBox(height: 18),
                     const OmnibusCodeCarousel(),
                     const SizedBox(height: 14),
-                    ElectionTransparencyCard(
-                      summary: _ledgerSummary,
-                      isLoading: _loadingLedger,
-                      onTapViewLedger: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const ElectionTransparencyScreen(),
-                          ),
-                        );
-                      },
+                    Container(
+                      key: ElecomTutorialKeys.homeReports,
+                      child: ElectionTransparencyCard(
+                        summary: _ledgerSummary,
+                        isLoading: _loadingLedger,
+                        onTapViewLedger: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  const ElectionTransparencyScreen(),
+                            ),
+                          );
+                        },
+                      ),
                     ),
                   ],
                 ),
@@ -609,6 +648,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
 
   @override
   void dispose() {
+    TutorialReplayBus.unregister();
     _homeScrollController.dispose();
     super.dispose();
   }

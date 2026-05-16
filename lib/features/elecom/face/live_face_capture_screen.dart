@@ -57,13 +57,15 @@ class LiveFaceCaptureScreen extends StatefulWidget {
 
 class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
     with WidgetsBindingObserver, TickerProviderStateMixin {
-  static const double _eyeOpenMin = 0.60;
-  static const double _eyeClosedMax = 0.35;
-  static const Duration _stableHoldRequired = Duration(milliseconds: 500);
-  static const Duration _closedMin = Duration(milliseconds: 80);
-  static const Duration _closedMax = Duration(milliseconds: 700);
-  static const Duration _sessionTimeout = Duration(seconds: 10);
-  static const Duration _minFrameInterval = Duration(milliseconds: 85);
+  static const double _fallbackEyeOpenMin = 0.46;
+  static const double _fallbackEyeClosedMax = 0.42;
+  static const double _hardClosedEyeMax = 0.24;
+  static const double _minBlinkDrop = 0.18;
+  static const Duration _stableHoldRequired = Duration(milliseconds: 350);
+  static const Duration _closedMin = Duration(milliseconds: 35);
+  static const Duration _closedMax = Duration(milliseconds: 950);
+  static const Duration _sessionTimeout = Duration(seconds: 18);
+  static const Duration _minFrameInterval = Duration(milliseconds: 55);
 
   CameraController? _camera;
   FaceDetector? _detector;
@@ -80,6 +82,8 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
   DateTime? _stableSince;
   DateTime? _closedStartedAt;
   final List<Offset> _recentCenters = [];
+  double? _openEyeBaseline;
+  double? _lowestEyeScoreInClosedSegment;
 
   bool _captureInFlight = false;
   bool _showCheckFlash = false;
@@ -215,7 +219,7 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
       _detector = FaceDetector(
         options: FaceDetectorOptions(
           enableClassification: true,
-          performanceMode: FaceDetectorMode.accurate,
+          performanceMode: FaceDetectorMode.fast,
         ),
       );
       _camera = controller;
@@ -398,26 +402,57 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
     }
   }
 
+  double? _eyeScore(double? l, double? r) {
+    if (l == null && r == null) return null;
+    if (l == null) return r;
+    if (r == null) return l;
+    return (l + r) / 2;
+  }
+
+  double? _lowestEye(double? l, double? r) {
+    if (l == null && r == null) return null;
+    if (l == null) return r;
+    if (r == null) return l;
+    return math.min(l, r);
+  }
+
+  void _learnOpenEyeBaseline(double score) {
+    final current = _openEyeBaseline;
+    if (current == null) {
+      _openEyeBaseline = score.clamp(0.35, 0.95).toDouble();
+      return;
+    }
+    if (score >= current) {
+      _openEyeBaseline = (current * 0.65) + (score * 0.35);
+    } else if (_blinkStage != _BlinkStage.inClosedSegment) {
+      _openEyeBaseline = (current * 0.94) + (score * 0.06);
+    }
+  }
+
   bool _eyesOpen(double? l, double? r) {
-    if (l == null || r == null) return false;
-    return l >= _eyeOpenMin && r >= _eyeOpenMin;
+    final score = _eyeScore(l, r);
+    if (score == null) return false;
+    final baseline = _openEyeBaseline ?? score;
+    final threshold = math.max(_fallbackEyeOpenMin, baseline - 0.12);
+    return score >= threshold || score >= 0.62;
   }
 
   bool _eyesClosed(double? l, double? r) {
-    if (l == null || r == null) return false;
-    return l <= _eyeClosedMax && r <= _eyeClosedMax;
+    final score = _eyeScore(l, r);
+    if (score == null) return false;
+    final lowest = _lowestEye(l, r) ?? score;
+    final baseline = _openEyeBaseline ?? math.max(score, _fallbackEyeOpenMin);
+    final adaptiveClosed = math.min(_fallbackEyeClosedMax, baseline - _minBlinkDrop);
+    final clearDrop = baseline - score >= _minBlinkDrop;
+    return score <= adaptiveClosed ||
+        lowest <= _hardClosedEyeMax ||
+        (score <= 0.50 && clearDrop);
   }
 
   bool _eyesAmbiguous(double? l, double? r) {
-    if (l == null || r == null) return true;
+    final score = _eyeScore(l, r);
+    if (score == null) return true;
     return !_eyesOpen(l, r) && !_eyesClosed(l, r);
-  }
-
-  bool _oneEyeClosedOnly(double? l, double? r) {
-    if (l == null || r == null) return false;
-    final lc = l <= _eyeClosedMax;
-    final rc = r <= _eyeClosedMax;
-    return lc != rc;
   }
 
   Offset _normalizedFaceCenter(Face face, CameraImage image, CameraController controller) {
@@ -479,6 +514,7 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
   void _resetBlinkTracking() {
     _blinkStage = _BlinkStage.idle;
     _closedStartedAt = null;
+    _lowestEyeScoreInClosedSegment = null;
   }
 
   void _cancelBlinkDeadline() {
@@ -492,6 +528,8 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
       debugPrint(
         '[FaceCapture] leftEyeOpenProbability=${l?.toStringAsFixed(3) ?? "null"} '
         'rightEyeOpenProbability=${r?.toStringAsFixed(3) ?? "null"} '
+        'eyeScore=${_eyeScore(l, r)?.toStringAsFixed(3) ?? "null"} '
+        'baseline=${_openEyeBaseline?.toStringAsFixed(3) ?? "null"} '
         'currentBlinkState=$blinkStateLabel ui=$_uiState stage=$_blinkStage',
       );
     }
@@ -570,7 +608,8 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
     final center = _normalizedFaceCenter(face, image, camera);
     _pushCenterSample(center);
 
-    if (left == null || right == null) {
+    final eyeScore = _eyeScore(left, right);
+    if (eyeScore == null) {
       _stableSince = null;
       _resetBlinkTracking();
       _applyLiveAnalyzerUi(() {
@@ -605,6 +644,10 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
       return;
     }
 
+    if (_blinkStage != _BlinkStage.inClosedSegment && _eyesOpen(left, right)) {
+      _learnOpenEyeBaseline(eyeScore);
+    }
+
     // Stable enough — blink guidance.
     if (_uiState != FaceCaptureUiState.blinkNow &&
         _uiState != FaceCaptureUiState.blinkDetected &&
@@ -621,45 +664,41 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
 
     final now = DateTime.now();
 
-    // Balanced blink: open → closed → open with timed closed segment.
-    if (_oneEyeClosedOnly(left, right)) {
-      _resetBlinkTracking();
-      _debugLog(left, right, 'one_eye_only');
-      return;
-    }
-
+    // Adaptive blink: open baseline → clear drop → open rebound.
     switch (_blinkStage) {
       case _BlinkStage.idle:
         if (_eyesOpen(left, right)) {
           _blinkStage = _BlinkStage.sawOpenWhileEligible;
+          _learnOpenEyeBaseline(eyeScore);
         }
         _debugLog(left, right, 'idle');
         break;
 
       case _BlinkStage.sawOpenWhileEligible:
         if (_eyesAmbiguous(left, right)) {
-          _blinkStage = _BlinkStage.idle;
-          _debugLog(left, right, 'ambiguous_reset');
+          _debugLog(left, right, 'ambiguous_wait');
           break;
         }
         if (_eyesClosed(left, right)) {
           _blinkStage = _BlinkStage.inClosedSegment;
           _closedStartedAt = now;
+          _lowestEyeScoreInClosedSegment = eyeScore;
           _debugLog(left, right, 'closed_start');
           break;
         }
         if (!_eyesOpen(left, right)) {
           _blinkStage = _BlinkStage.idle;
+        } else {
+          _learnOpenEyeBaseline(eyeScore);
         }
         _debugLog(left, right, 'wait_close');
         break;
 
       case _BlinkStage.inClosedSegment:
-        if (_eyesAmbiguous(left, right) || _oneEyeClosedOnly(left, right)) {
-          _resetBlinkTracking();
-          _debugLog(left, right, 'ambiguous_in_closed');
-          break;
-        }
+        _lowestEyeScoreInClosedSegment = math.min(
+          _lowestEyeScoreInClosedSegment ?? eyeScore,
+          eyeScore,
+        );
         final start = _closedStartedAt;
         if (start != null && now.difference(start) > _closedMax) {
           _resetBlinkTracking();
@@ -672,7 +711,10 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
         }
         if (_eyesOpen(left, right)) {
           final dur = start != null ? now.difference(start) : Duration.zero;
-          if (dur < _closedMin) {
+          final blinkDrop =
+              (_openEyeBaseline ?? eyeScore) -
+              (_lowestEyeScoreInClosedSegment ?? eyeScore);
+          if (dur < _closedMin && blinkDrop < 0.30) {
             _resetBlinkTracking();
             _debugLog(left, right, 'closed_too_short');
             break;
@@ -682,13 +724,17 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
             _debugLog(left, right, 'closed_long_invalid');
             break;
           }
+          if (blinkDrop < _minBlinkDrop) {
+            _resetBlinkTracking();
+            _debugLog(left, right, 'drop_too_small');
+            break;
+          }
           _cancelBlinkDeadline();
           _debugLog(left, right, 'blink_confirmed');
           _beginBlinkSuccessCapture();
           break;
         }
-        _resetBlinkTracking();
-        _debugLog(left, right, 'unexpected_open_state');
+        _debugLog(left, right, 'ambiguous_in_closed_keep_waiting');
         break;
     }
   }
@@ -830,7 +876,7 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
     _detector ??= FaceDetector(
       options: FaceDetectorOptions(
         enableClassification: true,
-        performanceMode: FaceDetectorMode.accurate,
+        performanceMode: FaceDetectorMode.fast,
       ),
     );
     await _startImageStream();

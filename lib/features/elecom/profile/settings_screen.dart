@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../services/tutorial_service.dart';
 import 'account_settings_screen.dart';
 import 'change_password_screen.dart';
 import 'notification_settings_screen.dart';
@@ -29,6 +30,20 @@ class SettingsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
         children: [
+          _SettingsTile(
+            title: 'Replay tutorial',
+            subtitle: 'Show the home guided tour again',
+            onTap: () async {
+              await TutorialPrefs.resetHomeTutorialOnly();
+              if (context.mounted) {
+                Navigator.of(context).pop();
+              }
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                TutorialReplayBus.requestDashboardReplay();
+              });
+            },
+          ),
+          const SizedBox(height: 14),
           _SectionTitle(
             title: 'APPEARANCE',
             accentColor: const Color(0xFF7C3AED),
@@ -49,7 +64,9 @@ class SettingsScreen extends StatelessWidget {
             title: 'Notification Settings',
             onTap: () {
               Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const NotificationSettingsScreen()),
+                MaterialPageRoute(
+                  builder: (_) => const NotificationSettingsScreen(),
+                ),
               );
             },
           ),
@@ -57,7 +74,9 @@ class SettingsScreen extends StatelessWidget {
             title: 'Account Settings',
             onTap: () {
               Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const AccountSettingsScreen()),
+                MaterialPageRoute(
+                  builder: (_) => const AccountSettingsScreen(),
+                ),
               );
             },
           ),
@@ -79,7 +98,9 @@ class SettingsScreen extends StatelessWidget {
             title: 'Terms and Conditions',
             onTap: () {
               Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const ElecomTermsConditionsScreen()),
+                MaterialPageRoute(
+                  builder: (_) => const ElecomTermsConditionsScreen(),
+                ),
               );
             },
           ),
@@ -87,7 +108,9 @@ class SettingsScreen extends StatelessWidget {
             title: 'Privacy Notice',
             onTap: () {
               Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const ElecomPrivacyNoticeScreen()),
+                MaterialPageRoute(
+                  builder: (_) => const ElecomPrivacyNoticeScreen(),
+                ),
               );
             },
           ),
@@ -114,7 +137,11 @@ class SettingsScreen extends StatelessWidget {
       backgroundColor: Colors.transparent,
       builder: (ctx) {
         return Padding(
-          padding: EdgeInsets.only(left: 10, right: 10, bottom: safeBottom + 10),
+          padding: EdgeInsets.only(
+            left: 10,
+            right: 10,
+            bottom: safeBottom + 10,
+          ),
           child: Material(
             color: sheetColor,
             surfaceTintColor: sheetColor,
@@ -132,7 +159,9 @@ class SettingsScreen extends StatelessWidget {
                         width: 44,
                         height: 4,
                         decoration: BoxDecoration(
-                          color: isDarkMode ? Colors.white24 : Theme.of(ctx).colorScheme.outlineVariant,
+                          color: isDarkMode
+                              ? Colors.white24
+                              : Theme.of(ctx).colorScheme.outlineVariant,
                           borderRadius: BorderRadius.circular(100),
                         ),
                       ),
@@ -185,14 +214,10 @@ class SettingsScreen extends StatelessWidget {
     context.read<ThemeNotifier>().setThemeMode(mode);
     Navigator.of(context).pop();
   }
-
 }
 
 class _SectionTitle extends StatelessWidget {
-  const _SectionTitle({
-    required this.title,
-    required this.accentColor,
-  });
+  const _SectionTitle({required this.title, required this.accentColor});
 
   final String title;
   final Color accentColor;
@@ -214,9 +239,9 @@ class _SectionTitle extends StatelessWidget {
         Text(
           title,
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w900,
-                color: isDarkMode ? Colors.white : Colors.black,
-              ),
+            fontWeight: FontWeight.w900,
+            color: isDarkMode ? Colors.white : Colors.black,
+          ),
         ),
       ],
     );
@@ -253,16 +278,20 @@ class _SettingsTile extends StatelessWidget {
           : Text(
               subtitle!,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: isDarkMode ? Colors.white70 : Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                color: isDarkMode
+                    ? Colors.white70
+                    : Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
       trailing: trailingText != null
           ? Text(
               trailingText!,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: isDarkMode ? Colors.white : Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                fontWeight: FontWeight.w700,
+                color: isDarkMode
+                    ? Colors.white
+                    : Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             )
           : Icon(
               Icons.chevron_right,
@@ -306,7 +335,9 @@ class _ThemeModeTile extends StatelessWidget {
           ? null
           : Text(
               subtitle!,
-              style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black54),
+              style: TextStyle(
+                color: isDarkMode ? Colors.white70 : Colors.black54,
+              ),
             ),
       fillColor: WidgetStatePropertyAll<Color>(
         isDarkMode ? Colors.white70 : Colors.black,

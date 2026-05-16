@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/notifications/notification_center_store.dart';
 import '../../../core/utils/toast_service.dart';
+import '../../../services/tutorial_service.dart';
 import '../../elecom/data/elecom_mobile_api.dart';
 import '../../elecom/face/face_enrollment_screen.dart';
 import '../../elecom/presentation/elecom_dashboard.dart';
@@ -21,6 +22,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _studentIdController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _loginTutorialScheduled = false;
 
   bool _termsShownOnce = false;
   final ElecomMobileApi _mobileApi = ElecomMobileApi();
@@ -49,8 +51,11 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!ok) return;
 
     if (!vm.acceptedTerms) {
-      AppToast.warning(context, 'Please accept the Terms & Conditions.',
-          isLoginScreen: true);
+      AppToast.warning(
+        context,
+        'Please accept the Terms & Conditions.',
+        isLoginScreen: true,
+      );
       return;
     }
 
@@ -69,10 +74,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
       // Clear any lingering toasts (e.g. previous login error) before navigating.
       AppToast.dismissAll();
+      TutorialService.dismissActiveTutorial();
 
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (_) => isEnrolled ? const ElecomDashboard() : const FaceEnrollmentScreen(isMandatory: true),
+          builder: (_) => isEnrolled
+              ? const ElecomDashboard()
+              : const FaceEnrollmentScreen(isMandatory: true),
         ),
       );
     } catch (_) {
@@ -80,6 +88,22 @@ class _LoginScreenState extends State<LoginScreen> {
       final msg = vm.error ?? 'Login failed';
       AppToast.error(context, msg, isLoginScreen: true);
     }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _maybeStartLoginTutorial(),
+    );
+  }
+
+  Future<void> _maybeStartLoginTutorial() async {
+    if (!mounted || _loginTutorialScheduled) return;
+    if (!await TutorialPrefs.shouldShowLoginTutorial()) return;
+    _loginTutorialScheduled = true;
+    if (!mounted) return;
+    await TutorialService.showLoginTutorialIfNeeded(context: context);
   }
 
   @override
@@ -108,22 +132,31 @@ class _LoginScreenState extends State<LoginScreen> {
     return Theme(
       data: lightLoginTheme,
       child: MediaQuery(
-        data: MediaQuery.of(context).copyWith(
-          platformBrightness: Brightness.light,
-        ),
+        data: MediaQuery.of(
+          context,
+        ).copyWith(platformBrightness: Brightness.light),
         child: Scaffold(
           body: SafeArea(
             child: Center(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 420),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 26),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 22,
+                      vertical: 26,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
+                      border: Border.all(
+                        color: const Color(0xFFE0E0E0),
+                        width: 1,
+                      ),
                     ),
                     child: Form(
                       key: _formKey,
@@ -147,6 +180,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           const SizedBox(height: 18),
                           _RoundedField(
+                            key: ElecomTutorialKeys.loginStudentId,
                             controller: _studentIdController,
                             hintText: 'STUDENT ID',
                             keyboardType: TextInputType.text,
@@ -159,6 +193,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           const SizedBox(height: 12),
                           _RoundedField(
+                            key: ElecomTutorialKeys.loginPassword,
                             controller: _passwordController,
                             hintText: 'PASSWORD',
                             obscureText: vm.obscurePassword,
@@ -180,6 +215,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           const SizedBox(height: 16),
                           SizedBox(
+                            key: ElecomTutorialKeys.loginSubmit,
                             width: double.infinity,
                             height: 46,
                             child: ElevatedButton(
@@ -198,12 +234,17 @@ class _LoginScreenState extends State<LoginScreen> {
                                       height: 20,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2,
-                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                              Colors.white,
+                                            ),
                                       ),
                                     )
                                   : const Text(
                                       'LOGIN',
-                                      style: TextStyle(fontWeight: FontWeight.w800),
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                      ),
                                     ),
                             ),
                           ),
@@ -215,7 +256,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                 value: vm.acceptedTerms,
                                 onChanged: (v) async {
                                   final next = v ?? false;
-                                  if (next && !vm.acceptedTerms && !_termsShownOnce) {
+                                  if (next &&
+                                      !vm.acceptedTerms &&
+                                      !_termsShownOnce) {
                                     _termsShownOnce = true;
                                     await _showTerms();
                                     if (!mounted) return;
@@ -248,11 +291,11 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           const SizedBox(height: 6),
                           TextButton(
+                            key: ElecomTutorialKeys.loginForgot,
                             onPressed: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute(
-                                  builder: (_) =>
-                                      const ForgotPasswordScreen(),
+                                  builder: (_) => const ForgotPasswordScreen(),
                                 ),
                               );
                             },
@@ -281,6 +324,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
 class _RoundedField extends StatelessWidget {
   const _RoundedField({
+    super.key,
     required this.controller,
     required this.hintText,
     required this.validator,
@@ -311,7 +355,10 @@ class _RoundedField extends StatelessWidget {
           color: Color(0xFF9E9E9E),
           fontWeight: FontWeight.w700,
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 18,
+          vertical: 14,
+        ),
         suffixIcon: suffix,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(28),

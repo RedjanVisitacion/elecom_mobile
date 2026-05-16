@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/utils/toast_service.dart';
 
 import '../../../core/session/session_persistence.dart';
+import '../../../services/tutorial_service.dart';
 import '../../auth/presentation/login_screen.dart';
 import '../data/elecom_mobile_api.dart';
 import '../presentation/elecom_dashboard.dart';
@@ -41,6 +42,25 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
   bool _busy = false;
   String? _status; // null = hidden; shown only when there is something to say
   bool _uploadFailed = false;
+  bool _tutorialRequested = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _maybeStartTutorial();
+    });
+  }
+
+  Future<void> _maybeStartTutorial({bool force = false}) async {
+    if (!mounted || _busy) return;
+    if (_tutorialRequested && !force) return;
+    if (!force) _tutorialRequested = true;
+    await TutorialService.showFaceEnrollmentTutorialIfNeeded(
+      context: context,
+      force: force,
+    );
+  }
 
   // ── Theme tokens ─────────────────────────────────────────────────────────
   static const Color _charcoal = Color(0xFF1C1C1E);
@@ -52,6 +72,7 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
 
   Future<void> _captureFace() async {
     if (_busy) return;
+    TutorialService.dismissActiveTutorial();
     setState(() {
       _busy = true;
       _uploadFailed = false;
@@ -356,6 +377,7 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
 
                     // ── Info card: charcoal + gold ─────────────────────
                     Container(
+                      key: ElecomTutorialKeys.faceEnrollInfo,
                       decoration: BoxDecoration(
                         color: _charcoal,
                         borderRadius: BorderRadius.circular(20),
@@ -456,6 +478,7 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
 
                     // ── Face frame card ────────────────────────────────
                     Container(
+                      key: ElecomTutorialKeys.faceEnrollFrame,
                       decoration: BoxDecoration(
                         color: _cardBg,
                         borderRadius: BorderRadius.circular(20),
@@ -623,6 +646,7 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
 
                   // Primary CTA
                   SizedBox(
+                    key: ElecomTutorialKeys.faceEnrollStart,
                     width: double.infinity,
                     height: 56,
                     child: FilledButton.icon(
