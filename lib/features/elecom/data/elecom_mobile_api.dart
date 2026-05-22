@@ -163,6 +163,18 @@ class ElecomMobileApi {
     return _getJson(MobileApiPaths.voteLedger);
   }
 
+  Future<Map<String, dynamic>> checkNetworkAccess({
+    String? deviceIp,
+  }) async {
+    final payload = <String, dynamic>{};
+    final ip = (deviceIp ?? '').trim();
+    if (ip.isNotEmpty) {
+      payload['device_ip'] = ip;
+      payload['local_ip'] = ip;
+    }
+    return _postJson(MobileApiPaths.networkCheck, payload);
+  }
+
   Future<Map<String, dynamic>> getCloudinarySignature() async {
     // Use non-admin signature for student profile photo uploads.
     return _getJson(MobileApiPaths.cloudinaryProfileSignature);

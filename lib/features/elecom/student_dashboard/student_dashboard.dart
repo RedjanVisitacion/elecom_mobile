@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -165,6 +166,75 @@ class _StudentDashboardState extends State<StudentDashboard> {
     } catch (_) {
       // Keep pull-to-refresh responsive even when one endpoint is slow/offline.
     }
+  }
+
+  Future<String> _deviceLocalIp() async {
+    try {
+      final interfaces = await NetworkInterface.list(
+        includeLoopback: false,
+        type: InternetAddressType.IPv4,
+      );
+      for (final interface in interfaces) {
+        for (final address in interface.addresses) {
+          final ip = address.address.trim();
+          if (ip.isEmpty || ip.startsWith('127.')) continue;
+          if (ip.startsWith('192.168.') ||
+              ip.startsWith('10.') ||
+              RegExp(r'^172\.(1[6-9]|2\d|3[0-1])\.').hasMatch(ip)) {
+            return ip;
+          }
+        }
+      }
+      for (final interface in interfaces) {
+        for (final address in interface.addresses) {
+          final ip = address.address.trim();
+          if (ip.isNotEmpty && !ip.startsWith('127.')) return ip;
+        }
+      }
+    } catch (_) {
+      // Fall back to server-seen IP when the device IP cannot be read.
+    }
+    return '';
+  }
+
+  Future<bool> _ensureNetworkAuthorizedForVoting() async {
+    try {
+      final deviceIp = await _deviceLocalIp();
+      final res = await _api.checkNetworkAccess(deviceIp: deviceIp);
+      final allowed = res['allowed'] == true;
+      if (allowed) return true;
+
+      if (!mounted) return false;
+      AppToast.warning(context, _networkBlockedMessage);
+      return false;
+    } catch (e) {
+      if (!mounted) return false;
+      var message = 'Network check failed. Please try again.';
+      if (e is ElecomApiException) {
+        final raw = e.message.trim();
+        final prefix = RegExp(r'^Request failed \(\d+\):\s*');
+        final clean = raw.replaceFirst(prefix, '').trim().toLowerCase();
+        if (clean.contains('authorized network') ||
+            clean.contains('connected to the authorized network') ||
+            clean.contains('not authorized')) {
+          message = _networkBlockedMessage;
+        }
+      }
+      AppToast.warning(context, message);
+      return false;
+    }
+  }
+
+  String get _networkBlockedMessage =>
+      'Connect to an authorized ELECOM network before voting.';
+
+  Future<void> _openElectionForVoting() async {
+    if (!await _ensureNetworkAuthorizedForVoting()) return;
+    if (!mounted) return;
+    setState(() {
+      _voteIntentNonce++;
+      _currentIndex = 1;
+    });
   }
 
   Future<void> _loadLedgerSummary() async {
@@ -387,10 +457,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                   if (i == 1) {
                     // Entering Election should force the same gates as "Vote Now":
                     // enrollment check + face verification before ballot loads.
-                    setState(() {
-                      _voteIntentNonce++;
-                      _currentIndex = 1;
-                    });
+                    await _openElectionForVoting();
                     return;
                   }
 
@@ -509,103 +576,107 @@ class _StudentDashboardState extends State<StudentDashboard> {
                     ),
                     const SizedBox(height: 10),
                     // Profile row — same horizontal bounds as search bar (single outer padding only).
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: cardColor,
+                    Material(
+                      color: cardColor,
+                      borderRadius: BorderRadius.circular(18),
+                      child: InkWell(
                         borderRadius: BorderRadius.circular(18),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 62,
-                            height: 62,
-                            padding: const EdgeInsets.all(2),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: isDarkMode
-                                    ? Colors.white24
-                                    : const Color(0xFFFEA501),
-                                width: 2,
-                              ),
-                            ),
-                            child: CircleAvatar(
-                              radius: 28,
-                              backgroundColor: isDarkMode
-                                  ? Colors.white12
-                                  : const Color(0xFFEAF1FF),
-                              backgroundImage: photoUrl.isNotEmpty
-                                  ? NetworkImage(photoUrl)
-                                  : null,
-                              child: photoUrl.isNotEmpty
-                                  ? null
-                                  : Icon(
-                                      Icons.person,
-                                      color: isDarkMode
-                                          ? Colors.white70
-                                          : Colors.blue,
-                                      size: 28,
-                                    ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Hi, ${_displayFirstName().toUpperCase()}',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: titleColor,
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 18,
-                                    height: 1.05,
-                                    letterSpacing: 0.2,
+                        onTap: () => setState(() => _currentIndex = 4),
+                        child: Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 62,
+                                height: 62,
+                                padding: const EdgeInsets.all(2),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: isDarkMode
+                                        ? Colors.white24
+                                        : const Color(0xFFFEA501),
+                                    width: 2,
                                   ),
                                 ),
-                                const SizedBox(height: 6),
-                                if (phoneMasked.isNotEmpty)
-                                  Text(
-                                    phoneMasked,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: subtitleColor,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 13,
-                                      height: 1.1,
+                                child: CircleAvatar(
+                                  radius: 28,
+                                  backgroundColor: isDarkMode
+                                      ? Colors.white12
+                                      : const Color(0xFFEAF1FF),
+                                  backgroundImage: photoUrl.isNotEmpty
+                                      ? NetworkImage(photoUrl)
+                                      : null,
+                                  child: photoUrl.isNotEmpty
+                                      ? null
+                                      : Icon(
+                                          Icons.person,
+                                          color: isDarkMode
+                                              ? Colors.white70
+                                              : Colors.blue,
+                                          size: 28,
+                                        ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Hi, ${_displayFirstName().toUpperCase()}',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: titleColor,
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 18,
+                                        height: 1.05,
+                                        letterSpacing: 0.2,
+                                      ),
                                     ),
-                                  ),
-                                if (emailMasked.isNotEmpty) ...[
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    emailMasked,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: subtitleColor,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 13,
-                                      height: 1.1,
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
+                                    const SizedBox(height: 6),
+                                    if (phoneMasked.isNotEmpty)
+                                      Text(
+                                        phoneMasked,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          color: subtitleColor,
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 13,
+                                          height: 1.1,
+                                        ),
+                                      ),
+                                    if (emailMasked.isNotEmpty) ...[
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        emailMasked,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          color: subtitleColor,
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 13,
+                                          height: 1.1,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              SizedBox(
+                                width: 62,
+                                height: 62,
+                                child: Image.asset(
+                                  'assets/gif/Elecom Splash.gif',
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 10),
-                          SizedBox(
-                            width: 62,
-                            height: 62,
-                            child: Image.asset(
-                              'assets/gif/Elecom Splash.gif',
-                              fit: BoxFit.contain,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -615,12 +686,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                       embeddedInProfileCard: false,
                       tutorialPrimaryActionKey:
                           ElecomTutorialKeys.homePrimaryAction,
-                      onVoteNow: () {
-                        setState(() {
-                          _voteIntentNonce++;
-                          _currentIndex = 1;
-                        });
-                      },
+                      onVoteNow: _openElectionForVoting,
                       onViewResults: () {
                         setState(() {
                           _resultsScreenVersion++;

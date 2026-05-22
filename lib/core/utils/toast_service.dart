@@ -177,8 +177,10 @@ abstract final class AppToast {
       context: context,
       type: type,
       style: ToastificationStyle.flat,
-      title: Text(
+      description: Text(
         message,
+        softWrap: true,
+        overflow: TextOverflow.visible,
         style: const TextStyle(
           color: _fg,
           fontWeight: FontWeight.w700,
@@ -189,6 +191,7 @@ abstract final class AppToast {
       icon: Icon(icon, color: _iconColor, size: 20),
       backgroundColor: _bg,
       foregroundColor: _fg,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       borderSide: const BorderSide(color: _borderColor, width: 1),
       borderRadius: BorderRadius.circular(14),
       boxShadow: _shadow,

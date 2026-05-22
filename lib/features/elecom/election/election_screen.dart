@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'dart:io';
 
 import '../../../core/utils/toast_service.dart';
 
@@ -1217,8 +1218,13 @@ class _ElectionScreenState extends State<ElectionScreen>
     );
 
     try {
+      final deviceIp = await _deviceLocalIp();
       await _api.submitVote(<String, dynamic>{
         'selections': payload,
+        if (deviceIp.isNotEmpty) ...{
+          'device_ip': deviceIp,
+          'local_ip': deviceIp,
+        },
       });
       if (!mounted) return;
       Navigator.of(
@@ -1341,6 +1347,33 @@ class _ElectionScreenState extends State<ElectionScreen>
       }
       return false;
     }
+  }
+
+  Future<String> _deviceLocalIp() async {
+    try {
+      final interfaces = await NetworkInterface.list(
+        includeLoopback: false,
+        type: InternetAddressType.IPv4,
+      );
+      for (final interface in interfaces) {
+        for (final address in interface.addresses) {
+          final ip = address.address.trim();
+          if (ip.isEmpty || ip.startsWith('127.')) continue;
+          if (ip.startsWith('192.168.') ||
+              ip.startsWith('10.') ||
+              RegExp(r'^172\.(1[6-9]|2\d|3[0-1])\.').hasMatch(ip)) {
+            return ip;
+          }
+        }
+      }
+      for (final interface in interfaces) {
+        for (final address in interface.addresses) {
+          final ip = address.address.trim();
+          if (ip.isNotEmpty && !ip.startsWith('127.')) return ip;
+        }
+      }
+    } catch (_) {}
+    return '';
   }
 
   @override
