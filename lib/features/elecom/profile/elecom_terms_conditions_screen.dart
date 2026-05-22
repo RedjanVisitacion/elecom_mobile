@@ -1,7 +1,49 @@
 import 'package:flutter/material.dart';
 
-class ElecomTermsConditionsScreen extends StatelessWidget {
-  const ElecomTermsConditionsScreen({super.key});
+class ElecomTermsConditionsScreen extends StatefulWidget {
+  const ElecomTermsConditionsScreen({
+    super.key,
+    this.requireAgreement = false,
+  });
+
+  final bool requireAgreement;
+
+  @override
+  State<ElecomTermsConditionsScreen> createState() =>
+      _ElecomTermsConditionsScreenState();
+}
+
+class _ElecomTermsConditionsScreenState
+    extends State<ElecomTermsConditionsScreen> {
+  final ScrollController _scrollController = ScrollController();
+  bool _hasReachedBottom = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_handleScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _handleScroll());
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_handleScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _handleScroll() {
+    if (!widget.requireAgreement ||
+        !_scrollController.hasClients ||
+        _hasReachedBottom) {
+      return;
+    }
+    final position = _scrollController.position;
+    final reachedBottom = position.pixels >= position.maxScrollExtent - 24;
+    if (reachedBottom) {
+      setState(() => _hasReachedBottom = true);
+    }
+  }
 
   Widget _heading(BuildContext context, String text) {
     return Padding(
@@ -68,35 +110,44 @@ class ElecomTermsConditionsScreen extends StatelessWidget {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final surface = isDarkMode ? const Color(0xFF171620) : const Color(0xFFF5F5F5);
 
-    return Scaffold(
-      backgroundColor: surface,
-      appBar: AppBar(
+    return PopScope(
+      canPop: !widget.requireAgreement,
+      child: Scaffold(
         backgroundColor: surface,
-        foregroundColor: isDarkMode ? Colors.white : Colors.black,
-        elevation: 0,
-        title: const Text(
-          'Terms and Conditions',
-          style: TextStyle(fontWeight: FontWeight.w900),
+        appBar: AppBar(
+          automaticallyImplyLeading: !widget.requireAgreement,
+          backgroundColor: surface,
+          foregroundColor: isDarkMode ? Colors.white : Colors.black,
+          elevation: 0,
+          title: const Text(
+            'Terms and Conditions',
+            style: TextStyle(fontWeight: FontWeight.w900),
+          ),
         ),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
-        children: [
-          Text(
-            'ECVS (ELECOM Voting System)',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w900,
-                  color: isDarkMode ? Colors.white70 : Colors.black54,
-                ),
+        body: ListView(
+          controller: _scrollController,
+          padding: EdgeInsets.fromLTRB(
+            14,
+            10,
+            14,
+            widget.requireAgreement ? 110 : 14,
           ),
-          const SizedBox(height: 6),
-          Text(
-            'Effective Date: April 25, 2026',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: isDarkMode ? Colors.white70 : Colors.black54,
-                  fontWeight: FontWeight.w600,
-                ),
-          ),
+          children: [
+            Text(
+              'ECVS (ELECOM Voting System)',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: isDarkMode ? Colors.white70 : Colors.black54,
+                  ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Effective Date: April 25, 2026',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: isDarkMode ? Colors.white70 : Colors.black54,
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
           _heading(context, '1. LEGAL AGREEMENT'),
           _paragraph(
             context,
@@ -234,8 +285,56 @@ class ElecomTermsConditionsScreen extends StatelessWidget {
             context,
             'Continued use of the application constitutes acceptance of any changes.',
           ),
-          const SizedBox(height: 10),
-        ],
+            const SizedBox(height: 10),
+          ],
+        ),
+        bottomNavigationBar: widget.requireAgreement && _hasReachedBottom
+            ? SafeArea(
+                minimum: const EdgeInsets.fromLTRB(14, 10, 14, 14),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(context).pop(false),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor:
+                              isDarkMode ? Colors.white : Colors.black,
+                          side: BorderSide(
+                            color: isDarkMode ? Colors.white54 : Colors.black26,
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: const Text(
+                          'Disagree',
+                          style: TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.of(context).pop(true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.black,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: const Text(
+                          'Agree',
+                          style: TextStyle(fontWeight: FontWeight.w900),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            : null,
       ),
     );
   }

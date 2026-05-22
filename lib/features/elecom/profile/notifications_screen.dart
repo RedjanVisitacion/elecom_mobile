@@ -23,35 +23,57 @@ extension _NotifCategoryLabel on _NotifCategory {
   }
 }
 
-/// Keyword-based category matcher.
-/// Checks the notification title and body against known keywords.
+/// Category matcher. Prefer the backend notification type when available,
+/// then fall back to narrow title/body keywords for older notifications.
 _NotifCategory _categorise(Map<String, dynamic> item) {
+  final type = (item['type'] ?? '').toString().trim().toLowerCase();
   final title = (item['title'] ?? '').toString().toLowerCase();
   final body = (item['body'] ?? '').toString().toLowerCase();
   final text = '$title $body';
 
-  // Receipt / vote recorded
+  if (type == 'receipt' || type == 'vote_receipt') {
+    return _NotifCategory.receipt;
+  }
+  if (type == 'results' || type == 'result') {
+    return _NotifCategory.results;
+  }
+  if (type == 'schedule' || type == 'election_schedule') {
+    return _NotifCategory.schedule;
+  }
+  if (type == 'voting' || type == 'vote' || type == 'election') {
+    if (text.contains('schedule') ||
+        text.contains('date') ||
+        text.contains('window') ||
+        text.contains('countdown') ||
+        text.contains('changed')) {
+      return _NotifCategory.schedule;
+    }
+    return _NotifCategory.voting;
+  }
+
   if (text.contains('receipt') ||
       text.contains('vote recorded') ||
-      text.contains('vote has been') ||
+      text.contains('vote submitted') ||
+      text.contains('successfully recorded') ||
       text.contains('reference')) {
     return _NotifCategory.receipt;
   }
 
-  // Results
-  if (text.contains('result') || text.contains('published')) {
+  if (text.contains('result') ||
+      text.contains('results are available') ||
+      text.contains('published')) {
     return _NotifCategory.results;
   }
 
-  // Schedule
   if (text.contains('schedule') ||
-      text.contains('date') ||
-      text.contains('window') ||
-      text.contains('updated')) {
+      text.contains('voting window') ||
+      text.contains('election dates') ||
+      text.contains('countdown') ||
+      text.contains('has started') ||
+      text.contains('has ended')) {
     return _NotifCategory.schedule;
   }
 
-  // Voting
   if (text.contains('vot') ||
       text.contains('ballot') ||
       text.contains('election')) {

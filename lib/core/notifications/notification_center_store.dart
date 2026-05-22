@@ -39,9 +39,16 @@ class NotificationCenterStore {
   static Future<void> add({
     required String title,
     required String body,
+    String type = 'general',
+    int? receiptId,
   }) async {
     await init();
-    final created = await _api.createNotification(title: title, body: body);
+    final created = await _api.createNotification(
+      title: title,
+      body: body,
+      type: type,
+      receiptId: receiptId,
+    );
     final entry = _mapRemoteItem(created);
     final next = <Map<String, dynamic>>[entry, ...items.value];
     items.value = next;
@@ -113,6 +120,8 @@ class NotificationCenterStore {
       'id': (remote['id'] as num?)?.toInt() ?? 0,
       'title': (remote['title'] ?? '').toString(),
       'body': (remote['body'] ?? '').toString(),
+      'type': (remote['type'] ?? '').toString(),
+      'receipt_id': remote['receipt_id'],
       'created_at': (remote['created_at'] ?? '').toString(),
       'read': readAt.isNotEmpty && readAt.toLowerCase() != 'null',
       'pinned': remote['pinned'] == true,

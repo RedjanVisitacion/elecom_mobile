@@ -6,7 +6,14 @@ import '../data/elecom_mobile_api.dart';
 /// Shows the vote receipt for the currently logged-in student.
 /// Displayed in the Receipt tab of the dashboard once the user has voted.
 class ReceiptScreen extends StatefulWidget {
-  const ReceiptScreen({super.key});
+  const ReceiptScreen({
+    super.key,
+    this.initialReceipt,
+    this.refreshNonce = 0,
+  });
+
+  final Map<String, dynamic>? initialReceipt;
+  final int refreshNonce;
 
   @override
   State<ReceiptScreen> createState() => _ReceiptScreenState();
@@ -22,7 +29,30 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
   @override
   void initState() {
     super.initState();
-    _load();
+    final initial = widget.initialReceipt;
+    if (initial != null) {
+      _loading = false;
+      _receipt = Map<String, dynamic>.from(initial);
+    } else {
+      _load();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant ReceiptScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final initial = widget.initialReceipt;
+    if (!identical(initial, oldWidget.initialReceipt) && initial != null) {
+      setState(() {
+        _loading = false;
+        _error = null;
+        _receipt = Map<String, dynamic>.from(initial);
+      });
+      return;
+    }
+    if (widget.refreshNonce != oldWidget.refreshNonce && initial == null) {
+      _load();
+    }
   }
 
   Future<void> _load() async {

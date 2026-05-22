@@ -23,6 +23,7 @@ class ElectionScreen extends StatefulWidget {
     super.key,
     this.onRequestTabIndex,
     this.onViewTransparency,
+    this.onReceiptReady,
     this.voteIntentNonce = 0,
     this.isActive = false,
   });
@@ -32,6 +33,10 @@ class ElectionScreen extends StatefulWidget {
 
   /// Optional hook to open an Election Transparency / Voting Ledger screen.
   final VoidCallback? onViewTransparency;
+
+  /// Sends the freshly-created receipt to the parent dashboard so the Receipt
+  /// tab can display it immediately without waiting for a refresh.
+  final void Function(Map<String, dynamic> receipt)? onReceiptReady;
 
   /// Incremented when the user taps **Vote Now** on Home so this tab can run gates + face verification before loading the ballot.
   final int voteIntentNonce;
@@ -1255,7 +1260,11 @@ class _ElectionScreenState extends State<ElectionScreen>
       // In-app notification (server-backed).
       if (await NotificationPreferences.isInAppEnabled()) {
         try {
-          await NotificationCenterStore.add(title: notifTitle, body: notifBody);
+          await NotificationCenterStore.add(
+            title: notifTitle,
+            body: notifBody,
+            type: 'receipt',
+          );
         } catch (_) {}
       }
 
@@ -1275,6 +1284,7 @@ class _ElectionScreenState extends State<ElectionScreen>
       AppToast.success(context, 'Your vote has been recorded.');
 
       if (receiptMap != null) {
+        widget.onReceiptReady?.call(receiptMap);
         await _showVoteReceiptSheet(receipt: receiptMap, palette: palette);
       }
 
@@ -1634,6 +1644,11 @@ class _ElectionScreenState extends State<ElectionScreen>
                                     final ok = res['ok'] == true;
                                     final receipt = res['receipt'];
                                     if (ok && receipt != null) {
+                                      if (receipt is Map) {
+                                        widget.onReceiptReady?.call(
+                                          Map<String, dynamic>.from(receipt),
+                                        );
+                                      }
                                       if (widget.onRequestTabIndex != null) {
                                         widget.onRequestTabIndex!.call(3);
                                       } else {

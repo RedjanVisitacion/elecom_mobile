@@ -24,24 +24,27 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _loginTutorialScheduled = false;
 
-  bool _termsShownOnce = false;
   final ElecomMobileApi _mobileApi = ElecomMobileApi();
 
-  Future<void> _showTerms() async {
-    await showModalBottomSheet<void>(
+  Future<void> _openTermsForDecision() async {
+    final accepted = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
+      isDismissible: false,
+      enableDrag: false,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
         return FractionallySizedBox(
           heightFactor: 0.94,
           child: ClipRRect(
             borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            child: const ElecomTermsConditionsScreen(),
+            child: const ElecomTermsConditionsScreen(requireAgreement: true),
           ),
         );
       },
     );
+    if (!mounted) return;
+    context.read<LoginViewModel>().setAcceptedTerms(accepted == true);
   }
 
   Future<void> _submit() async {
@@ -254,19 +257,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             children: [
                               Checkbox(
                                 value: vm.acceptedTerms,
-                                onChanged: (v) async {
-                                  final next = v ?? false;
-                                  if (next &&
-                                      !vm.acceptedTerms &&
-                                      !_termsShownOnce) {
-                                    _termsShownOnce = true;
-                                    await _showTerms();
-                                    if (!mounted) return;
-                                    vm.setAcceptedTerms(true);
-                                    return;
-                                  }
-                                  vm.setAcceptedTerms(next);
-                                },
+                                onChanged: (_) => _openTermsForDecision(),
                                 activeColor: Colors.black,
                               ),
                               Flexible(
@@ -275,7 +266,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   children: [
                                     const Text('I accept the '),
                                     InkWell(
-                                      onTap: _showTerms,
+                                      onTap: _openTermsForDecision,
                                       child: const Text(
                                         'Terms & Conditions',
                                         style: TextStyle(

@@ -45,7 +45,9 @@ class _StudentDashboardState extends State<StudentDashboard> {
   int _currentIndex = 0;
   int _resultsScreenVersion = 0;
   int _homeCountdownVersion = 0;
+  int _receiptRefreshNonce = 0;
   int _voteIntentNonce = 0;
+  Map<String, dynamic>? _latestReceipt;
   List<Map<String, dynamic>> _homeCandidates = <Map<String, dynamic>>[];
   Map<String, dynamic>? _ledgerSummary;
   bool _loadingLedger = false;
@@ -400,9 +402,20 @@ class _StudentDashboardState extends State<StudentDashboard> {
                 ElectionScreen(
                   voteIntentNonce: _voteIntentNonce,
                   isActive: _currentIndex == 1,
+                  onReceiptReady: (receipt) {
+                    if (!mounted) return;
+                    setState(() {
+                      _latestReceipt = Map<String, dynamic>.from(receipt);
+                    });
+                  },
                   onRequestTabIndex: (i) {
                     if (!mounted) return;
-                    setState(() => _currentIndex = i);
+                    setState(() {
+                      if (i == 3 && _latestReceipt == null) {
+                        _receiptRefreshNonce++;
+                      }
+                      _currentIndex = i;
+                    });
                   },
                   onViewTransparency: () {
                     Navigator.of(context).push(
@@ -416,7 +429,10 @@ class _StudentDashboardState extends State<StudentDashboard> {
                   key: ValueKey<int>(_resultsScreenVersion),
                   child: const ResultsScreen(),
                 ),
-                const ReceiptScreen(),
+                ReceiptScreen(
+                  initialReceipt: _latestReceipt,
+                  refreshNonce: _receiptRefreshNonce,
+                ),
                 const AccountBody(),
               ],
             ),
@@ -466,6 +482,9 @@ class _StudentDashboardState extends State<StudentDashboard> {
                       // Recreate ResultsScreen on every Results-tab tap
                       // so charts replay animations even when already on Results.
                       _resultsScreenVersion++;
+                    }
+                    if (i == 3 && _latestReceipt == null) {
+                      _receiptRefreshNonce++;
                     }
                     _currentIndex = i;
                   });
@@ -694,7 +713,12 @@ class _StudentDashboardState extends State<StudentDashboard> {
                         });
                       },
                       onViewReceipt: () {
-                        setState(() => _currentIndex = 3);
+                        setState(() {
+                          if (_latestReceipt == null) {
+                            _receiptRefreshNonce++;
+                          }
+                          _currentIndex = 3;
+                        });
                       },
                     ),
                     const SizedBox(height: 12),
