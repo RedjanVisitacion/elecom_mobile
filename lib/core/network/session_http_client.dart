@@ -5,6 +5,8 @@ import 'package:http/http.dart' as http;
 class SessionHttpClient extends http.BaseClient {
   SessionHttpClient({http.Client? inner}) : _inner = inner ?? http.Client();
 
+  static const Duration requestTimeout = Duration(seconds: 20);
+
   final http.Client _inner;
   final Map<String, String> _cookies = <String, String>{};
 
@@ -15,7 +17,7 @@ class SessionHttpClient extends http.BaseClient {
       request.headers['Cookie'] = cookieHeader;
     }
 
-    final streamed = await _inner.send(request);
+    final streamed = await _inner.send(request).timeout(requestTimeout);
 
     final setCookie = streamed.headers['set-cookie'];
     if (setCookie != null && setCookie.isNotEmpty) {

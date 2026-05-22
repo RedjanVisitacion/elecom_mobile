@@ -245,23 +245,6 @@ class _ElectionTransparencyScreenState
                                   sub: sub,
                                 ),
                                 _line(
-                                  label: 'Active Validator Nodes',
-                                  value: _n(
-                                    _summary,
-                                    'active_validator_nodes',
-                                  ).toString(),
-                                  sub: sub,
-                                ),
-                                _line(
-                                  label: 'Consensus Result',
-                                  value: _s(
-                                    _summary,
-                                    'consensus_result',
-                                    fallback: '-',
-                                  ),
-                                  sub: sub,
-                                ),
-                                _line(
                                   label: 'Latest Block Status',
                                   value: _s(
                                     _summary,
@@ -400,7 +383,7 @@ class _ElectionTransparencyScreenState
                           ),
                           const SizedBox(height: 1),
                           Text(
-                            'Submitted: ${_formatDisplayDate(_s(b, 'submitted_at'))}',
+                            'Submitted: ${_formatBlockDate(_s(b, 'submitted_at'))}',
                             style: TextStyle(
                               color: sub,
                               fontWeight: FontWeight.w700,
@@ -414,18 +397,6 @@ class _ElectionTransparencyScreenState
                                   ? const Color(0xFF1E8E3E)
                                   : const Color(0xFFD97706),
                               fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          const SizedBox(height: 1),
-                          Text(
-                            _s(
-                              b,
-                              'node_validation_result',
-                              fallback: '0/0 nodes approved',
-                            ),
-                            style: TextStyle(
-                              color: sub,
-                              fontWeight: FontWeight.w700,
                             ),
                           ),
                           const SizedBox(height: 1),
@@ -462,34 +433,65 @@ class _ElectionTransparencyScreenState
     required Color sub,
     Color? valueColor,
   }) {
+    final stackValue = label == 'Last Verified';
     return Padding(
       padding: const EdgeInsets.only(bottom: 7),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: TextStyle(color: sub, fontWeight: FontWeight.w700),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Flexible(
-            child: Text(
-              value,
-              textAlign: TextAlign.right,
-              style: TextStyle(
-                color:
-                    valueColor ??
-                    (Theme.of(context).brightness == Brightness.dark
-                        ? Colors.white
-                        : Colors.black),
-                fontWeight: FontWeight.w900,
-                fontSize: label == 'Last Verified' ? 13 : 14.5,
-                height: 1.2,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final textColor =
+              valueColor ??
+              (Theme.of(context).brightness == Brightness.dark
+                  ? Colors.white
+                  : Colors.black);
+
+          if (stackValue) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(color: sub, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: textColor,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 13,
+                    height: 1.2,
+                  ),
+                ),
+              ],
+            );
+          }
+
+          return Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(color: sub, fontWeight: FontWeight.w700),
+                ),
               ),
-            ),
-          ),
-        ],
+              const SizedBox(width: 12),
+              Flexible(
+                child: Text(
+                  value,
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    color: textColor,
+                    fontWeight: FontWeight.w900,
+                    fontSize: label == 'Last Verified' ? 13 : 14.5,
+                    height: 1.2,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -502,6 +504,16 @@ class _ElectionTransparencyScreenState
     final dt = DateTime.tryParse(normalized);
     if (dt == null) return text;
     return DateFormat('MMM d, y · h:mm a').format(dt.toLocal());
+  }
+
+  String _formatBlockDate(String raw) {
+    final text = raw.trim();
+    if (text.isEmpty || text == '-') return '-';
+    final hasOffset = RegExp(r'(Z|[+-]\d{2}:\d{2})$').hasMatch(text);
+    final normalized = hasOffset ? text : '${text}Z';
+    final dt = DateTime.tryParse(normalized);
+    if (dt == null) return text;
+    return DateFormat('MMM d, y, h:mm a').format(dt.toLocal());
   }
 
   String _voteBlockText(int total) {

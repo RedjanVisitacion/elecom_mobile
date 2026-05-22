@@ -1,24 +1,26 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
+import '../../../core/config/api_config.dart';
+import '../../../core/notifications/notification_center_store.dart';
 import '../../../core/session/user_session.dart';
 import '../../../core/utils/toast_service.dart';
 import '../../../services/tutorial_service.dart';
-import '../profile/profile_screen.dart';
-import '../data/elecom_mobile_api.dart';
-import 'utils/theme_notifier.dart';
-import 'widgets/student_dashboard_appbar.dart';
 import '../candidates/candidate_search_screen.dart';
+import '../data/elecom_mobile_api.dart';
 import '../election/election_screen.dart';
-import '../election/receipt_screen.dart';
 import '../election/election_transparency_screen.dart';
+import '../election/receipt_screen.dart';
+import '../profile/profile_screen.dart';
 import '../results/results_screen.dart';
-import 'dart:math' as math;
-import '../../../core/config/api_config.dart';
-import '../../../core/notifications/notification_center_store.dart';
+import 'utils/theme_notifier.dart';
 import 'widgets/election_home_countdown.dart';
 import 'widgets/election_transparency_card.dart';
 import 'widgets/home_candidates_strip.dart';
 import 'widgets/omnibus_code_carousel.dart';
+import 'widgets/student_dashboard_appbar.dart';
 
 class StudentDashboard extends StatefulWidget {
   const StudentDashboard({
@@ -143,10 +145,26 @@ class _StudentDashboardState extends State<StudentDashboard> {
   }
 
   Future<void> _refreshHome() async {
-    await _ensureProfileBasics();
-    await NotificationCenterStore.refresh();
-    await _loadHomeCandidates();
-    await _loadLedgerSummary();
+    await Future.wait<void>(
+      [
+        _boundedRefreshTask(_ensureProfileBasics()),
+        _boundedRefreshTask(NotificationCenterStore.refresh()),
+        _boundedRefreshTask(_loadHomeCandidates()),
+        _boundedRefreshTask(_loadLedgerSummary()),
+      ],
+      eagerError: false,
+    );
+    if (mounted) {
+      setState(() => _loadingLedger = false);
+    }
+  }
+
+  Future<void> _boundedRefreshTask(Future<void> task) async {
+    try {
+      await task.timeout(const Duration(seconds: 8));
+    } catch (_) {
+      // Keep pull-to-refresh responsive even when one endpoint is slow/offline.
+    }
   }
 
   Future<void> _loadLedgerSummary() async {

@@ -703,11 +703,37 @@ class _AccountBodyState extends State<AccountBody> {
                 ),
                 child: Row(
                   children: [
-                    CircleAvatar(
-                      radius: 34,
-                      backgroundColor: const Color(0xFFF2F2F2),
-                      backgroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
-                      child: photoUrl.isNotEmpty ? null : const Icon(Icons.person, size: 34, color: Colors.black87),
+                    Container(
+                      width: 68,
+                      height: 68,
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isDarkMode
+                              ? Colors.white24
+                              : const Color(0xFFFEA501),
+                          width: 2,
+                        ),
+                      ),
+                      child: CircleAvatar(
+                        radius: 32,
+                        backgroundColor: isDarkMode
+                            ? Colors.white12
+                            : const Color(0xFFEAF1FF),
+                        backgroundImage: photoUrl.isNotEmpty
+                            ? NetworkImage(photoUrl)
+                            : null,
+                        child: photoUrl.isNotEmpty
+                            ? null
+                            : Icon(
+                                Icons.person,
+                                size: 32,
+                                color: isDarkMode
+                                    ? Colors.white70
+                                    : Colors.blue,
+                              ),
+                      ),
                     ),
                     const SizedBox(width: 14),
                     Expanded(

@@ -183,32 +183,61 @@ class ElectionTransparencyCard extends StatelessWidget {
     required Color textColor,
     Color? valueColor,
   }) {
+    final stackValue = label == 'Last Verified';
     return Padding(
       padding: const EdgeInsets.only(bottom: 7),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: TextStyle(color: subColor, fontWeight: FontWeight.w600),
+      child: stackValue
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: subColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: valueColor ?? textColor,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                    height: 1.2,
+                  ),
+                ),
+              ],
+            )
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      color: subColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Flexible(
+                  child: Text(
+                    value,
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                      color: valueColor ?? textColor,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14.5,
+                      height: 1.2,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(width: 12),
-          Flexible(
-            child: Text(
-              value,
-              textAlign: TextAlign.right,
-              style: TextStyle(
-                color: valueColor ?? textColor,
-                fontWeight: FontWeight.w800,
-                fontSize: label == 'Last Verified' ? 13 : 14.5,
-                height: 1.2,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -257,7 +286,6 @@ class ElectionTransparencyCard extends StatelessWidget {
       ),
     );
   }
-
   String _readStr(
     Map<String, dynamic>? source,
     String key, {
