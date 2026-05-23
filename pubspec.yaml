@@ -38,6 +38,9 @@ dependencies:
   http: ^1.2.2
   get: ^4.7.2
   google_fonts: ^6.2.1
+  animate_do: ^4.2.0
+  lottie: ^3.3.1
+  flutter_svg: ^2.0.17
   intl: ^0.20.2
   image_picker: ^1.1.2
   url_launcher: ^6.3.0
