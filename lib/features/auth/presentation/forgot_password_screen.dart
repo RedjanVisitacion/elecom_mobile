@@ -1,7 +1,11 @@
 import 'dart:async';
+import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/utils/toast_service.dart';
 import '../data/forgot_password_api.dart';
@@ -10,12 +14,11 @@ import '../data/forgot_password_api.dart';
 // Shared design tokens (match login screen)
 // ─────────────────────────────────────────────────────────────────────────────
 
-const Color _bg = Color(0xFFF5F5F5);
-const Color _cardBg = Colors.white;
-const Color _fieldBg = Color(0xFFE6E6E6);
-const Color _hintColor = Color(0xFF9E9E9E);
-const Color _black = Colors.black;
-const Color _black54 = Colors.black54;
+const Color _blue = Color(0xFF2563EB);
+const Color _gold = Color(0xFFFACC15);
+const Color _dark = Color(0xFF0F172A);
+const Color _muted = Color(0xFF94A3B8);
+const Color _ink = Color(0xFF111827);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Step 1 — Find Your Account
@@ -45,10 +48,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     FocusScope.of(context).unfocus();
     setState(() => _loading = true);
     try {
-      final res =
-          await _api.requestOtp(identifier: _identifierCtrl.text.trim());
+      final res = await _api.requestOtp(
+        identifier: _identifierCtrl.text.trim(),
+      );
       if (!mounted) return;
-      AppToast.success(context, 'OTP sent successfully.');
+      AppToast.success(context, 'OTP sent successfully.', isLoginScreen: true);
       await Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => VerifyOtpScreen(
@@ -77,43 +81,36 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Icon
-            const Center(
-              child: Icon(Icons.manage_accounts_outlined,
-                  size: 56, color: _black),
-            ),
-            const SizedBox(height: 18),
+            const _FpHeaderIcon(icon: Icons.manage_accounts_outlined),
+            const SizedBox(height: 16),
 
-            // Title
-            const Text(
+            Text(
               'Find Your Account',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w900,
-                color: _black,
-                letterSpacing: 0.2,
+              style: GoogleFonts.poppins(
+                fontSize: 21,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
               ),
             ),
             const SizedBox(height: 8),
 
-            // Subtitle
-            const Text(
-              'Enter your Student ID or registered email address to receive a one-time password.',
+            Text(
+              'Enter your Student ID or registered email to receive a verification code.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 13.5,
-                color: _black54,
+              style: GoogleFonts.poppins(
+                fontSize: 12.5,
+                color: _muted,
                 fontWeight: FontWeight.w500,
                 height: 1.45,
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 22),
 
-            // Input
             _FpField(
               controller: _identifierCtrl,
-              hintText: 'STUDENT ID OR EMAIL',
+              hintText: 'Student ID or Email',
+              icon: Icons.person_search_outlined,
               keyboardType: TextInputType.emailAddress,
               validator: (v) {
                 if (v == null || v.trim().isEmpty) {
@@ -122,17 +119,15 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 return null;
               },
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 17),
 
-            // Continue button
             _FpButton(
-              label: 'CONTINUE',
+              label: 'Continue',
               loading: _loading,
               onPressed: _continue,
             ),
             const SizedBox(height: 12),
 
-            // Back to login
             _BackToLoginButton(),
           ],
         ),
@@ -203,7 +198,11 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
     try {
       await _api.requestOtp(identifier: widget.identifier);
       if (!mounted) return;
-      AppToast.success(context, 'OTP resent successfully.');
+      AppToast.success(
+        context,
+        'OTP resent successfully.',
+        isLoginScreen: true,
+      );
       _startCooldown();
     } on ForgotPasswordException catch (e) {
       if (!mounted) return;
@@ -225,15 +224,11 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
     FocusScope.of(context).unfocus();
     setState(() => _loading = true);
     try {
-      final res = await _api.verifyOtp(
-        identifier: widget.identifier,
-        otp: otp,
-      );
+      final res = await _api.verifyOtp(identifier: widget.identifier, otp: otp);
       if (!mounted) return;
       await Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (_) =>
-              ResetPasswordScreen(resetToken: res.resetToken),
+          builder: (_) => ResetPasswordScreen(resetToken: res.resetToken),
         ),
       );
     } on ForgotPasswordException catch (e) {
@@ -264,21 +259,16 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Icon
-          const Center(
-            child: Icon(Icons.lock_outline_rounded, size: 56, color: _black),
-          ),
-          const SizedBox(height: 18),
+          const _FpHeaderIcon(icon: Icons.lock_outline_rounded),
+          const SizedBox(height: 16),
 
-          // Title
-          const Text(
+          Text(
             'Enter OTP',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w900,
-              color: _black,
-              letterSpacing: 0.2,
+            style: GoogleFonts.poppins(
+              fontSize: 21,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
             ),
           ),
           const SizedBox(height: 8),
@@ -286,28 +276,24 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
           // Subtitle
           Text(
             widget.maskedEmail.isNotEmpty
-                ? 'A 6-digit code was sent to ${widget.maskedEmail}. Enter it below.'
-                : 'A 6-digit code was sent to your registered email. Enter it below.',
+                ? 'A 6-digit code was sent to ${widget.maskedEmail}.'
+                : 'A 6-digit code was sent to your registered email.',
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 13.5,
-              color: _black54,
+            style: GoogleFonts.poppins(
+              fontSize: 12.5,
+              color: _muted,
               fontWeight: FontWeight.w500,
               height: 1.45,
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 22),
 
           // OTP input — large centered digits
           _OtpField(controller: _otpCtrl),
-          const SizedBox(height: 16),
+          const SizedBox(height: 17),
 
           // Verify button
-          _FpButton(
-            label: 'VERIFY',
-            loading: _loading,
-            onPressed: _verify,
-          ),
+          _FpButton(label: 'Verify', loading: _loading, onPressed: _verify),
           const SizedBox(height: 14),
 
           // Resend row
@@ -316,10 +302,10 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
               onTap: canResend ? _resend : null,
               child: RichText(
                 text: TextSpan(
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: _black54,
+                  style: GoogleFonts.poppins(
+                    fontSize: 12.2,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white.withValues(alpha: 0.66),
                   ),
                   children: [
                     const TextSpan(text: "Didn't receive it? "),
@@ -328,11 +314,8 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
                           ? 'Resend OTP'
                           : 'Resend in ${_secondsLeft}s',
                       style: TextStyle(
-                        color: canResend ? _black : _black54,
-                        fontWeight: FontWeight.w800,
-                        decoration: canResend
-                            ? TextDecoration.underline
-                            : TextDecoration.none,
+                        color: canResend ? _gold : _muted,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ],
@@ -411,50 +394,44 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Icon
-            const Center(
-              child: Icon(Icons.lock_reset_rounded, size: 56, color: _black),
-            ),
-            const SizedBox(height: 18),
+            const _FpHeaderIcon(icon: Icons.lock_reset_rounded),
+            const SizedBox(height: 16),
 
-            // Title
-            const Text(
+            Text(
               'Reset Password',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w900,
-                color: _black,
-                letterSpacing: 0.2,
+              style: GoogleFonts.poppins(
+                fontSize: 21,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
               ),
             ),
             const SizedBox(height: 8),
 
-            const Text(
+            Text(
               'Create a new password for your account. Use at least 8 characters.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 13.5,
-                color: _black54,
+              style: GoogleFonts.poppins(
+                fontSize: 12.5,
+                color: _muted,
                 fontWeight: FontWeight.w500,
                 height: 1.45,
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 22),
 
-            // New password
             _FpField(
               controller: _newPassCtrl,
-              hintText: 'NEW PASSWORD',
+              hintText: 'New Password',
+              icon: Icons.lock_outline_rounded,
               obscureText: _obscureNew,
               suffix: IconButton(
-                onPressed: () =>
-                    setState(() => _obscureNew = !_obscureNew),
+                onPressed: () => setState(() => _obscureNew = !_obscureNew),
                 icon: Icon(
                   _obscureNew
                       ? Icons.visibility_off_outlined
                       : Icons.visibility_outlined,
-                  color: _black54,
+                  color: Colors.white.withValues(alpha: 0.58),
                 ),
               ),
               validator: (v) {
@@ -469,10 +446,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             ),
             const SizedBox(height: 12),
 
-            // Confirm password
             _FpField(
               controller: _confirmPassCtrl,
-              hintText: 'CONFIRM PASSWORD',
+              hintText: 'Confirm Password',
+              icon: Icons.verified_user_outlined,
               obscureText: _obscureConfirm,
               suffix: IconButton(
                 onPressed: () =>
@@ -481,7 +458,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                   _obscureConfirm
                       ? Icons.visibility_off_outlined
                       : Icons.visibility_outlined,
-                  color: _black54,
+                  color: Colors.white.withValues(alpha: 0.58),
                 ),
               ),
               validator: (v) {
@@ -494,11 +471,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 return null;
               },
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 17),
 
-            // Reset button
             _FpButton(
-              label: 'RESET PASSWORD',
+              label: 'Reset Password',
               loading: _loading,
               onPressed: _reset,
             ),
@@ -513,7 +489,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 // Shared widgets
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Scaffold wrapper that applies the login-screen light theme and card layout.
 class _FpScaffold extends StatelessWidget {
   const _FpScaffold({required this.title, required this.child});
 
@@ -522,55 +497,130 @@ class _FpScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final lightTheme = ThemeData(
+    final theme = ThemeData(
       useMaterial3: true,
-      brightness: Brightness.light,
+      brightness: Brightness.dark,
       colorScheme: ColorScheme.fromSeed(
-        seedColor: Colors.black,
-        brightness: Brightness.light,
+        seedColor: _blue,
+        brightness: Brightness.dark,
       ),
-      scaffoldBackgroundColor: _bg,
+      scaffoldBackgroundColor: const Color(0xFF050607),
     );
 
     return Theme(
-      data: lightTheme,
+      data: theme,
       child: Scaffold(
-        backgroundColor: _bg,
+        extendBodyBehindAppBar: true,
+        backgroundColor: const Color(0xFF050607),
         appBar: AppBar(
-          backgroundColor: _bg,
+          backgroundColor: Colors.transparent,
           elevation: 0,
           scrolledUnderElevation: 0,
-          leading: const BackButton(color: _black),
+          leading: IconButton(
+            onPressed: () => Navigator.of(context).maybePop(),
+            icon: const Icon(Icons.arrow_back_rounded, color: _ink),
+          ),
           title: Text(
             title,
-            style: const TextStyle(
-              fontWeight: FontWeight.w900,
-              color: _black,
-              fontSize: 17,
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w800,
+              color: _ink,
+              fontSize: 16,
             ),
           ),
         ),
-        body: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 420),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 22, vertical: 26),
-                  decoration: BoxDecoration(
-                    color: _cardBg,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                        color: const Color(0xFFE0E0E0), width: 1),
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            const _FpBackdrop(),
+            SafeArea(
+              child: Center(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(24, 58, 24, 26),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 420),
+                    child:
+                        ClipRRect(
+                              borderRadius: BorderRadius.circular(30),
+                              child: BackdropFilter(
+                                filter: ui.ImageFilter.blur(
+                                  sigmaX: 20,
+                                  sigmaY: 20,
+                                ),
+                                child: Container(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    20,
+                                    24,
+                                    20,
+                                    18,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(30),
+                                    color: _dark.withValues(alpha: 0.70),
+                                    border: Border.all(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.16,
+                                      ),
+                                    ),
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                      colors: [
+                                        Colors.white.withValues(alpha: 0.15),
+                                        _dark.withValues(alpha: 0.68),
+                                        Colors.black.withValues(alpha: 0.78),
+                                      ],
+                                      stops: const [0, 0.42, 1],
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(
+                                          alpha: 0.42,
+                                        ),
+                                        blurRadius: 34,
+                                        offset: const Offset(0, 20),
+                                      ),
+                                      BoxShadow(
+                                        color: _blue.withValues(alpha: 0.18),
+                                        blurRadius: 40,
+                                        offset: const Offset(-14, -12),
+                                      ),
+                                      BoxShadow(
+                                        color: _gold.withValues(alpha: 0.08),
+                                        blurRadius: 34,
+                                        offset: const Offset(18, 12),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Stack(
+                                    children: [
+                                      const Positioned.fill(
+                                        child: IgnorePointer(
+                                          child: CustomPaint(
+                                            painter: _FpCardPatternPainter(),
+                                          ),
+                                        ),
+                                      ),
+                                      child,
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            )
+                            .animate()
+                            .fadeIn(duration: 520.ms, delay: 80.ms)
+                            .slideY(
+                              begin: 0.045,
+                              end: 0,
+                              duration: 620.ms,
+                              curve: Curves.easeOutCubic,
+                            ),
                   ),
-                  child: child,
                 ),
               ),
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -578,10 +628,148 @@ class _FpScaffold extends StatelessWidget {
 }
 
 /// Rounded pill text field — matches the login screen's `_RoundedField`.
+class _FpBackdrop extends StatelessWidget {
+  const _FpBackdrop();
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 5200),
+      curve: Curves.easeInOut,
+      builder: (context, value, _) {
+        final drift = math.sin(value * math.pi * 2);
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            const DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0xFFFFFFFF),
+                    Color(0xFFF7FAFF),
+                    Color(0xFFE8EEF7),
+                    Color(0xFF172033),
+                    Color(0xFF05070B),
+                  ],
+                  stops: [0, 0.35, 0.49, 0.63, 1],
+                ),
+              ),
+            ),
+            Transform.translate(
+              offset: Offset(14 * drift, -6 * drift),
+              child: const _FpGlow(
+                alignment: Alignment(0.82, -0.82),
+                color: _blue,
+                size: 250,
+                alpha: 0.22,
+              ),
+            ),
+            Transform.translate(
+              offset: Offset(-12 * drift, 8 * drift),
+              child: const _FpGlow(
+                alignment: Alignment(-0.92, -0.38),
+                color: _gold,
+                size: 210,
+                alpha: 0.16,
+              ),
+            ),
+            Positioned.fill(
+              child: IgnorePointer(
+                child: CustomPaint(painter: _FpBackdropPainter(value)),
+              ),
+            ),
+            Positioned(
+              top: 50,
+              left: 0,
+              right: 0,
+              child: ImageFiltered(
+                imageFilter: ui.ImageFilter.blur(sigmaX: 2.8, sigmaY: 2.8),
+                child: Opacity(
+                  opacity: 0.024,
+                  child: Image.asset(
+                    'assets/img_text/elecom_black.png',
+                    height: 150,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _FpGlow extends StatelessWidget {
+  const _FpGlow({
+    required this.alignment,
+    required this.color,
+    required this.size,
+    required this.alpha,
+  });
+
+  final Alignment alignment;
+  final Color color;
+  final double size;
+  final double alpha;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: alignment,
+      child: ImageFiltered(
+        imageFilter: ui.ImageFilter.blur(sigmaX: 36, sigmaY: 36),
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: color.withValues(alpha: alpha),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FpHeaderIcon extends StatelessWidget {
+  const _FpHeaderIcon({required this.icon});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        width: 58,
+        height: 58,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white.withValues(alpha: 0.08),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+          boxShadow: [
+            BoxShadow(
+              color: _blue.withValues(alpha: 0.18),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Icon(icon, color: _gold, size: 30),
+      ),
+    );
+  }
+}
+
 class _FpField extends StatelessWidget {
   const _FpField({
     required this.controller,
     required this.hintText,
+    this.icon,
     this.keyboardType,
     this.obscureText = false,
     this.suffix,
@@ -590,6 +778,7 @@ class _FpField extends StatelessWidget {
 
   final TextEditingController controller;
   final String hintText;
+  final IconData? icon;
   final TextInputType? keyboardType;
   final bool obscureText;
   final Widget? suffix;
@@ -597,40 +786,51 @@ class _FpField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: keyboardType,
-      obscureText: obscureText,
-      validator: validator,
-      style: const TextStyle(color: _black, fontWeight: FontWeight.w700),
-      decoration: InputDecoration(
-        hintText: hintText,
-        filled: true,
-        fillColor: _fieldBg,
-        hintStyle: const TextStyle(
-            color: _hintColor, fontWeight: FontWeight.w700),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-        suffixIcon: suffix,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(28),
-          borderSide: BorderSide.none,
+    return Container(
+      height: 50,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(999),
+        color: Colors.white.withValues(alpha: 0.052),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.13)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.18),
+            blurRadius: 10,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: TextFormField(
+        controller: controller,
+        keyboardType: keyboardType,
+        obscureText: obscureText,
+        validator: validator,
+        cursorColor: _gold,
+        style: GoogleFonts.poppins(
+          color: Colors.white.withValues(alpha: 0.94),
+          fontWeight: FontWeight.w600,
+          fontSize: 13.4,
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(28),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(28),
-          borderSide: const BorderSide(color: Colors.black26),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(28),
-          borderSide: const BorderSide(color: Colors.red),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(28),
-          borderSide: const BorderSide(color: Colors.red),
+        decoration: InputDecoration(
+          prefixIcon: icon == null
+              ? null
+              : Icon(icon, color: const Color(0xFF60A5FA), size: 18),
+          prefixIconConstraints: const BoxConstraints(minWidth: 46),
+          hintText: hintText,
+          hintStyle: GoogleFonts.poppins(
+            color: _muted.withValues(alpha: 0.72),
+            fontWeight: FontWeight.w500,
+            fontSize: 12.5,
+          ),
+          contentPadding: const EdgeInsets.fromLTRB(0, 12, 14, 11),
+          suffixIcon: suffix,
+          border: InputBorder.none,
+          errorStyle: GoogleFonts.poppins(
+            color: _gold,
+            fontWeight: FontWeight.w700,
+            fontSize: 10,
+            height: 0.7,
+          ),
         ),
       ),
     );
@@ -638,57 +838,110 @@ class _FpField extends StatelessWidget {
 }
 
 /// Large centered OTP input — single field, digits only, max 6 chars.
-class _OtpField extends StatelessWidget {
+class _OtpField extends StatefulWidget {
   const _OtpField({required this.controller});
 
   final TextEditingController controller;
 
   @override
+  State<_OtpField> createState() => _OtpFieldState();
+}
+
+class _OtpFieldState extends State<_OtpField> {
+  final FocusNode _focusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_refresh);
+    _focusNode.addListener(_refresh);
+  }
+
+  void _refresh() => setState(() {});
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_refresh);
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: TextInputType.number,
-      textAlign: TextAlign.center,
-      maxLength: 6,
-      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-      style: const TextStyle(
-        fontSize: 28,
-        fontWeight: FontWeight.w900,
-        color: _black,
-        letterSpacing: 12,
-      ),
-      decoration: InputDecoration(
-        counterText: '',
-        hintText: '------',
-        hintStyle: TextStyle(
-          fontSize: 28,
-          fontWeight: FontWeight.w900,
-          color: _black.withValues(alpha: 0.15),
-          letterSpacing: 12,
-        ),
-        filled: true,
-        fillColor: _fieldBg,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Colors.black26),
-        ),
+    final text = widget.controller.text;
+    final activeIndex = math.min(text.length, 5);
+
+    return GestureDetector(
+      onTap: () => _focusNode.requestFocus(),
+      child: Stack(
+        children: [
+          Opacity(
+            opacity: 0.01,
+            child: TextFormField(
+              focusNode: _focusNode,
+              controller: widget.controller,
+              keyboardType: TextInputType.number,
+              maxLength: 6,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(6),
+              ],
+              decoration: const InputDecoration(counterText: ''),
+            ),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: List.generate(6, (index) {
+              final filled = index < text.length;
+              final active = _focusNode.hasFocus && index == activeIndex;
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOutCubic,
+                width: 38,
+                height: 48,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  color: Colors.white.withValues(alpha: active ? 0.075 : 0.052),
+                  border: Border.all(
+                    color: active
+                        ? _gold.withValues(alpha: 0.78)
+                        : Colors.white.withValues(alpha: 0.14),
+                    width: active ? 1.35 : 1,
+                  ),
+                  boxShadow: active
+                      ? [
+                          BoxShadow(
+                            color: _gold.withValues(alpha: 0.18),
+                            blurRadius: 16,
+                            offset: const Offset(0, 7),
+                          ),
+                        ]
+                      : null,
+                ),
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 140),
+                  child: Text(
+                    filled ? text[index] : '',
+                    key: ValueKey('$index-${filled ? text[index] : ''}'),
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ],
       ),
     );
   }
 }
 
 /// Black pill primary button — matches the login screen's LOGIN button.
-class _FpButton extends StatelessWidget {
+class _FpButton extends StatefulWidget {
   const _FpButton({
     required this.label,
     required this.onPressed,
@@ -700,34 +953,91 @@ class _FpButton extends StatelessWidget {
   final bool loading;
 
   @override
+  State<_FpButton> createState() => _FpButtonState();
+}
+
+class _FpButtonState extends State<_FpButton> {
+  bool _pressed = false;
+
+  @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 46,
-      child: ElevatedButton(
-        onPressed: loading ? null : onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: _black,
-          foregroundColor: Colors.white,
-          disabledBackgroundColor: Colors.black38,
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24)),
-          elevation: 0,
-        ),
-        child: loading
-            ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor:
-                      AlwaysStoppedAnimation<Color>(Colors.white),
-                ),
-              )
-            : Text(
-                label,
-                style: const TextStyle(fontWeight: FontWeight.w800),
+    return AnimatedScale(
+      scale: _pressed ? 0.972 : 1,
+      duration: const Duration(milliseconds: 130),
+      curve: Curves.easeOutCubic,
+      child: GestureDetector(
+        onTapDown: (_) => setState(() => _pressed = true),
+        onTapCancel: () => setState(() => _pressed = false),
+        onTapUp: (_) => setState(() => _pressed = false),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(999),
+            boxShadow: [
+              BoxShadow(
+                color: _blue.withValues(alpha: 0.30),
+                blurRadius: 24,
+                offset: const Offset(-10, 10),
               ),
+              BoxShadow(
+                color: _gold.withValues(alpha: 0.24),
+                blurRadius: 26,
+                offset: const Offset(18, 8),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: Stack(
+              children: [
+                const Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                        colors: [_blue, _blue, _gold],
+                        stops: [0, 0.58, 1],
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: widget.loading ? null : widget.onPressed,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      disabledBackgroundColor: Colors.transparent,
+                      foregroundColor: Colors.white,
+                      shadowColor: Colors.transparent,
+                      shape: const StadiumBorder(),
+                      elevation: 0,
+                    ),
+                    child: widget.loading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
+                            ),
+                          )
+                        : Text(
+                            widget.label,
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 15,
+                            ),
+                          ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -741,15 +1051,84 @@ class _BackToLoginButton extends StatelessWidget {
       child: TextButton(
         onPressed: () =>
             Navigator.of(context).popUntil((route) => route.isFirst),
-        child: const Text(
+        style: TextButton.styleFrom(
+          foregroundColor: const Color(0xFF60A5FA).withValues(alpha: 0.92),
+          visualDensity: VisualDensity.compact,
+        ),
+        child: Text(
           'Back to Login',
-          style: TextStyle(
-            color: _black54,
+          style: GoogleFonts.poppins(
+            color: const Color(0xFF60A5FA).withValues(alpha: 0.92),
             fontWeight: FontWeight.w700,
-            fontSize: 13,
+            fontSize: 12.4,
           ),
         ),
       ),
     );
   }
+}
+
+class _FpBackdropPainter extends CustomPainter {
+  const _FpBackdropPainter(this.progress);
+
+  final double progress;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final dotPaint = Paint();
+    for (var x = 0.0; x <= size.width; x += 10) {
+      for (var y = 30.0; y <= size.height; y += 10) {
+        final top = y < size.height * 0.45;
+        if ((x + y) % 30 == 0) {
+          dotPaint.color = (top ? _ink : Colors.white).withValues(
+            alpha: top ? 0.08 : 0.055,
+          );
+          canvas.drawCircle(Offset(x, y), 0.7, dotPaint);
+        }
+      }
+    }
+
+    final streakPaint = Paint()
+      ..shader = ui.Gradient.linear(
+        Offset(size.width * 0.05, size.height * 0.20),
+        Offset(size.width * 0.86, size.height * 0.34),
+        [
+          Colors.white.withValues(alpha: 0),
+          _blue.withValues(alpha: 0.08),
+          Colors.white.withValues(alpha: 0),
+        ],
+        [0, 0.5, 1],
+      )
+      ..strokeWidth = 1.1
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 7);
+    final drift = math.sin(progress * math.pi * 2);
+    canvas.drawLine(
+      Offset(-20 + drift * 8, size.height * 0.31),
+      Offset(size.width + 20, size.height * 0.18 + drift * 6),
+      streakPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _FpBackdropPainter oldDelegate) {
+    return oldDelegate.progress != progress;
+  }
+}
+
+class _FpCardPatternPainter extends CustomPainter {
+  const _FpCardPatternPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint();
+    for (var x = 8.0; x <= size.width; x += 14) {
+      for (var y = size.height * 0.58; y <= size.height - 4; y += 14) {
+        paint.color = Colors.white.withValues(alpha: 0.055);
+        canvas.drawCircle(Offset(x, y), 0.85, paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
