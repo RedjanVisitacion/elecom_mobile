@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
+import 'package:iconsax_flutter/iconsax_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/utils/toast_service.dart';
@@ -12,6 +13,7 @@ import '../../../core/session/user_session.dart';
 import '../../../core/session/session_persistence.dart';
 import '../../auth/presentation/login_screen.dart';
 import '../data/elecom_mobile_api.dart';
+import '../student_dashboard/utils/theme_notifier.dart';
 import 'elecom_about_screen.dart';
 import 'elecom_faqs_screen.dart';
 import 'settings_screen.dart';
@@ -25,9 +27,7 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _RateAppSheet extends StatefulWidget {
-  const _RateAppSheet({
-    required this.onRate,
-  });
+  const _RateAppSheet({required this.onRate});
 
   final Future<void> Function(int rating, String label) onRate;
 
@@ -61,11 +61,21 @@ class _RateAppSheetState extends State<_RateAppSheet> {
   }
 
   static const _items = <_RateItem>[
-    _RateItem(rating: 1, label: 'Terrible', emoji: '😠', color: Color(0xFFF59E0B)),
+    _RateItem(
+      rating: 1,
+      label: 'Terrible',
+      emoji: '😠',
+      color: Color(0xFFF59E0B),
+    ),
     _RateItem(rating: 2, label: 'Bad', emoji: '😞', color: Color(0xFFF59E0B)),
     _RateItem(rating: 3, label: 'Okay', emoji: '😐', color: Color(0xFFF59E0B)),
     _RateItem(rating: 4, label: 'Good', emoji: '😊', color: Color(0xFF22C55E)),
-    _RateItem(rating: 5, label: 'Amazing', emoji: '😍', color: Color(0xFFEF4444)),
+    _RateItem(
+      rating: 5,
+      label: 'Amazing',
+      emoji: '😍',
+      color: Color(0xFFEF4444),
+    ),
   ];
 
   @override
@@ -97,17 +107,19 @@ class _RateAppSheetState extends State<_RateAppSheet> {
               const SizedBox(height: 12),
               Text(
                 'Enjoying the ELECOM app so far?',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
                 'We work super hard to serve you better and would love to know how you\'d rate our app.',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: isDarkMode ? Colors.white70 : Colors.black54,
-                      height: 1.3,
-                      fontWeight: FontWeight.w500,
-                    ),
+                  color: isDarkMode ? Colors.white70 : Colors.black54,
+                  height: 1.3,
+                  fontWeight: FontWeight.w500,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 18),
@@ -154,11 +166,16 @@ class _RateAppSheetState extends State<_RateAppSheet> {
               ),
               const SizedBox(height: 14),
               TextButton(
-                onPressed: _submitting ? null : () => Navigator.of(context).pop(),
+                onPressed: _submitting
+                    ? null
+                    : () => Navigator.of(context).pop(),
                 style: TextButton.styleFrom(
                   foregroundColor: isDarkMode ? Colors.white70 : Colors.black54,
                 ),
-                child: const Text('Rate later', style: TextStyle(fontWeight: FontWeight.w800)),
+                child: const Text(
+                  'Rate later',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
               ),
             ],
           ),
@@ -207,13 +224,17 @@ class _RateEmojiTile extends StatefulWidget {
   State<_RateEmojiTile> createState() => _RateEmojiTileState();
 }
 
-class _RateEmojiTileState extends State<_RateEmojiTile> with SingleTickerProviderStateMixin {
+class _RateEmojiTileState extends State<_RateEmojiTile>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 650));
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 650),
+    );
     if (!widget.disabled) {
       _controller.repeat();
     }
@@ -240,23 +261,27 @@ class _RateEmojiTileState extends State<_RateEmojiTile> with SingleTickerProvide
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final textStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
-          fontWeight: FontWeight.w700,
-          color: isDarkMode
-              ? Colors.white
-              : (widget.selected ? Colors.black : Colors.black54),
-        );
+      fontWeight: FontWeight.w700,
+      color: isDarkMode
+          ? Colors.white
+          : (widget.selected ? Colors.black : Colors.black54),
+    );
 
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, _) {
         final baseT = _controller.value;
-        final phaseShift = widget.total <= 0 ? 0.0 : (widget.index / widget.total);
+        final phaseShift = widget.total <= 0
+            ? 0.0
+            : (widget.index / widget.total);
         final t = (baseT + phaseShift) % 1.0;
 
         final idleWave = math.sin(t * math.pi * 2);
         final activeWave = math.sin(t * math.pi * 2);
 
-        final dy = (widget.active || widget.selected) ? (-10 * activeWave).toDouble() : (-3 * idleWave).toDouble();
+        final dy = (widget.active || widget.selected)
+            ? (-10 * activeWave).toDouble()
+            : (-3 * idleWave).toDouble();
         final rot = (widget.active || widget.selected)
             ? (0.12 * math.sin(t * math.pi * 4)).toDouble()
             : (0.03 * math.sin(t * math.pi * 4)).toDouble();
@@ -298,7 +323,9 @@ class _AccountBodyState extends State<AccountBody> {
   final ElecomMobileApi _api = ElecomMobileApi();
   Map<String, dynamic>? _profile;
 
-  static final Uri _supportMessengerUri = Uri.parse('https://m.me/redjan.phil.s.visitacion');
+  static final Uri _supportMessengerUri = Uri.parse(
+    'https://m.me/redjan.phil.s.visitacion',
+  );
   static final Uri _supportEmailUri = Uri(
     scheme: 'mailto',
     path: 'rpsvcodes@gmail.com',
@@ -332,7 +359,10 @@ class _AccountBodyState extends State<AccountBody> {
               }
             } catch (_) {
               if (mounted) {
-                AppToast.error(context, 'Could not submit rating. Please try again later.');
+                AppToast.error(
+                  context,
+                  'Could not submit rating. Please try again later.',
+                );
               }
             }
           },
@@ -376,17 +406,33 @@ class _AccountBodyState extends State<AccountBody> {
 
   Object? _lookup(String key) {
     final top = _profile;
-    if (top == null) return null;
-    if (top.containsKey(key) && top[key] != null) return top[key];
+    if (top == null) {
+      return null;
+    }
+    if (top.containsKey(key) && top[key] != null) {
+      return top[key];
+    }
 
     final data = top['data'];
-    if (data is Map<String, dynamic> && data.containsKey(key) && data[key] != null) return data[key];
+    if (data is Map<String, dynamic> &&
+        data.containsKey(key) &&
+        data[key] != null) {
+      return data[key];
+    }
 
     final user = top['user'];
-    if (user is Map<String, dynamic> && user.containsKey(key) && user[key] != null) return user[key];
+    if (user is Map<String, dynamic> &&
+        user.containsKey(key) &&
+        user[key] != null) {
+      return user[key];
+    }
 
     final student = top['student'];
-    if (student is Map<String, dynamic> && student.containsKey(key) && student[key] != null) return student[key];
+    if (student is Map<String, dynamic> &&
+        student.containsKey(key) &&
+        student[key] != null) {
+      return student[key];
+    }
 
     return null;
   }
@@ -411,13 +457,22 @@ class _AccountBodyState extends State<AccountBody> {
     final userFirst = _readFirst(const ['first_name', 'firstName']);
     final userMiddle = _readFirst(const ['middle_name', 'middleName']);
     final userLast = _readFirst(const ['last_name', 'lastName']);
-    final built = [userFirst, userMiddle, userLast].where((p) => p.trim().isNotEmpty).join(' ').trim();
+    final built = [
+      userFirst,
+      userMiddle,
+      userLast,
+    ].where((p) => p.trim().isNotEmpty).join(' ').trim();
     if (built.isNotEmpty) return built;
     return (UserSession.fullName ?? '').trim();
   }
 
   String _resolveStudentId() {
-    final direct = _readFirst(const ['student_id', 'studentId', 'id_number', 'idNumber']);
+    final direct = _readFirst(const [
+      'student_id',
+      'studentId',
+      'id_number',
+      'idNumber',
+    ]);
     if (direct.isNotEmpty) return direct;
     return (UserSession.studentId ?? '').trim();
   }
@@ -425,17 +480,28 @@ class _AccountBodyState extends State<AccountBody> {
   String _normalizePhotoUrl(String url) {
     final trimmed = url.trim();
     if (trimmed.isEmpty) return '';
-    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return trimmed;
+    }
     final base = ApiConfig.baseUrl;
     if (trimmed.startsWith('/')) return '$base$trimmed';
     return '$base/$trimmed';
   }
 
   String _resolvePhotoUrl() {
-    final direct = _readFirst(const ['profile_photo_url', 'photo_url', 'photo', 'avatar']);
-    if (direct.isNotEmpty && direct.toLowerCase() != 'null') return _normalizePhotoUrl(direct);
+    final direct = _readFirst(const [
+      'profile_photo_url',
+      'photo_url',
+      'photo',
+      'avatar',
+    ]);
+    if (direct.isNotEmpty && direct.toLowerCase() != 'null') {
+      return _normalizePhotoUrl(direct);
+    }
     final sessionUrl = (UserSession.profilePhotoUrl ?? '').trim();
-    if (sessionUrl.isNotEmpty && sessionUrl.toLowerCase() != 'null') return _normalizePhotoUrl(sessionUrl);
+    if (sessionUrl.isNotEmpty && sessionUrl.toLowerCase() != 'null') {
+      return _normalizePhotoUrl(sessionUrl);
+    }
     return '';
   }
 
@@ -465,7 +531,10 @@ class _AccountBodyState extends State<AccountBody> {
             ),
             TextButton(
               onPressed: () => Navigator.pop(ctx, true),
-              style: TextButton.styleFrom(foregroundColor: Colors.red, textStyle: const TextStyle(fontWeight: FontWeight.w900)),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.red,
+                textStyle: const TextStyle(fontWeight: FontWeight.w900),
+              ),
               child: const Text('LOGOUT'),
             ),
           ],
@@ -478,7 +547,10 @@ class _AccountBodyState extends State<AccountBody> {
     }
   }
 
-  Future<void> _showInfoDialog({required String title, required String message}) async {
+  Future<void> _showInfoDialog({
+    required String title,
+    required String message,
+  }) async {
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -514,7 +586,8 @@ class _AccountBodyState extends State<AccountBody> {
       if (!mounted) return;
       await _showInfoDialog(
         title: 'Contact Support',
-        message: 'Unable to open Messenger. Please open this link:\n\nhttps://m.me/redjan.phil.s.visitacion',
+        message:
+            'Unable to open Messenger. Please open this link:\n\nhttps://m.me/redjan.phil.s.visitacion',
       );
     } catch (_) {
       if (!mounted) return;
@@ -539,7 +612,8 @@ class _AccountBodyState extends State<AccountBody> {
       if (!mounted) return;
       await _showInfoDialog(
         title: 'Contact Support',
-        message: 'Unable to open email app. Please email:\n\nrpsvcodes@gmail.com',
+        message:
+            'Unable to open email app. Please email:\n\nrpsvcodes@gmail.com',
       );
     } catch (_) {
       if (!mounted) return;
@@ -598,7 +672,9 @@ class _AccountBodyState extends State<AccountBody> {
                   ),
                   subtitle: Text(
                     'Chat with support on Facebook',
-                    style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black54),
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white70 : Colors.black54,
+                    ),
                   ),
                   onTap: () async {
                     Navigator.of(ctx).pop();
@@ -619,7 +695,9 @@ class _AccountBodyState extends State<AccountBody> {
                   ),
                   subtitle: Text(
                     'rpsvcodes@gmail.com',
-                    style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black54),
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white70 : Colors.black54,
+                    ),
                   ),
                   onTap: () async {
                     Navigator.of(ctx).pop();
@@ -630,9 +708,14 @@ class _AccountBodyState extends State<AccountBody> {
                 TextButton(
                   onPressed: () => Navigator.of(ctx).pop(),
                   style: TextButton.styleFrom(
-                    foregroundColor: isDarkMode ? Colors.white70 : Colors.black54,
+                    foregroundColor: isDarkMode
+                        ? Colors.white70
+                        : Colors.black54,
                   ),
-                  child: const Text('Close', style: TextStyle(fontWeight: FontWeight.w800)),
+                  child: const Text(
+                    'Close',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
                 ),
                 const SizedBox(height: 10),
               ],
@@ -643,13 +726,28 @@ class _AccountBodyState extends State<AccountBody> {
     );
   }
 
-  Widget _menuItem({required IconData icon, required String title, required VoidCallback onTap, bool destructive = false}) {
+  Widget _menuItem({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+    bool destructive = false,
+  }) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final isPremiumMode = themeNotifier.isPremiumMode;
     final color = destructive
         ? Colors.red
-        : (isDarkMode ? Colors.white : Colors.black);
+        : (isPremiumMode
+              ? const Color(0xFF2563EB)
+              : (isDarkMode ? Colors.white : Colors.black));
     final cardColor = isDarkMode ? const Color(0xFF2A2A35) : Colors.white;
-    final iconContainerColor = isDarkMode ? const Color(0xFF393948) : const Color(0xFFF2F2F2);
+    final iconContainerColor = isPremiumMode
+        ? const Color(0xFF2563EB).withValues(alpha: 0.08)
+        : isDarkMode
+        ? const Color(0xFF393948)
+        : const Color(0xFFF2F2F2);
+    final displayIcon = isPremiumMode
+        ? _premiumMenuIcon(title, fallback: icon)
+        : icon;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -667,12 +765,30 @@ class _AccountBodyState extends State<AccountBody> {
             color: iconContainerColor,
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Icon(icon, color: color),
+          child: Icon(displayIcon, color: color),
         ),
-        title: Text(title, style: TextStyle(color: color, fontWeight: FontWeight.w800)),
-        trailing: Icon(Icons.chevron_right, color: color.withValues(alpha: 0.7)),
+        title: Text(
+          title,
+          style: TextStyle(color: color, fontWeight: FontWeight.w800),
+        ),
+        trailing: Icon(
+          Icons.chevron_right,
+          color: color.withValues(alpha: 0.7),
+        ),
       ),
     );
+  }
+
+  IconData _premiumMenuIcon(String title, {required IconData fallback}) {
+    return switch (title) {
+      'FAQs' => Iconsax.message_question,
+      'About ELECOM Voting' => Iconsax.judge,
+      'Contact Support' => Iconsax.headphone,
+      'Rate our app' => Iconsax.star,
+      'Settings' => Iconsax.setting_2,
+      'Logout' => Iconsax.logout,
+      _ => fallback,
+    };
   }
 
   @override
@@ -697,7 +813,9 @@ class _AccountBodyState extends State<AccountBody> {
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  border: Border.all(color: isDarkMode ? Colors.white12 : Colors.black12),
+                  border: Border.all(
+                    color: isDarkMode ? Colors.white12 : Colors.black12,
+                  ),
                   borderRadius: BorderRadius.circular(16),
                   color: isDarkMode ? const Color(0xFF2A2A35) : Colors.white,
                 ),
@@ -744,15 +862,21 @@ class _AccountBodyState extends State<AccountBody> {
                             name.isEmpty ? 'User' : name,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(fontWeight: FontWeight.w900),
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            studentId.isEmpty ? 'Student ID: —' : 'Student ID: $studentId',
+                            studentId.isEmpty
+                                ? 'Student ID: —'
+                                : 'Student ID: $studentId',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  color: isDarkMode ? Colors.white70 : Colors.black54,
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  color: isDarkMode
+                                      ? Colors.white70
+                                      : Colors.black54,
                                   fontWeight: FontWeight.w700,
                                 ),
                           ),
@@ -777,7 +901,9 @@ class _AccountBodyState extends State<AccountBody> {
                 title: 'About ELECOM Voting',
                 onTap: () {
                   Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const ElecomAboutScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => const ElecomAboutScreen(),
+                    ),
                   );
                 },
               ),
@@ -811,9 +937,9 @@ class _AccountBodyState extends State<AccountBody> {
                 child: Text(
                   'Version 1.0.0',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: isDarkMode ? Colors.white54 : Colors.black45,
-                        fontWeight: FontWeight.w700,
-                      ),
+                    color: isDarkMode ? Colors.white54 : Colors.black45,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               const SizedBox(height: 20),
@@ -903,13 +1029,19 @@ class _ProfileBodyState extends State<ProfileBody> {
         debugPrint('GET profile response: $res');
       }
       final root = res;
-      final data = root['data'] is Map<String, dynamic> ? (root['data'] as Map<String, dynamic>) : const <String, dynamic>{};
+      final data = root['data'] is Map<String, dynamic>
+          ? (root['data'] as Map<String, dynamic>)
+          : const <String, dynamic>{};
       final student = data['student'] is Map<String, dynamic>
           ? (data['student'] as Map<String, dynamic>)
-          : (root['student'] is Map<String, dynamic> ? (root['student'] as Map<String, dynamic>) : const <String, dynamic>{});
+          : (root['student'] is Map<String, dynamic>
+                ? (root['student'] as Map<String, dynamic>)
+                : const <String, dynamic>{});
       final user = data['user'] is Map<String, dynamic>
           ? (data['user'] as Map<String, dynamic>)
-          : (root['user'] is Map<String, dynamic> ? (root['user'] as Map<String, dynamic>) : const <String, dynamic>{});
+          : (root['user'] is Map<String, dynamic>
+                ? (root['user'] as Map<String, dynamic>)
+                : const <String, dynamic>{});
 
       if (data.isNotEmpty) {
         UserSession.setFromResponse(data);
@@ -942,7 +1074,9 @@ class _ProfileBodyState extends State<ProfileBody> {
   Widget build(BuildContext context) {
     final fullName = _resolveFullName();
     final role = _readString('role');
-    final studentId = _readString('student_id').isNotEmpty ? _readString('student_id') : (UserSession.studentId ?? '');
+    final studentId = _readString('student_id').isNotEmpty
+        ? _readString('student_id')
+        : (UserSession.studentId ?? '');
     final photoUrl = _resolvePhotoUrl();
 
     return SafeArea(
@@ -950,72 +1084,113 @@ class _ProfileBodyState extends State<ProfileBody> {
         padding: const EdgeInsets.all(14),
         child: Column(
           children: [
-              Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(14),
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF5B6CFF), Color(0xFFFFF176)],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  ),
-                ),
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                    color: Colors.white.withValues(alpha: 0.86),
-                  ),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 28,
-                        backgroundColor: Colors.white,
-                        backgroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
-                        child: photoUrl.isNotEmpty ? null : const Icon(Icons.person, size: 36, color: Colors.black87),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              fullName.isEmpty ? 'User' : fullName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              role.isEmpty ? 'Student' : role,
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.black54, fontWeight: FontWeight.w700),
-                            ),
-                          ],
-                        ),
-                      ),
-                      OutlinedButton.icon(
-                        onPressed: _loading ? null : _changePhoto,
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.black,
-                          side: const BorderSide(color: Colors.black12),
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                          visualDensity: VisualDensity.compact,
-                        ),
-                        icon: const Icon(Icons.photo_camera_outlined, size: 16),
-                        label: const Text('Change Photo'),
-                      ),
-                    ],
-                  ),
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF5B6CFF), Color(0xFFFFF176)],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
                 ),
               ),
-              const SizedBox(height: 14),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  color: Colors.white.withValues(alpha: 0.86),
+                ),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 28,
+                      backgroundColor: Colors.white,
+                      backgroundImage: photoUrl.isNotEmpty
+                          ? NetworkImage(photoUrl)
+                          : null,
+                      child: photoUrl.isNotEmpty
+                          ? null
+                          : const Icon(
+                              Icons.person,
+                              size: 36,
+                              color: Colors.black87,
+                            ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            fullName.isEmpty ? 'User' : fullName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w900),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            role.isEmpty ? 'Student' : role,
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: Colors.black54,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: _loading ? null : _changePhoto,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.black,
+                        side: const BorderSide(color: Colors.black12),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 8,
+                        ),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      icon: const Icon(Icons.photo_camera_outlined, size: 16),
+                      label: const Text('Change Photo'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
 
-              _ProfileField(label: 'Full Name', value: fullName),
-              _ProfileField(label: 'Course', value: _readFirst(const ['course', 'program', 'department'])),
-              _ProfileField(label: 'Email', value: _readFirst(const ['email'])),
-              _ProfileField(label: 'Created At', value: _readFirst(const ['created_at', 'createdAt', 'date_joined', 'dateJoined'])),
-              _ProfileField(label: 'Student ID', value: studentId),
-              _ProfileField(label: 'Year & Section', value: _resolveYearSection()),
-              _ProfileField(label: 'Phone No.', value: _readFirst(const ['phone_number', 'phoneNumber', 'phone', 'mobile', 'contact', 'contact_no', 'contactNo'])),
+            _ProfileField(label: 'Full Name', value: fullName),
+            _ProfileField(
+              label: 'Course',
+              value: _readFirst(const ['course', 'program', 'department']),
+            ),
+            _ProfileField(label: 'Email', value: _readFirst(const ['email'])),
+            _ProfileField(
+              label: 'Created At',
+              value: _readFirst(const [
+                'created_at',
+                'createdAt',
+                'date_joined',
+                'dateJoined',
+              ]),
+            ),
+            _ProfileField(label: 'Student ID', value: studentId),
+            _ProfileField(
+              label: 'Year & Section',
+              value: _resolveYearSection(),
+            ),
+            _ProfileField(
+              label: 'Phone No.',
+              value: _readFirst(const [
+                'phone_number',
+                'phoneNumber',
+                'phone',
+                'mobile',
+                'contact',
+                'contact_no',
+                'contactNo',
+              ]),
+            ),
           ],
         ),
       ),
@@ -1038,28 +1213,52 @@ class _ProfileBodyState extends State<ProfileBody> {
 
   Object? _lookup(String key) {
     final top = _profile;
-    if (top == null) return null;
-    if (top.containsKey(key) && top[key] != null) return top[key];
+    if (top == null) {
+      return null;
+    }
+    if (top.containsKey(key) && top[key] != null) {
+      return top[key];
+    }
 
     final data = top['data'];
-    if (data is Map<String, dynamic> && data.containsKey(key) && data[key] != null) return data[key];
+    if (data is Map<String, dynamic> &&
+        data.containsKey(key) &&
+        data[key] != null) {
+      return data[key];
+    }
 
     final student = top['student'];
-    if (student is Map<String, dynamic> && student.containsKey(key) && student[key] != null) return student[key];
+    if (student is Map<String, dynamic> &&
+        student.containsKey(key) &&
+        student[key] != null) {
+      return student[key];
+    }
 
     final user = top['user'];
-    if (user is Map<String, dynamic> && user.containsKey(key) && user[key] != null) return user[key];
+    if (user is Map<String, dynamic> &&
+        user.containsKey(key) &&
+        user[key] != null) {
+      return user[key];
+    }
 
     return null;
   }
 
   String _resolveYearSection() {
-    final direct = _readFirst(const ['year_section', 'yearSection', 'year_and_section', 'yearAndSection']);
+    final direct = _readFirst(const [
+      'year_section',
+      'yearSection',
+      'year_and_section',
+      'yearAndSection',
+    ]);
     if (direct.isNotEmpty) return direct;
 
     final year = _readFirst(const ['year', 'year_level', 'yearLevel']);
     final section = _readFirst(const ['section', 'sec']);
-    final combined = [year, section].where((p) => p.trim().isNotEmpty).join(' ').trim();
+    final combined = [
+      year,
+      section,
+    ].where((p) => p.trim().isNotEmpty).join(' ').trim();
     return combined;
   }
 
@@ -1073,22 +1272,37 @@ class _ProfileBodyState extends State<ProfileBody> {
     final first = _readString('first_name');
     final middle = _readString('middle_name');
     final last = _readString('last_name');
-    final built = [first, middle, last].where((p) => p.trim().isNotEmpty).join(' ').trim();
+    final built = [
+      first,
+      middle,
+      last,
+    ].where((p) => p.trim().isNotEmpty).join(' ').trim();
     return built;
   }
 
   String _resolvePhotoUrl() {
-    final direct = _readFirst(const ['profile_photo_url', 'profilePhotoUrl', 'photo_url', 'photoUrl', 'photo', 'avatar']);
+    final direct = _readFirst(const [
+      'profile_photo_url',
+      'profilePhotoUrl',
+      'photo_url',
+      'photoUrl',
+      'photo',
+      'avatar',
+    ]);
     if (direct.isNotEmpty) return _cacheBust(_normalizePhotoUrl(direct));
     final sessionUrl = (UserSession.profilePhotoUrl ?? '').trim();
-    if (sessionUrl.isNotEmpty) return _cacheBust(_normalizePhotoUrl(sessionUrl));
+    if (sessionUrl.isNotEmpty) {
+      return _cacheBust(_normalizePhotoUrl(sessionUrl));
+    }
     return '';
   }
 
   String _normalizePhotoUrl(String url) {
     final trimmed = url.trim();
     if (trimmed.isEmpty) return '';
-    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return trimmed;
+    }
 
     // Backend might return a relative path like /media/... or media/...
     final base = ApiConfig.baseUrl;
@@ -1104,7 +1318,10 @@ class _ProfileBodyState extends State<ProfileBody> {
 
   Future<void> _changePhoto() async {
     try {
-      final picked = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+      final picked = await _picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+      );
       if (picked == null) return;
 
       final oldUrl = _resolvePhotoUrl();
@@ -1115,7 +1332,9 @@ class _ProfileBodyState extends State<ProfileBody> {
 
       // Backend endpoint /api/mobile/account/profile/photo/ expects JSON { photo_url }, not a multipart file.
       // So we always upload to Cloudinary first, then persist the returned URL to the backend.
-      final secureUrl = await _api.uploadImageToCloudinary(imageFile: File(picked.path));
+      final secureUrl = await _api.uploadImageToCloudinary(
+        imageFile: File(picked.path),
+      );
       final setRes = await _api.setProfilePhotoUrl(photoUrl: secureUrl);
       if (kDebugMode) {
         debugPrint('POST set profile photo URL response: $setRes');
@@ -1153,7 +1372,10 @@ class _ProfileBodyState extends State<ProfileBody> {
       if (newUrl.isNotEmpty && newUrl != oldUrl) {
         AppToast.success(context, 'Profile photo updated.');
       } else {
-        AppToast.info(context, 'Upload finished, but photo URL was not returned yet.');
+        AppToast.info(
+          context,
+          'Upload finished, but photo URL was not returned yet.',
+        );
       }
     } catch (_) {
       if (!mounted) return;
@@ -1190,12 +1412,17 @@ class _ProfileField extends StatelessWidget {
         children: [
           Text(
             label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.black54, fontWeight: FontWeight.w700),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Colors.black54,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
             value.isEmpty ? '—' : value,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800),
           ),
         ],
       ),

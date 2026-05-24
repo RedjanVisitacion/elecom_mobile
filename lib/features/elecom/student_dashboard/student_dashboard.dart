@@ -6,6 +6,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:iconsax_flutter/iconsax_flutter.dart';
+import 'package:lottie/lottie.dart';
 
 import '../../../core/config/api_config.dart';
 import '../../../core/notifications/notification_center_store.dart';
@@ -401,7 +402,14 @@ class _StudentDashboardState extends State<StudentDashboard> {
               titleText: _currentIndex == 4 ? 'Account' : null,
             ),
             body: shouldUsePremiumMode
-                ? _PremiumDashboardBackground(child: _dashboardTabs(context))
+                ? _PremiumDashboardBackground(
+                    child: Stack(
+                      children: [
+                        _dashboardTabs(context),
+                        const _PremiumAssistantBubble(),
+                      ],
+                    ),
+                  )
                 : _dashboardTabs(context),
             bottomNavigationBar: SafeArea(
               top: false,
@@ -1057,4 +1065,56 @@ class _PremiumDotPatternPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _PremiumAssistantBubble extends StatelessWidget {
+  const _PremiumAssistantBubble();
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      right: 18,
+      bottom: 14,
+      child: Semantics(
+        label: 'AI assistant',
+        image: true,
+        child: IgnorePointer(
+          child: Container(
+            width: 58,
+            height: 58,
+            padding: EdgeInsets.zero,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFFACC15).withValues(alpha: 0.38),
+                  blurRadius: 24,
+                  spreadRadius: 1,
+                  offset: const Offset(0, 8),
+                ),
+                BoxShadow(
+                  color: const Color(0xFF2563EB).withValues(alpha: 0.20),
+                  blurRadius: 18,
+                  offset: const Offset(-4, 4),
+                ),
+              ],
+            ),
+            child: Lottie.asset(
+              'assets/Robot-Bot 3D.json',
+              fit: BoxFit.contain,
+              repeat: true,
+              animate: true,
+              errorBuilder: (context, error, stackTrace) {
+                return const Icon(
+                  Icons.smart_toy_outlined,
+                  color: Color(0xFF2563EB),
+                  size: 30,
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

@@ -93,6 +93,10 @@ flutter:
   assets:
      - assets/elecom.png
      - assets/no_txt_no_bg_elecom.png
+     - assets/AI robot assistant.json
+     - assets/AI robot assistant.lottie
+     - assets/Robot-Bot 3D.json
+     - assets/Robot-Bot 3D.lottie
      - assets/login/
      - assets/img_text/
      - assets/omnibus/
