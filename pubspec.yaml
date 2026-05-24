@@ -91,6 +91,7 @@ flutter:
   assets:
      - assets/elecom.png
      - assets/no_txt_no_bg_elecom.png
+     - assets/login/
      - assets/img_text/
      - assets/omnibus/
      - assets/gif/
