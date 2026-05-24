@@ -55,11 +55,12 @@ class HomeCandidatesStrip extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         SizedBox(
-          height: 122,
+          height: 134,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(2, 2, 2, 8),
+            clipBehavior: Clip.none,
+            padding: const EdgeInsets.fromLTRB(10, 4, 18, 10),
             itemCount: candidates.length,
             separatorBuilder: (context, index) => const SizedBox(width: 14),
             itemBuilder: (context, i) {
@@ -67,7 +68,7 @@ class HomeCandidatesStrip extends StatelessWidget {
               final photo = resolvedCandidatePhotoUrl(c['photo_url']);
               final first = homeCandidateFirstName(c);
               return SizedBox(
-                width: 76,
+                width: 78,
                 child: Material(
                   color: Colors.transparent,
                   child: InkWell(
@@ -87,19 +88,12 @@ class HomeCandidatesStrip extends StatelessWidget {
                         Container(
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            gradient: isPremiumMode
-                                ? const LinearGradient(
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                    colors: [
-                                      Color(0xFF2563EB),
-                                      Color(0xFFFACC15),
-                                    ],
-                                  )
-                                : null,
-                            border: isPremiumMode
-                                ? null
-                                : Border.all(color: ringColor, width: 2.5),
+                            border: Border.all(
+                              color: isPremiumMode
+                                  ? const Color(0xFF2563EB)
+                                  : ringColor,
+                              width: 2.5,
+                            ),
                             boxShadow: isPremiumMode
                                 ? [
                                     BoxShadow(

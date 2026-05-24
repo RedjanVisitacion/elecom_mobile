@@ -410,10 +410,14 @@ class _StudentDashboardState extends State<StudentDashboard> {
                 type: BottomNavigationBarType.fixed,
                 currentIndex: _currentIndex,
                 onTap: _handleBottomNavTap,
-                selectedItemColor: shouldUseDarkMode
+                selectedItemColor: shouldUsePremiumMode
+                    ? const Color(0xFFFACC15)
+                    : shouldUseDarkMode
                     ? Colors.white
                     : Colors.black,
-                unselectedItemColor: shouldUseDarkMode
+                unselectedItemColor: shouldUsePremiumMode
+                    ? const Color(0xFF2563EB)
+                    : shouldUseDarkMode
                     ? Colors.white70
                     : Colors.black54,
                 backgroundColor: shouldUseDarkMode
@@ -456,31 +460,84 @@ class _StudentDashboardState extends State<StudentDashboard> {
 
   List<BottomNavigationBarItem> _premiumBottomNavItems() {
     return [
-      const BottomNavigationBarItem(
-        icon: HugeIcon(icon: HugeIcons.strokeRoundedHome01, size: 23),
+      BottomNavigationBarItem(
+        icon: _premiumNavIcon(HugeIcons.strokeRoundedHome01),
+        activeIcon: _premiumNavIcon(
+          HugeIcons.strokeRoundedHome01,
+          selected: true,
+        ),
         label: 'Home',
       ),
-      const BottomNavigationBarItem(
-        icon: HugeIcon(icon: HugeIcons.strokeRoundedCheckList, size: 23),
+      BottomNavigationBarItem(
+        icon: _premiumNavIcon(HugeIcons.strokeRoundedCheckList),
+        activeIcon: _premiumNavIcon(
+          HugeIcons.strokeRoundedCheckList,
+          selected: true,
+        ),
         label: 'Election',
       ),
-      const BottomNavigationBarItem(
-        icon: HugeIcon(icon: HugeIcons.strokeRoundedChartBarLine, size: 23),
+      BottomNavigationBarItem(
+        icon: _premiumNavIcon(HugeIcons.strokeRoundedChartBarLine),
+        activeIcon: _premiumNavIcon(
+          HugeIcons.strokeRoundedChartBarLine,
+          selected: true,
+        ),
         label: 'Results',
       ),
-      const BottomNavigationBarItem(
-        icon: HugeIcon(icon: HugeIcons.strokeRoundedInvoice03, size: 23),
+      BottomNavigationBarItem(
+        icon: _premiumNavIcon(HugeIcons.strokeRoundedInvoice03),
+        activeIcon: _premiumNavIcon(
+          HugeIcons.strokeRoundedInvoice03,
+          selected: true,
+        ),
         label: 'Receipt',
       ),
       BottomNavigationBarItem(
-        icon: HugeIcon(
+        icon: _premiumNavIcon(
+          HugeIcons.strokeRoundedUserCircle,
           key: ElecomTutorialKeys.homeSettings,
-          icon: HugeIcons.strokeRoundedUserCircle,
-          size: 23,
+        ),
+        activeIcon: _premiumNavIcon(
+          HugeIcons.strokeRoundedUserCircle,
+          selected: true,
         ),
         label: 'Me',
       ),
     ];
+  }
+
+  Widget _premiumNavIcon(
+    List<List<dynamic>> icon, {
+    bool selected = false,
+    Key? key,
+  }) {
+    final iconWidget = HugeIcon(
+      key: key,
+      icon: icon,
+      color: const Color(0xFF2563EB),
+      size: selected ? 23.5 : 22,
+      strokeWidth: selected ? 2.1 : 1.75,
+    );
+
+    if (!selected) return iconWidget;
+
+    return Container(
+      width: 34,
+      height: 30,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: const Color(0xFFFACC15).withValues(alpha: 0.20),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFFACC15).withValues(alpha: 0.32),
+            blurRadius: 14,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: iconWidget,
+    );
   }
 
   Future<void> _handleBottomNavTap(int i) async {
@@ -908,8 +965,8 @@ class _PremiumDashboardBackground extends StatelessWidget {
             Color(0xFFFFFFFF),
             Color(0xFFF4F8FF),
             Color(0xFFEAF2FF),
-            Color(0xFFBFD7FF),
-            Color(0xFF07111F),
+            Color(0xFFDCEAFF),
+            Color(0xFFFFFFFF),
           ],
           stops: [0, 0.42, 0.68, 0.84, 1],
         ),
@@ -944,8 +1001,8 @@ class _PremiumDashboardBackground extends StatelessWidget {
             bottom: -80,
             right: -86,
             child: _PremiumGlow(
-              color: const Color(0xFF0F172A).withValues(alpha: 0.50),
-              size: 290,
+              color: const Color(0xFF2563EB).withValues(alpha: 0.12),
+              size: 260,
             ),
           ),
           Positioned.fill(
