@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:iconsax_flutter/iconsax_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/notifications/local_push_service.dart';
@@ -15,6 +16,7 @@ class ElectionHomeCountdown extends StatefulWidget {
     super.key,
     required this.orgName,
     this.embeddedInProfileCard = false,
+    this.isPremiumMode = false,
     this.tutorialPrimaryActionKey,
     this.onVoteNow,
     this.onViewResults,
@@ -25,6 +27,7 @@ class ElectionHomeCountdown extends StatefulWidget {
 
   /// When true, spacing is tightened for use directly under the profile row.
   final bool embeddedInProfileCard;
+  final bool isPremiumMode;
 
   /// Optional coach-mark target for the primary CTA (Vote / View Results / Receipt).
   final GlobalKey? tutorialPrimaryActionKey;
@@ -219,7 +222,11 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final titleColor = isDark ? Colors.white : Colors.black;
+    final titleColor = widget.isPremiumMode
+        ? const Color(0xFF0F172A)
+        : isDark
+        ? Colors.white
+        : Colors.black;
     final e = _election;
 
     final target = _countdownTarget(e);
@@ -262,76 +269,135 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
           ),
         Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            gradient: const LinearGradient(
+            borderRadius: BorderRadius.circular(widget.isPremiumMode ? 22 : 18),
+            gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Color(0xFF0c1e70), Color(0xFFfea501)],
+              colors: widget.isPremiumMode
+                  ? const [
+                      Color(0xFF07111F),
+                      Color(0xFF0C1E70),
+                      Color(0xFF7A6427),
+                      Color(0xFFFEA501),
+                    ]
+                  : const [Color(0xFF0c1e70), Color(0xFFfea501)],
+              stops: widget.isPremiumMode ? const [0, 0.34, 0.72, 1] : null,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.12),
-                blurRadius: 14,
-                offset: const Offset(0, 6),
+                color: widget.isPremiumMode
+                    ? const Color(0xFF0C1E70).withValues(alpha: 0.30)
+                    : Colors.black.withValues(alpha: 0.12),
+                blurRadius: widget.isPremiumMode ? 26 : 14,
+                offset: Offset(0, widget.isPremiumMode ? 14 : 6),
               ),
+              if (widget.isPremiumMode)
+                BoxShadow(
+                  color: const Color(0xFFFACC15).withValues(alpha: 0.18),
+                  blurRadius: 22,
+                  offset: const Offset(16, 4),
+                ),
             ],
+            border: widget.isPremiumMode
+                ? Border.all(color: Colors.white.withValues(alpha: 0.16))
+                : null,
           ),
+          clipBehavior: Clip.antiAlias,
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Stack(
             children: [
-              Text(
-                widget.orgName.trim().isEmpty
-                    ? 'ELECOM Election'
-                    : '${widget.orgName.trim()} Election',
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 17,
-                  height: 1.1,
+              if (widget.isPremiumMode)
+                Positioned(
+                  top: -46,
+                  right: -24,
+                  child: Container(
+                    width: 130,
+                    height: 130,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white.withValues(alpha: 0.10),
+                    ),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'General election schedule',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.92),
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12.5,
-                ),
-              ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  _timeCell(d, 'days'),
-                  const SizedBox(width: 8),
-                  _timeCell(h, 'hours'),
-                  const SizedBox(width: 8),
-                  _timeCell(m, 'mins'),
-                  const SizedBox(width: 8),
-                  _timeCell(s, 'sec'),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                _statusLine(e, target != null ? diff : null),
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.95),
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12.5,
-                  height: 1.25,
-                ),
-              ),
-              const SizedBox(height: 14),
-              _voteNowButton(
-                context,
-                ctaText: ctaText,
-                showViewResults: showViewResults,
+              _countdownContent(
+                e,
+                d,
+                h,
+                m,
+                s,
+                target != null ? diff : null,
+                ctaText,
+                showViewResults,
               ),
             ],
           ),
+        ),
+      ],
+    );
+  }
+
+  Widget _countdownContent(
+    Map<String, dynamic> e,
+    int d,
+    int h,
+    int m,
+    int s,
+    Duration? diff,
+    String ctaText,
+    bool showViewResults,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          widget.orgName.trim().isEmpty
+              ? 'ELECOM Election'
+              : '${widget.orgName.trim()} Election',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w900,
+            fontSize: 17,
+            height: 1.1,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'General election schedule',
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.92),
+            fontWeight: FontWeight.w600,
+            fontSize: 12.5,
+          ),
+        ),
+        const SizedBox(height: 14),
+        Row(
+          children: [
+            _timeCell(d, 'days'),
+            const SizedBox(width: 8),
+            _timeCell(h, 'hours'),
+            const SizedBox(width: 8),
+            _timeCell(m, 'mins'),
+            const SizedBox(width: 8),
+            _timeCell(s, 'sec'),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Text(
+          _statusLine(e, diff),
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.95),
+            fontWeight: FontWeight.w700,
+            fontSize: 12.5,
+            height: 1.25,
+          ),
+        ),
+        const SizedBox(height: 14),
+        _voteNowButton(
+          context,
+          ctaText: ctaText,
+          showViewResults: showViewResults,
         ),
       ],
     );
@@ -366,10 +432,12 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
-                Icons.how_to_vote_rounded,
-                color: Color(0xFF0c1e70),
-                size: 24,
+              Icon(
+                _buttonIcon(ctaText, showViewResults),
+                color: widget.isPremiumMode
+                    ? const Color(0xFFFACC15)
+                    : const Color(0xFF0c1e70),
+                size: widget.isPremiumMode ? 23 : 24,
               ),
               const SizedBox(width: 10),
               Text(
@@ -386,6 +454,17 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
         ),
       ),
     );
+  }
+
+  IconData _buttonIcon(String ctaText, bool showViewResults) {
+    if (!widget.isPremiumMode) return Icons.how_to_vote_rounded;
+    if (_hasVoted || ctaText.toLowerCase().contains('receipt')) {
+      return Iconsax.receipt_2;
+    }
+    if (showViewResults || ctaText.toLowerCase().contains('results')) {
+      return Iconsax.chart_2;
+    }
+    return Iconsax.security_safe;
   }
 
   Widget _timeCell(int value, String label) {

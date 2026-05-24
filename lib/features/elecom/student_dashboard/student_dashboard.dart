@@ -1,8 +1,11 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
+import 'package:iconsax_flutter/iconsax_flutter.dart';
 
 import '../../../core/config/api_config.dart';
 import '../../../core/notifications/notification_center_store.dart';
@@ -148,15 +151,12 @@ class _StudentDashboardState extends State<StudentDashboard> {
   }
 
   Future<void> _refreshHome() async {
-    await Future.wait<void>(
-      [
-        _boundedRefreshTask(_ensureProfileBasics()),
-        _boundedRefreshTask(NotificationCenterStore.refresh()),
-        _boundedRefreshTask(_loadHomeCandidates()),
-        _boundedRefreshTask(_loadLedgerSummary()),
-      ],
-      eagerError: false,
-    );
+    await Future.wait<void>([
+      _boundedRefreshTask(_ensureProfileBasics()),
+      _boundedRefreshTask(NotificationCenterStore.refresh()),
+      _boundedRefreshTask(_loadHomeCandidates()),
+      _boundedRefreshTask(_loadLedgerSummary()),
+    ], eagerError: false);
     if (mounted) {
       setState(() => _loadingLedger = false);
     }
@@ -371,8 +371,11 @@ class _StudentDashboardState extends State<StudentDashboard> {
     return ListenableBuilder(
       listenable: themeNotifier,
       builder: (context, child) {
+        final shouldUsePremiumMode = isElecom && themeNotifier.isPremiumMode;
         final shouldUseDarkMode = isElecom && themeNotifier.isDarkMode;
-        final dashboardTheme = shouldUseDarkMode
+        final dashboardTheme = shouldUsePremiumMode
+            ? _premiumDashboardTheme()
+            : shouldUseDarkMode
             ? ThemeData(
                 colorScheme: ColorScheme.fromSeed(
                   seedColor: Colors.deepPurple,
@@ -393,102 +396,20 @@ class _StudentDashboardState extends State<StudentDashboard> {
             appBar: StudentDashboardAppBar.build(
               context: context,
               isElecom: isElecom,
+              isPremiumMode: shouldUsePremiumMode,
+              forceDarkMode: shouldUseDarkMode && !shouldUsePremiumMode,
               titleText: _currentIndex == 4 ? 'Account' : null,
             ),
-            body: IndexedStack(
-              index: _currentIndex,
-              children: [
-                _homeTab(context),
-                ElectionScreen(
-                  voteIntentNonce: _voteIntentNonce,
-                  isActive: _currentIndex == 1,
-                  onReceiptReady: (receipt) {
-                    if (!mounted) return;
-                    setState(() {
-                      _latestReceipt = Map<String, dynamic>.from(receipt);
-                    });
-                  },
-                  onRequestTabIndex: (i) {
-                    if (!mounted) return;
-                    setState(() {
-                      if (i == 3 && _latestReceipt == null) {
-                        _receiptRefreshNonce++;
-                      }
-                      _currentIndex = i;
-                    });
-                  },
-                  onViewTransparency: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const ElectionTransparencyScreen(),
-                      ),
-                    );
-                  },
-                ),
-                KeyedSubtree(
-                  key: ValueKey<int>(_resultsScreenVersion),
-                  child: const ResultsScreen(),
-                ),
-                ReceiptScreen(
-                  initialReceipt: _latestReceipt,
-                  refreshNonce: _receiptRefreshNonce,
-                ),
-                const AccountBody(),
-              ],
-            ),
+            body: shouldUsePremiumMode
+                ? _PremiumDashboardBackground(child: _dashboardTabs(context))
+                : _dashboardTabs(context),
             bottomNavigationBar: SafeArea(
               top: false,
               child: BottomNavigationBar(
                 key: ElecomTutorialKeys.homeBottomNav,
                 type: BottomNavigationBarType.fixed,
                 currentIndex: _currentIndex,
-                onTap: (i) async {
-                  // Clear any lingering toasts when switching tabs.
-                  AppToast.dismissAll();
-
-                  if (i == 0) {
-                    final wasOnHome = _currentIndex == 0;
-                    if (mounted) {
-                      setState(() => _currentIndex = 0);
-                    }
-
-                    if (wasOnHome) {
-                      await _triggerHomeRefreshWithEffect();
-                    } else {
-                      await _refreshHome();
-                    }
-
-                    if (mounted) {
-                      setState(() {
-                        // Recreate countdown widget so it pulls latest election window immediately.
-                        _homeCountdownVersion++;
-                      });
-                    }
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      _tryScheduleHomeTutorial();
-                    });
-                    return;
-                  }
-
-                  if (i == 1) {
-                    // Entering Election should force the same gates as "Vote Now":
-                    // enrollment check + face verification before ballot loads.
-                    await _openElectionForVoting();
-                    return;
-                  }
-
-                  setState(() {
-                    if (i == 2) {
-                      // Recreate ResultsScreen on every Results-tab tap
-                      // so charts replay animations even when already on Results.
-                      _resultsScreenVersion++;
-                    }
-                    if (i == 3 && _latestReceipt == null) {
-                      _receiptRefreshNonce++;
-                    }
-                    _currentIndex = i;
-                  });
-                },
+                onTap: _handleBottomNavTap,
                 selectedItemColor: shouldUseDarkMode
                     ? Colors.white
                     : Colors.black,
@@ -498,31 +419,33 @@ class _StudentDashboardState extends State<StudentDashboard> {
                 backgroundColor: shouldUseDarkMode
                     ? const Color(0xFF242433)
                     : Colors.white,
-                items: [
-                  const BottomNavigationBarItem(
-                    icon: Icon(Icons.home_outlined),
-                    label: 'Home',
-                  ),
-                  const BottomNavigationBarItem(
-                    icon: Icon(Icons.how_to_vote_outlined),
-                    label: 'Election',
-                  ),
-                  const BottomNavigationBarItem(
-                    icon: Icon(Icons.bar_chart_outlined),
-                    label: 'Results',
-                  ),
-                  const BottomNavigationBarItem(
-                    icon: Icon(Icons.receipt_long_outlined),
-                    label: 'Receipt',
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Icon(
-                      Icons.person_outline,
-                      key: ElecomTutorialKeys.homeSettings,
-                    ),
-                    label: 'Me',
-                  ),
-                ],
+                items: shouldUsePremiumMode
+                    ? _premiumBottomNavItems()
+                    : [
+                        const BottomNavigationBarItem(
+                          icon: Icon(Icons.home_outlined),
+                          label: 'Home',
+                        ),
+                        const BottomNavigationBarItem(
+                          icon: Icon(Icons.how_to_vote_outlined),
+                          label: 'Election',
+                        ),
+                        const BottomNavigationBarItem(
+                          icon: Icon(Icons.bar_chart_outlined),
+                          label: 'Results',
+                        ),
+                        const BottomNavigationBarItem(
+                          icon: Icon(Icons.receipt_long_outlined),
+                          label: 'Receipt',
+                        ),
+                        BottomNavigationBarItem(
+                          icon: Icon(
+                            Icons.person_outline,
+                            key: ElecomTutorialKeys.homeSettings,
+                          ),
+                          label: 'Me',
+                        ),
+                      ],
               ),
             ),
           ),
@@ -531,12 +454,150 @@ class _StudentDashboardState extends State<StudentDashboard> {
     );
   }
 
+  List<BottomNavigationBarItem> _premiumBottomNavItems() {
+    return [
+      const BottomNavigationBarItem(
+        icon: HugeIcon(icon: HugeIcons.strokeRoundedHome01, size: 23),
+        label: 'Home',
+      ),
+      const BottomNavigationBarItem(
+        icon: HugeIcon(icon: HugeIcons.strokeRoundedCheckList, size: 23),
+        label: 'Election',
+      ),
+      const BottomNavigationBarItem(
+        icon: HugeIcon(icon: HugeIcons.strokeRoundedChartBarLine, size: 23),
+        label: 'Results',
+      ),
+      const BottomNavigationBarItem(
+        icon: HugeIcon(icon: HugeIcons.strokeRoundedInvoice03, size: 23),
+        label: 'Receipt',
+      ),
+      BottomNavigationBarItem(
+        icon: HugeIcon(
+          key: ElecomTutorialKeys.homeSettings,
+          icon: HugeIcons.strokeRoundedUserCircle,
+          size: 23,
+        ),
+        label: 'Me',
+      ),
+    ];
+  }
+
+  Future<void> _handleBottomNavTap(int i) async {
+    // Clear any lingering toasts when switching tabs.
+    AppToast.dismissAll();
+
+    if (i == 0) {
+      final wasOnHome = _currentIndex == 0;
+      if (mounted) {
+        setState(() => _currentIndex = 0);
+      }
+
+      if (wasOnHome) {
+        await _triggerHomeRefreshWithEffect();
+      } else {
+        await _refreshHome();
+      }
+
+      if (mounted) {
+        setState(() {
+          // Recreate countdown widget so it pulls latest election window immediately.
+          _homeCountdownVersion++;
+        });
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _tryScheduleHomeTutorial();
+      });
+      return;
+    }
+
+    if (i == 1) {
+      // Entering Election should force the same gates as "Vote Now":
+      // enrollment check + face verification before ballot loads.
+      await _openElectionForVoting();
+      return;
+    }
+
+    setState(() {
+      if (i == 2) {
+        // Recreate ResultsScreen on every Results-tab tap
+        // so charts replay animations even when already on Results.
+        _resultsScreenVersion++;
+      }
+      if (i == 3 && _latestReceipt == null) {
+        _receiptRefreshNonce++;
+      }
+      _currentIndex = i;
+    });
+  }
+
+  Widget _dashboardTabs(BuildContext context) {
+    return IndexedStack(
+      index: _currentIndex,
+      children: [
+        _homeTab(context),
+        ElectionScreen(
+          voteIntentNonce: _voteIntentNonce,
+          isActive: _currentIndex == 1,
+          onReceiptReady: (receipt) {
+            if (!mounted) return;
+            setState(() {
+              _latestReceipt = Map<String, dynamic>.from(receipt);
+            });
+          },
+          onRequestTabIndex: (i) {
+            if (!mounted) return;
+            setState(() {
+              if (i == 3 && _latestReceipt == null) {
+                _receiptRefreshNonce++;
+              }
+              _currentIndex = i;
+            });
+          },
+          onViewTransparency: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const ElectionTransparencyScreen(),
+              ),
+            );
+          },
+        ),
+        KeyedSubtree(
+          key: ValueKey<int>(_resultsScreenVersion),
+          child: const ResultsScreen(),
+        ),
+        ReceiptScreen(
+          initialReceipt: _latestReceipt,
+          refreshNonce: _receiptRefreshNonce,
+        ),
+        const AccountBody(),
+      ],
+    );
+  }
+
   Widget _homeTab(BuildContext context) {
+    final isPremiumMode = themeNotifier.isPremiumMode;
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDarkMode ? const Color(0xFF2A2A35) : Colors.white;
-    final borderColor = isDarkMode ? Colors.white12 : Colors.black12;
-    final subtitleColor = isDarkMode ? Colors.white70 : Colors.black54;
-    final titleColor = isDarkMode ? Colors.white : Colors.black;
+    final cardColor = isPremiumMode
+        ? Colors.white.withValues(alpha: 0.72)
+        : isDarkMode
+        ? const Color(0xFF2A2A35)
+        : Colors.white;
+    final borderColor = isPremiumMode
+        ? const Color(0xFF2563EB).withValues(alpha: 0.12)
+        : isDarkMode
+        ? Colors.white12
+        : Colors.black12;
+    final subtitleColor = isPremiumMode
+        ? const Color(0xFF64748B)
+        : isDarkMode
+        ? Colors.white70
+        : Colors.black54;
+    final titleColor = isPremiumMode
+        ? const Color(0xFF0F172A)
+        : isDarkMode
+        ? Colors.white
+        : Colors.black;
     final photoUrl = _resolvePhotoUrl();
     final phoneMasked = _maskPhone(_phone);
     final emailMasked = _maskEmail(_email);
@@ -544,7 +605,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
     return SafeArea(
       child: RefreshIndicator(
         key: _homeRefreshKey,
-        color: Colors.black,
+        color: isPremiumMode ? const Color(0xFF2563EB) : Colors.black,
         backgroundColor: Colors.white,
         onRefresh: _refreshHome,
         child: SingleChildScrollView(
@@ -575,10 +636,33 @@ class _StudentDashboardState extends State<StudentDashboard> {
                           color: cardColor,
                           borderRadius: BorderRadius.circular(18),
                           border: Border.all(color: borderColor),
+                          boxShadow: isPremiumMode
+                              ? [
+                                  BoxShadow(
+                                    color: const Color(
+                                      0xFF2563EB,
+                                    ).withValues(alpha: 0.15),
+                                    blurRadius: 26,
+                                    offset: const Offset(0, 14),
+                                  ),
+                                  BoxShadow(
+                                    color: Colors.white.withValues(alpha: 0.55),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, -2),
+                                  ),
+                                ]
+                              : null,
                         ),
                         child: Row(
                           children: [
-                            Icon(Icons.search, color: subtitleColor),
+                            Icon(
+                              isPremiumMode
+                                  ? Iconsax.search_normal_1
+                                  : Icons.search,
+                              color: isPremiumMode
+                                  ? const Color(0xFF60A5FA)
+                                  : subtitleColor,
+                            ),
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
@@ -597,6 +681,10 @@ class _StudentDashboardState extends State<StudentDashboard> {
                     // Profile row — same horizontal bounds as search bar (single outer padding only).
                     Material(
                       color: cardColor,
+                      elevation: isPremiumMode ? 10 : 0,
+                      shadowColor: const Color(
+                        0xFF2563EB,
+                      ).withValues(alpha: isPremiumMode ? 0.14 : 0),
                       borderRadius: BorderRadius.circular(18),
                       child: InkWell(
                         borderRadius: BorderRadius.circular(18),
@@ -614,6 +702,8 @@ class _StudentDashboardState extends State<StudentDashboard> {
                                   border: Border.all(
                                     color: isDarkMode
                                         ? Colors.white24
+                                        : isPremiumMode
+                                        ? const Color(0xFFFACC15)
                                         : const Color(0xFFFEA501),
                                     width: 2,
                                   ),
@@ -629,9 +719,13 @@ class _StudentDashboardState extends State<StudentDashboard> {
                                   child: photoUrl.isNotEmpty
                                       ? null
                                       : Icon(
-                                          Icons.person,
+                                          isPremiumMode
+                                              ? Iconsax.profile_circle
+                                              : Icons.person,
                                           color: isDarkMode
                                               ? Colors.white70
+                                              : isPremiumMode
+                                              ? const Color(0xFF2563EB)
                                               : Colors.blue,
                                           size: 28,
                                         ),
@@ -703,6 +797,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                       key: ValueKey<int>(_homeCountdownVersion),
                       orgName: widget.orgName,
                       embeddedInProfileCard: false,
+                      isPremiumMode: isPremiumMode,
                       tutorialPrimaryActionKey:
                           ElecomTutorialKeys.homePrimaryAction,
                       onVoteNow: _openElectionForVoting,
@@ -724,7 +819,8 @@ class _StudentDashboardState extends State<StudentDashboard> {
                     const SizedBox(height: 12),
                     HomeCandidatesStrip(
                       candidates: _homeCandidates,
-                      isDarkMode: isDarkMode,
+                      isDarkMode: isDarkMode && !isPremiumMode,
+                      isPremiumMode: isPremiumMode,
                     ),
                     const SizedBox(height: 18),
                     const OmnibusCodeCarousel(),
@@ -762,4 +858,146 @@ class _StudentDashboardState extends State<StudentDashboard> {
   }
 
   // (previous _displayName removed; home tab now uses profile summary row)
+}
+
+ThemeData _premiumDashboardTheme() {
+  const royalBlue = Color(0xFF2563EB);
+  const gold = Color(0xFFFACC15);
+  const ink = Color(0xFF0F172A);
+  const surface = Color(0xFFFFFFFF);
+
+  return ThemeData(
+    useMaterial3: true,
+    brightness: Brightness.light,
+    scaffoldBackgroundColor: const Color(0xFFF8FAFC),
+    colorScheme:
+        ColorScheme.fromSeed(
+          seedColor: royalBlue,
+          brightness: Brightness.light,
+        ).copyWith(
+          primary: royalBlue,
+          secondary: gold,
+          surface: surface,
+          onSurface: ink,
+        ),
+    appBarTheme: const AppBarTheme(
+      backgroundColor: Color(0xFFF8FAFC),
+      foregroundColor: ink,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+    ),
+    cardColor: surface.withValues(alpha: 0.86),
+    iconTheme: const IconThemeData(color: royalBlue, size: 24),
+    textSelectionTheme: const TextSelectionThemeData(cursorColor: gold),
+  );
+}
+
+class _PremiumDashboardBackground extends StatelessWidget {
+  const _PremiumDashboardBackground({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xFFFFFFFF),
+            Color(0xFFF4F8FF),
+            Color(0xFFEAF2FF),
+            Color(0xFFBFD7FF),
+            Color(0xFF07111F),
+          ],
+          stops: [0, 0.42, 0.68, 0.84, 1],
+        ),
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            top: -70,
+            right: -58,
+            child: _PremiumGlow(
+              color: const Color(0xFF2563EB).withValues(alpha: 0.24),
+              size: 240,
+            ),
+          ),
+          Positioned(
+            top: 70,
+            left: 60,
+            child: _PremiumGlow(
+              color: Colors.white.withValues(alpha: 0.62),
+              size: 170,
+            ),
+          ),
+          Positioned(
+            top: 285,
+            left: -78,
+            child: _PremiumGlow(
+              color: const Color(0xFFFACC15).withValues(alpha: 0.24),
+              size: 220,
+            ),
+          ),
+          Positioned(
+            bottom: -80,
+            right: -86,
+            child: _PremiumGlow(
+              color: const Color(0xFF0F172A).withValues(alpha: 0.50),
+              size: 290,
+            ),
+          ),
+          Positioned.fill(
+            child: CustomPaint(painter: _PremiumDotPatternPainter()),
+          ),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _PremiumGlow extends StatelessWidget {
+  const _PremiumGlow({required this.color, required this.size});
+
+  final Color color;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: ImageFiltered(
+        imageFilter: ImageFilter.blur(sigmaX: 42, sigmaY: 42),
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+      ),
+    );
+  }
+}
+
+class _PremiumDotPatternPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFF0F172A).withValues(alpha: 0.055)
+      ..style = PaintingStyle.fill;
+    const spacing = 13.0;
+    for (double y = 18; y < size.height; y += spacing) {
+      for (double x = 10; x < size.width; x += spacing) {
+        final inCorner =
+            (x < 110 && y < 120) ||
+            (x > size.width - 126 && y > size.height - 190);
+        if (inCorner) {
+          canvas.drawCircle(Offset(x, y), 0.75, paint);
+        }
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

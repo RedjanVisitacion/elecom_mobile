@@ -682,13 +682,20 @@ class _PremiumCheckbox extends StatelessWidget {
                 borderRadius: BorderRadius.circular(5),
                 gradient: value
                     ? const LinearGradient(
-                        colors: [Color(0xFF2563EB), Color(0xFFFACC15)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Color(0xFF020617),
+                          Color(0xFF111827),
+                          Color(0xFFFACC15),
+                        ],
+                        stops: [0, 0.56, 1],
                       )
                     : null,
                 color: value ? null : Colors.white.withValues(alpha: 0.045),
                 border: Border.all(
                   color: value
-                      ? Colors.white.withValues(alpha: 0.50)
+                      ? const Color(0xFFFACC15).withValues(alpha: 0.54)
                       : Colors.white.withValues(alpha: 0.34),
                   width: 1.2,
                 ),
@@ -768,9 +775,9 @@ class _PremiumLoginButton extends StatelessWidget {
                 borderRadius: BorderRadius.circular(999),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF2563EB).withValues(alpha: pulse),
-                    blurRadius: 24,
-                    offset: const Offset(-10, 10),
+                    color: Colors.black.withValues(alpha: 0.28 + pulse),
+                    blurRadius: 22,
+                    offset: const Offset(-8, 10),
                   ),
                   BoxShadow(
                     color: const Color(0xFFFACC15).withValues(alpha: pulse),
@@ -787,11 +794,11 @@ class _PremiumLoginButton extends StatelessWidget {
                       child: DecoratedBox(
                         decoration: const BoxDecoration(
                           gradient: LinearGradient(
-                            begin: Alignment.centerLeft,
-                            end: Alignment.centerRight,
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                             colors: [
-                              Color(0xFF2563EB),
-                              Color(0xFF2563EB),
+                              Color(0xFF020617),
+                              Color(0xFF111827),
                               Color(0xFFFACC15),
                             ],
                             stops: [0, 0.58, 1],

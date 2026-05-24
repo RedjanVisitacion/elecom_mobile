@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:iconsax_flutter/iconsax_flutter.dart';
 
 import '../../../../core/notifications/notification_center_store.dart';
 import '../../profile/notifications_screen.dart';
@@ -22,9 +23,15 @@ class StudentDashboardAppBar {
                 children: [
                   Text('By participating in elections, you agree to:'),
                   SizedBox(height: 8),
-                  Text('• Cast only one vote per election using your own verified account.'),
-                  Text('• Not tamper with, automate, or interfere with the voting process.'),
-                  Text('• Respect the rules set by ELECOM and your institution.'),
+                  Text(
+                    '• Cast only one vote per election using your own verified account.',
+                  ),
+                  Text(
+                    '• Not tamper with, automate, or interfere with the voting process.',
+                  ),
+                  Text(
+                    '• Respect the rules set by ELECOM and your institution.',
+                  ),
                 ],
               ),
             ),
@@ -44,13 +51,19 @@ class StudentDashboardAppBar {
   static PreferredSizeWidget build({
     required BuildContext context,
     required bool isElecom,
+    bool isPremiumMode = false,
+    bool forceDarkMode = false,
     String? titleText,
   }) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final isDarkMode =
+        forceDarkMode || Theme.of(context).brightness == Brightness.dark;
+    final titleColor = isDarkMode ? Colors.white : Colors.black;
     NotificationCenterStore.init();
 
     return AppBar(
       elevation: 0,
+      backgroundColor: isPremiumMode ? Colors.transparent : null,
+      surfaceTintColor: Colors.transparent,
       centerTitle: false,
       titleSpacing: 0,
       title: titleText != null
@@ -59,27 +72,27 @@ class StudentDashboardAppBar {
               child: Text(
                 titleText,
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      color: isDarkMode ? Colors.white : Colors.black,
-                    ),
+                  fontWeight: FontWeight.w900,
+                  color: titleColor,
+                ),
               ),
             )
           : isElecom
-              ? Padding(
-                  padding: const EdgeInsets.only(left: 12),
-                  child: Opacity(
-                    opacity: 0.85,
-                    child: Image.asset(
-                      isDarkMode
-                          ? 'assets/img_text/elecom_white1.png'
-                          : 'assets/img_text/elecom_black1.png',
-                      height: 24,
-                      fit: BoxFit.contain,
-                      errorBuilder: (c, e, s) => const Text('ELECOM'),
-                    ),
-                  ),
-                )
-              : const Text('Dashboard'),
+          ? Padding(
+              padding: const EdgeInsets.only(left: 12),
+              child: Opacity(
+                opacity: 0.85,
+                child: Image.asset(
+                  isDarkMode
+                      ? 'assets/img_text/elecom_white1.png'
+                      : 'assets/img_text/elecom_black1.png',
+                  height: 24,
+                  fit: BoxFit.contain,
+                  errorBuilder: (c, e, s) => const Text('ELECOM'),
+                ),
+              ),
+            )
+          : const Text('Dashboard'),
       actions: [
         ValueListenableBuilder<int>(
           valueListenable: NotificationCenterStore.unreadCount,
@@ -88,23 +101,72 @@ class StudentDashboardAppBar {
               tooltip: 'Notifications',
               onPressed: () {
                 Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+                  MaterialPageRoute(
+                    builder: (_) => const NotificationsScreen(),
+                  ),
                 );
               },
               icon: Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  const Icon(Icons.notifications_none),
+                  Container(
+                    width: isPremiumMode ? 38 : null,
+                    height: isPremiumMode ? 38 : null,
+                    alignment: Alignment.center,
+                    decoration: isPremiumMode
+                        ? BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.56),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: const Color(
+                                0xFF2563EB,
+                              ).withValues(alpha: 0.12),
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(
+                                  0xFF2563EB,
+                                ).withValues(alpha: 0.18),
+                                blurRadius: 16,
+                              ),
+                            ],
+                          )
+                        : null,
+                    child: Icon(
+                      isPremiumMode
+                          ? Iconsax.notification_bing
+                          : Icons.notifications_none,
+                      color: isPremiumMode
+                          ? const Color(0xFFFACC15)
+                          : titleColor,
+                      size: isPremiumMode ? 22 : 24,
+                    ),
+                  ),
                   if (unreadCount > 0)
                     Positioned(
                       right: -6,
                       top: -6,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: 2,
+                        ),
                         constraints: const BoxConstraints(minWidth: 16),
-                        decoration: const BoxDecoration(
-                          color: Colors.red,
+                        decoration: BoxDecoration(
+                          color: isPremiumMode
+                              ? const Color(0xFFEF4444)
+                              : Colors.red,
                           shape: BoxShape.circle,
+                          boxShadow: isPremiumMode
+                              ? [
+                                  BoxShadow(
+                                    color: const Color(
+                                      0xFFEF4444,
+                                    ).withValues(alpha: 0.32),
+                                    blurRadius: 10,
+                                  ),
+                                ]
+                              : null,
                         ),
                         child: Text(
                           unreadCount > 99 ? '99+' : unreadCount.toString(),

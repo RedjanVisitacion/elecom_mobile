@@ -1,4 +1,8 @@
+import 'dart:math' as math;
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:toastification/toastification.dart';
 
 /// Global toast helper for the ELECOM Electoral Commission app.
@@ -20,10 +24,10 @@ import 'package:toastification/toastification.dart';
 ///   AppToast.dismissAll();                               // on navigate
 abstract final class AppToast {
   // ── Palette ───────────────────────────────────────────────────────────────
-  static const Color _bg = Colors.white;
-  static const Color _fg = Color(0xFF0D0D0D);
-  static const Color _iconColor = Color(0xFF1C1C1E);
-  static const Color _borderColor = Color(0xFFE5E5E5);
+  static const Color _blue = Color(0xFF2563EB);
+  static const Color _gold = Color(0xFFFACC15);
+  static const Color _dark = Color(0xFF0F172A);
+  static const Color _softRed = Color(0xFFFF6B6B);
 
   // ── Durations ─────────────────────────────────────────────────────────────
   static const Duration _short = Duration(seconds: 2);
@@ -31,21 +35,6 @@ abstract final class AppToast {
   static const Duration _dedupeWindow = Duration(seconds: 4);
 
   // ── Shadow ────────────────────────────────────────────────────────────────
-  static const List<BoxShadow> _shadow = [
-    BoxShadow(
-      color: Color(0x1A000000),
-      blurRadius: 16,
-      spreadRadius: 0,
-      offset: Offset(0, 4),
-    ),
-    BoxShadow(
-      color: Color(0x08000000),
-      blurRadius: 4,
-      spreadRadius: 0,
-      offset: Offset(0, 1),
-    ),
-  ];
-
   // ── Dedupe state ──────────────────────────────────────────────────────────
   static String? _lastMessage;
   static DateTime? _lastShownAt;
@@ -78,11 +67,7 @@ abstract final class AppToast {
   /// the input fields or the login card.
   static EdgeInsets _loginMargin(BuildContext context) {
     final statusBar = MediaQuery.of(context).padding.top;
-    return EdgeInsets.only(
-      top: statusBar + 12,
-      left: 14,
-      right: 14,
-    );
+    return EdgeInsets.only(top: statusBar + 12, left: 14, right: 14);
   }
 
   // ── Public API ────────────────────────────────────────────────────────────
@@ -169,57 +154,331 @@ abstract final class AppToast {
     // Clear every existing toast before showing the new one.
     toastification.dismissAll(delayForAnimation: false);
 
-    final margin = isLoginScreen
-        ? _loginMargin(context)
-        : _topMargin(context);
+    final margin = isLoginScreen ? _loginMargin(context) : _topMargin(context);
 
-    toastification.show(
+    final meta = _ElecomToastMeta.from(type);
+
+    toastification.showCustom(
       context: context,
-      type: type,
-      style: ToastificationStyle.flat,
-      description: Text(
-        message,
-        softWrap: true,
-        overflow: TextOverflow.visible,
-        style: const TextStyle(
-          color: _fg,
-          fontWeight: FontWeight.w700,
-          fontSize: 13.5,
-          height: 1.4,
-        ),
-      ),
-      icon: Icon(icon, color: _iconColor, size: 20),
-      backgroundColor: _bg,
-      foregroundColor: _fg,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      borderSide: const BorderSide(color: _borderColor, width: 1),
-      borderRadius: BorderRadius.circular(14),
-      boxShadow: _shadow,
-      showProgressBar: false,
-      closeButtonShowType: CloseButtonShowType.none,
       autoCloseDuration: duration,
       alignment: Alignment.topCenter,
-      margin: margin,
-      animationDuration: const Duration(milliseconds: 220),
+      dismissDirection: DismissDirection.up,
+      animationDuration: const Duration(milliseconds: 360),
+      builder: (context, item) {
+        return Padding(
+          padding: margin,
+          child: _ElecomPremiumToast(
+            item: item,
+            title: meta.title,
+            message: message,
+            icon: icon,
+            accent: meta.accent,
+            duration: duration,
+          ),
+        );
+      },
       animationBuilder: (context, animation, alignment, child) {
-        final slide = Tween<Offset>(
-          begin: const Offset(0, -0.4),
-          end: Offset.zero,
-        ).animate(CurvedAnimation(
+        final curve = CurvedAnimation(
           parent: animation,
           curve: Curves.easeOutCubic,
-        ));
+          reverseCurve: Curves.easeInCubic,
+        );
+        final slide = Tween<Offset>(
+          begin: const Offset(0, -0.26),
+          end: Offset.zero,
+        ).animate(curve);
+        final scale = Tween<double>(begin: 0.96, end: 1).animate(curve);
         return SlideTransition(
           position: slide,
-          child: FadeTransition(
-            opacity: CurvedAnimation(
-              parent: animation,
-              curve: Curves.easeOut,
-            ),
-            child: child,
+          child: ScaleTransition(
+            scale: scale,
+            child: FadeTransition(opacity: curve, child: child),
           ),
         );
       },
     );
+  }
+}
+
+final class _ElecomToastMeta {
+  const _ElecomToastMeta({required this.title, required this.accent});
+
+  final String title;
+  final Color accent;
+
+  static _ElecomToastMeta from(ToastificationType type) {
+    return switch (type) {
+      ToastificationType.success => const _ElecomToastMeta(
+        title: 'Success',
+        accent: AppToast._blue,
+      ),
+      ToastificationType.error => const _ElecomToastMeta(
+        title: 'Unable to continue',
+        accent: AppToast._softRed,
+      ),
+      ToastificationType.warning => const _ElecomToastMeta(
+        title: 'Action required',
+        accent: AppToast._gold,
+      ),
+      ToastificationType.info => const _ElecomToastMeta(
+        title: 'Notice',
+        accent: AppToast._blue,
+      ),
+    };
+  }
+}
+
+class _ElecomPremiumToast extends StatefulWidget {
+  const _ElecomPremiumToast({
+    required this.item,
+    required this.title,
+    required this.message,
+    required this.icon,
+    required this.accent,
+    required this.duration,
+  });
+
+  final ToastificationItem item;
+  final String title;
+  final String message;
+  final IconData icon;
+  final Color accent;
+  final Duration duration;
+
+  @override
+  State<_ElecomPremiumToast> createState() => _ElecomPremiumToastState();
+}
+
+class _ElecomPremiumToastState extends State<_ElecomPremiumToast>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _progressController;
+  bool _pressed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _progressController = AnimationController(
+      vsync: this,
+      duration: widget.duration,
+    )..forward();
+  }
+
+  @override
+  void dispose() {
+    _progressController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final width = math.min(MediaQuery.sizeOf(context).width - 28, 350.0);
+
+    return Center(
+      child: AnimatedScale(
+        scale: _pressed ? 0.985 : 1,
+        duration: const Duration(milliseconds: 130),
+        curve: Curves.easeOutCubic,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(22),
+            splashColor: widget.accent.withValues(alpha: 0.08),
+            highlightColor: widget.accent.withValues(alpha: 0.05),
+            onTap: () => toastification.dismiss(widget.item),
+            onTapDown: (_) => setState(() => _pressed = true),
+            onTapCancel: () => setState(() => _pressed = false),
+            onTapUp: (_) => setState(() => _pressed = false),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(22),
+              child: BackdropFilter(
+                filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                child: Container(
+                  width: width,
+                  decoration: BoxDecoration(
+                    color: AppToast._dark.withValues(alpha: 0.84),
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(
+                      color: widget.accent.withValues(alpha: 0.30),
+                    ),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Colors.white.withValues(alpha: 0.13),
+                        AppToast._dark.withValues(alpha: 0.82),
+                        Colors.black.withValues(alpha: 0.78),
+                      ],
+                      stops: const [0, 0.46, 1],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.34),
+                        blurRadius: 26,
+                        offset: const Offset(0, 14),
+                      ),
+                      BoxShadow(
+                        color: widget.accent.withValues(alpha: 0.20),
+                        blurRadius: 28,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: CustomPaint(
+                          painter: _ElecomToastGlowPainter(widget.accent),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(14, 12, 14, 13),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _ElecomToastIcon(
+                              icon: widget.icon,
+                              accent: widget.accent,
+                            ),
+                            const SizedBox(width: 11),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    widget.title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 12.7,
+                                      height: 1.15,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    widget.message,
+                                    softWrap: true,
+                                    overflow: TextOverflow.visible,
+                                    style: GoogleFonts.poppins(
+                                      color: const Color(0xFFCBD5E1),
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 12.3,
+                                      height: 1.35,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: AnimatedBuilder(
+                          animation: _progressController,
+                          builder: (context, _) {
+                            return Align(
+                              alignment: Alignment.centerLeft,
+                              child: FractionallySizedBox(
+                                widthFactor: 1 - _progressController.value,
+                                child: Container(
+                                  height: 2,
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        widget.accent.withValues(alpha: 0.10),
+                                        widget.accent.withValues(alpha: 0.72),
+                                        Colors.white.withValues(alpha: 0.50),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ElecomToastIcon extends StatelessWidget {
+  const _ElecomToastIcon({required this.icon, required this.accent});
+
+  final IconData icon;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.88, end: 1),
+      duration: const Duration(milliseconds: 420),
+      curve: Curves.easeOutCubic,
+      builder: (context, scale, child) {
+        return Transform.scale(scale: scale, child: child);
+      },
+      child: Container(
+        width: 34,
+        height: 34,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: accent.withValues(alpha: 0.13),
+          border: Border.all(color: accent.withValues(alpha: 0.30)),
+          boxShadow: [
+            BoxShadow(color: accent.withValues(alpha: 0.24), blurRadius: 16),
+          ],
+        ),
+        child: Icon(icon, color: accent, size: 19),
+      ),
+    );
+  }
+}
+
+class _ElecomToastGlowPainter extends CustomPainter {
+  const _ElecomToastGlowPainter(this.accent);
+
+  final Color accent;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final glow = Paint()
+      ..shader = ui.Gradient.radial(
+        Offset(size.width * 0.10, size.height * 0.18),
+        size.width * 0.58,
+        [accent.withValues(alpha: 0.16), Colors.transparent],
+      );
+    canvas.drawRect(Offset.zero & size, glow);
+
+    final line = Paint()
+      ..shader = ui.Gradient.linear(
+        Offset.zero,
+        Offset(size.width, 0),
+        [
+          Colors.white.withValues(alpha: 0),
+          Colors.white.withValues(alpha: 0.26),
+          accent.withValues(alpha: 0.20),
+          Colors.white.withValues(alpha: 0),
+        ],
+        const [0, 0.35, 0.65, 1],
+      )
+      ..strokeWidth = 1;
+    canvas.drawLine(const Offset(18, 0.5), Offset(size.width - 18, 0.5), line);
+  }
+
+  @override
+  bool shouldRepaint(covariant _ElecomToastGlowPainter oldDelegate) {
+    return oldDelegate.accent != accent;
   }
 }

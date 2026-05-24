@@ -18,16 +18,22 @@ class HomeCandidatesStrip extends StatelessWidget {
     super.key,
     required this.candidates,
     required this.isDarkMode,
+    this.isPremiumMode = false,
   });
 
   final List<Map<String, dynamic>> candidates;
   final bool isDarkMode;
+  final bool isPremiumMode;
 
   @override
   Widget build(BuildContext context) {
     if (candidates.isEmpty) return const SizedBox.shrink();
 
-    final labelColor = isDarkMode ? Colors.white : Colors.black87;
+    final labelColor = isPremiumMode
+        ? const Color(0xFF0F172A)
+        : isDarkMode
+        ? Colors.white
+        : Colors.black87;
     final ringColor = isDarkMode
         ? const Color(0xFFFEA501)
         : const Color(0xFF0C1E70);
@@ -38,7 +44,11 @@ class HomeCandidatesStrip extends StatelessWidget {
         Text(
           'Candidates',
           style: TextStyle(
-            color: isDarkMode ? Colors.white : Colors.black,
+            color: isPremiumMode
+                ? const Color(0xFF0F172A)
+                : isDarkMode
+                ? Colors.white
+                : Colors.black,
             fontWeight: FontWeight.w900,
             fontSize: 16,
           ),
@@ -77,7 +87,30 @@ class HomeCandidatesStrip extends StatelessWidget {
                         Container(
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            border: Border.all(color: ringColor, width: 2.5),
+                            gradient: isPremiumMode
+                                ? const LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      Color(0xFF2563EB),
+                                      Color(0xFFFACC15),
+                                    ],
+                                  )
+                                : null,
+                            border: isPremiumMode
+                                ? null
+                                : Border.all(color: ringColor, width: 2.5),
+                            boxShadow: isPremiumMode
+                                ? [
+                                    BoxShadow(
+                                      color: const Color(
+                                        0xFF2563EB,
+                                      ).withValues(alpha: 0.16),
+                                      blurRadius: 14,
+                                      offset: const Offset(0, 8),
+                                    ),
+                                  ]
+                                : null,
                           ),
                           padding: const EdgeInsets.all(2.5),
                           child: CircleAvatar(

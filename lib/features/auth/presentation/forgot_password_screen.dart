@@ -974,9 +974,9 @@ class _FpButtonState extends State<_FpButton> {
             borderRadius: BorderRadius.circular(999),
             boxShadow: [
               BoxShadow(
-                color: _blue.withValues(alpha: 0.30),
-                blurRadius: 24,
-                offset: const Offset(-10, 10),
+                color: Colors.black.withValues(alpha: 0.50),
+                blurRadius: 22,
+                offset: const Offset(-8, 10),
               ),
               BoxShadow(
                 color: _gold.withValues(alpha: 0.24),
@@ -993,9 +993,9 @@ class _FpButtonState extends State<_FpButton> {
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
-                        colors: [_blue, _blue, _gold],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xFF020617), Color(0xFF111827), _gold],
                         stops: [0, 0.58, 1],
                       ),
                     ),

@@ -17,6 +17,7 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final appearance = context.watch<ThemeNotifier>().appearance;
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -50,8 +51,10 @@ class SettingsScreen extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           _SettingsTile(
-            title: 'Dark mode',
-            subtitle: 'Light mode, dark mode, or follow system setting',
+            title: 'Appearance',
+            subtitle: appearance == AppAppearance.premium
+                ? 'Premium ELECOM glassmorphism style'
+                : 'Light mode, dark mode, or follow system setting',
             onTap: () => _showThemeModeSelector(context),
           ),
           const SizedBox(height: 18),
@@ -126,7 +129,7 @@ class SettingsScreen extends StatelessWidget {
 
   Future<void> _showThemeModeSelector(BuildContext context) async {
     final notifier = context.read<ThemeNotifier>();
-    final currentMode = notifier.themeMode;
+    final currentMode = notifier.appearance;
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final sheetColor = isDarkMode ? const Color(0xFF2A2A35) : Colors.white;
     final titleColor = isDarkMode ? Colors.white : Colors.black;
@@ -179,24 +182,33 @@ class SettingsScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    _ThemeModeTile(
-                      title: 'Light mode',
-                      value: ThemeMode.light,
+                    RadioGroup<AppAppearance>(
                       groupValue: currentMode,
                       onChanged: (mode) => _applyTheme(ctx, mode),
-                    ),
-                    _ThemeModeTile(
-                      title: 'Dark mode',
-                      value: ThemeMode.dark,
-                      groupValue: currentMode,
-                      onChanged: (mode) => _applyTheme(ctx, mode),
-                    ),
-                    _ThemeModeTile(
-                      title: 'System default',
-                      subtitle: 'Follows your phone appearance setting',
-                      value: ThemeMode.system,
-                      groupValue: currentMode,
-                      onChanged: (mode) => _applyTheme(ctx, mode),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
+                          _ThemeModeTile(
+                            title: 'Light mode',
+                            value: AppAppearance.light,
+                          ),
+                          _ThemeModeTile(
+                            title: 'Dark mode',
+                            value: AppAppearance.dark,
+                          ),
+                          _ThemeModeTile(
+                            title: 'Premium mode',
+                            subtitle: 'ELECOM glassmorphism style',
+                            value: AppAppearance.premium,
+                            icon: Icons.auto_awesome_rounded,
+                          ),
+                          _ThemeModeTile(
+                            title: 'System default',
+                            subtitle: 'Follows your phone appearance setting',
+                            value: AppAppearance.system,
+                          ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 4),
                   ],
@@ -209,9 +221,9 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  void _applyTheme(BuildContext context, ThemeMode? mode) {
+  void _applyTheme(BuildContext context, AppAppearance? mode) {
     if (mode == null) return;
-    context.read<ThemeNotifier>().setThemeMode(mode);
+    context.read<ThemeNotifier>().setAppearance(mode);
     Navigator.of(context).pop();
   }
 }
@@ -306,29 +318,40 @@ class _ThemeModeTile extends StatelessWidget {
   const _ThemeModeTile({
     required this.title,
     required this.value,
-    required this.groupValue,
-    required this.onChanged,
     this.subtitle,
+    this.icon,
   });
 
   final String title;
   final String? subtitle;
-  final ThemeMode value;
-  final ThemeMode groupValue;
-  final ValueChanged<ThemeMode?> onChanged;
+  final IconData? icon;
+  final AppAppearance value;
 
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    return RadioListTile<ThemeMode>(
+    final groupValue = RadioGroup.maybeOf<AppAppearance>(context)?.groupValue;
+    final selected = value == groupValue;
+    final isPremium = value == AppAppearance.premium;
+    final activeColor = isPremium ? const Color(0xFFFACC15) : null;
+
+    return RadioListTile<AppAppearance>(
       value: value,
-      groupValue: groupValue,
-      onChanged: onChanged,
+      secondary: icon == null
+          ? null
+          : Icon(
+              icon,
+              color: selected
+                  ? const Color(0xFFFACC15)
+                  : (isDarkMode ? Colors.white70 : Colors.black54),
+            ),
       title: Text(
         title,
         style: TextStyle(
           fontWeight: FontWeight.w700,
-          color: isDarkMode ? Colors.white : Colors.black,
+          color: selected && isPremium
+              ? const Color(0xFFFACC15)
+              : (isDarkMode ? Colors.white : Colors.black),
         ),
       ),
       subtitle: subtitle == null
@@ -340,7 +363,7 @@ class _ThemeModeTile extends StatelessWidget {
               ),
             ),
       fillColor: WidgetStatePropertyAll<Color>(
-        isDarkMode ? Colors.white70 : Colors.black,
+        activeColor ?? (isDarkMode ? Colors.white70 : Colors.black),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 4),
     );
