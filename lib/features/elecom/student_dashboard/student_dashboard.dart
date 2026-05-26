@@ -1073,44 +1073,96 @@ class _PremiumAssistantBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Positioned(
-      right: 18,
-      bottom: 14,
+      right: 10,
+      bottom: 46,
       child: Semantics(
         label: 'AI assistant',
-        image: true,
         child: IgnorePointer(
-          child: Container(
-            width: 58,
-            height: 58,
-            padding: EdgeInsets.zero,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFFFACC15).withValues(alpha: 0.38),
-                  blurRadius: 24,
-                  spreadRadius: 1,
-                  offset: const Offset(0, 8),
+          child: SizedBox(
+            width: 84,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 68,
+                  height: 68,
+                  padding: EdgeInsets.zero,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFFACC15).withValues(alpha: 0.40),
+                        blurRadius: 26,
+                        spreadRadius: 1,
+                        offset: const Offset(0, 9),
+                      ),
+                      BoxShadow(
+                        color: const Color(0xFF2563EB).withValues(alpha: 0.22),
+                        blurRadius: 20,
+                        offset: const Offset(-5, 5),
+                      ),
+                    ],
+                  ),
+                  child: Lottie.asset(
+                    'assets/Robot-Bot 3D.json',
+                    fit: BoxFit.contain,
+                    repeat: true,
+                    animate: true,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Icon(
+                        Icons.smart_toy_outlined,
+                        color: Color(0xFF2563EB),
+                        size: 34,
+                      );
+                    },
+                  ),
                 ),
-                BoxShadow(
-                  color: const Color(0xFF2563EB).withValues(alpha: 0.20),
-                  blurRadius: 18,
-                  offset: const Offset(-4, 4),
+                const SizedBox(height: 2),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.70),
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFFACC15).withValues(alpha: 0.18),
+                        blurRadius: 12,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: const Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Need question?',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Color(0xFF475569),
+                          fontSize: 8,
+                          fontWeight: FontWeight.w700,
+                          height: 1.05,
+                        ),
+                      ),
+                      Text(
+                        'EleVote',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Color(0xFF0F172A),
+                          fontSize: 9,
+                          fontWeight: FontWeight.w900,
+                          height: 1.05,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
-            ),
-            child: Lottie.asset(
-              'assets/Robot-Bot 3D.json',
-              fit: BoxFit.contain,
-              repeat: true,
-              animate: true,
-              errorBuilder: (context, error, stackTrace) {
-                return const Icon(
-                  Icons.smart_toy_outlined,
-                  color: Color(0xFF2563EB),
-                  size: 30,
-                );
-              },
             ),
           ),
         ),
