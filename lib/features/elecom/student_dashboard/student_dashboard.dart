@@ -406,7 +406,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                     child: Stack(
                       children: [
                         _dashboardTabs(context),
-                        const _PremiumAssistantBubble(),
+                        if (_currentIndex == 0) const _PremiumAssistantBubble(),
                       ],
                     ),
                   )
@@ -1077,7 +1077,10 @@ class _PremiumAssistantBubble extends StatelessWidget {
       bottom: 46,
       child: Semantics(
         label: 'AI assistant',
-        child: IgnorePointer(
+        button: true,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => AppToast.info(context, 'EleVote is coming soon.'),
           child: SizedBox(
             width: 84,
             child: Column(
@@ -1087,22 +1090,7 @@ class _PremiumAssistantBubble extends StatelessWidget {
                   width: 68,
                   height: 68,
                   padding: EdgeInsets.zero,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFFFACC15).withValues(alpha: 0.40),
-                        blurRadius: 26,
-                        spreadRadius: 1,
-                        offset: const Offset(0, 9),
-                      ),
-                      BoxShadow(
-                        color: const Color(0xFF2563EB).withValues(alpha: 0.22),
-                        blurRadius: 20,
-                        offset: const Offset(-5, 5),
-                      ),
-                    ],
-                  ),
+                  decoration: BoxDecoration(shape: BoxShape.circle),
                   child: Lottie.asset(
                     'assets/Robot-Bot 3D.json',
                     fit: BoxFit.contain,
@@ -1126,13 +1114,6 @@ class _PremiumAssistantBubble extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.70),
                     borderRadius: BorderRadius.circular(10),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFFFACC15).withValues(alpha: 0.18),
-                        blurRadius: 12,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
                   ),
                   child: const Column(
                     mainAxisSize: MainAxisSize.min,

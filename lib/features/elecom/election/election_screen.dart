@@ -225,6 +225,18 @@ class _ElectionScreenState extends State<ElectionScreen>
         return;
       }
 
+      final verified = await _ensureFaceVerifiedBeforeBallot();
+      if (!mounted) return;
+      if (!verified) {
+        setState(() {
+          _loading = false;
+          _ballotPayload = const {};
+          _selections.clear();
+          _loadError = 'Face verification is required before you can vote.';
+        });
+        return;
+      }
+
       final ballot = await _api.getBallot();
       if (!mounted) return;
       if (ballot['ok'] != true) {
@@ -290,33 +302,13 @@ class _ElectionScreenState extends State<ElectionScreen>
         return;
       }
 
-      final enroll = await _api.getFaceEnrollmentStatus();
-      if (!mounted) return;
-      if (enroll['enrolled'] != true) {
-        setState(() => _loading = false);
-        TutorialService.dismissActiveTutorial();
-        final enrolled = await Navigator.of(context).push<bool>(
-          MaterialPageRoute(
-            builder: (_) => const FaceEnrollmentScreen(
-              isMandatory: false,
-              navigateToDashboardOnSuccess: false,
-            ),
-          ),
-        );
-        if (!mounted) return;
-        if (enrolled != true) {
-          setState(() {
-            _loadError = 'Face enrollment is required before you can vote.';
-          });
-          return;
-        }
-      }
-
-      final verified = await _runFaceVerificationBeforeVote();
+      final verified = await _ensureFaceVerifiedBeforeBallot();
       if (!mounted) return;
       if (!verified) {
         setState(() {
           _loading = false;
+          _ballotPayload = const {};
+          _selections.clear();
           _loadError = 'Face verification did not complete.';
         });
         return;
@@ -831,13 +823,19 @@ class _ElectionScreenState extends State<ElectionScreen>
       return;
     } catch (_) {
       if (!mounted) return;
-      AppToast.error(context, 'Unable to validate election status. Please try again.');
+      AppToast.error(
+        context,
+        'Unable to validate election status. Please try again.',
+      );
       return;
     }
 
     final payload = _payloadOnlyFilled();
     if (payload.isEmpty) {
-      AppToast.warning(context, 'Select at least one candidate before submitting.');
+      AppToast.warning(
+        context,
+        'Select at least one candidate before submitting.',
+      );
       return;
     }
 
@@ -1359,6 +1357,29 @@ class _ElectionScreenState extends State<ElectionScreen>
     }
   }
 
+  Future<bool> _ensureFaceVerifiedBeforeBallot() async {
+    final enroll = await _api.getFaceEnrollmentStatus();
+    if (!mounted) return false;
+    if (enroll['enrolled'] != true) {
+      setState(() => _loading = false);
+      TutorialService.dismissActiveTutorial();
+      final enrolled = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (_) => const FaceEnrollmentScreen(
+            isMandatory: false,
+            navigateToDashboardOnSuccess: false,
+          ),
+        ),
+      );
+      if (!mounted || enrolled != true) {
+        return false;
+      }
+      setState(() => _loading = true);
+    }
+
+    return _runFaceVerificationBeforeVote();
+  }
+
   Future<String> _deviceLocalIp() async {
     try {
       final interfaces = await NetworkInterface.list(
@@ -1660,11 +1681,17 @@ class _ElectionScreenState extends State<ElectionScreen>
                                         );
                                       }
                                     } else {
-                                      AppToast.info(context, 'Your receipt is not yet available.');
+                                      AppToast.info(
+                                        context,
+                                        'Your receipt is not yet available.',
+                                      );
                                     }
                                   } catch (_) {
                                     if (!mounted) return;
-                                    AppToast.info(context, 'Your receipt is not yet available.');
+                                    AppToast.info(
+                                      context,
+                                      'Your receipt is not yet available.',
+                                    );
                                   } finally {
                                     if (mounted) {
                                       setState(() => _checkingReceipt = false);
