@@ -103,8 +103,20 @@ class StudentDashboardAppBar {
               tooltip: 'Notifications',
               onPressed: () {
                 Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const NotificationsScreen(),
+                  PageRouteBuilder<void>(
+                    transitionDuration: Duration.zero,
+                    reverseTransitionDuration: Duration.zero,
+                    pageBuilder: (context, animation, secondaryAnimation) =>
+                        const NotificationsScreen(),
+                    transitionsBuilder:
+                        (context, animation, secondaryAnimation, child) =>
+                            child,
+                    opaque: true,
+                    barrierColor: null,
+                    barrierDismissible: false,
+                    barrierLabel: null,
+                    maintainState: true,
+                    fullscreenDialog: false,
                   ),
                 );
               },

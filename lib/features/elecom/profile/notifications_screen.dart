@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 import '../../../core/notifications/notification_center_store.dart';
+import '../student_dashboard/utils/theme_notifier.dart';
 
 // ── Category definitions ──────────────────────────────────────────────────────
 
@@ -85,6 +87,21 @@ _NotifCategory _categorise(Map<String, dynamic> item) {
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 
+const _premiumBlue = Color(0xFF2563EB);
+const _premiumGold = Color(0xFFFACC15);
+const _premiumInk = Color(0xFF0F172A);
+const _premiumSub = Color(0xFF475569);
+const _premiumBg = LinearGradient(
+  begin: Alignment.topLeft,
+  end: Alignment.bottomRight,
+  colors: [
+    Color(0xFFFFFFFF),
+    Color(0xFFF4F8FF),
+    Color(0xFFEAF2FF),
+    Color(0xFFFDFEFF),
+  ],
+);
+
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
 
@@ -121,9 +138,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   List<Map<String, dynamic>> _filtered(List<Map<String, dynamic>> all) {
     if (_selected == _NotifCategory.all) return all;
-    return all
-        .where((item) => _categorise(item) == _selected)
-        .toList();
+    return all.where((item) => _categorise(item) == _selected).toList();
   }
 
   // ── Actions sheet ────────────────────────────────────────────────────────
@@ -134,21 +149,35 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     required bool isPinned,
   }) async {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final sheetColor = isDark ? const Color(0xFF2A2A35) : Colors.white;
-    final titleColor = isDark ? Colors.white : Colors.black;
-    final subtle = isDark ? Colors.white70 : Colors.black54;
+    final isPremium = themeNotifier.isPremiumMode;
+    final sheetColor = isPremium
+        ? Colors.white.withValues(alpha: 0.94)
+        : isDark
+        ? const Color(0xFF2A2A35)
+        : Colors.white;
+    final titleColor = isPremium
+        ? _premiumInk
+        : isDark
+        ? Colors.white
+        : Colors.black;
+    final subtle = isPremium
+        ? _premiumSub
+        : isDark
+        ? Colors.white70
+        : Colors.black54;
     final safeBottom = MediaQuery.of(context).padding.bottom;
 
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Padding(
-        padding:
-            EdgeInsets.only(left: 10, right: 10, bottom: safeBottom + 10),
+        padding: EdgeInsets.only(left: 10, right: 10, bottom: safeBottom + 10),
         child: Material(
           color: sheetColor,
           surfaceTintColor: sheetColor,
           borderRadius: BorderRadius.circular(20),
+          shadowColor: isPremium ? _premiumBlue.withValues(alpha: 0.22) : null,
+          elevation: isPremium ? 18 : 0,
           clipBehavior: Clip.antiAlias,
           child: SafeArea(
             top: false,
@@ -167,38 +196,52 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   ),
                   const SizedBox(height: 10),
                   ListTile(
-                    leading: Icon(
-                      isPinned
+                    leading: _SheetIcon(
+                      isPremium: isPremium,
+                      icon: isPinned
+                          ? HugeIcons.strokeRoundedPinOff
+                          : HugeIcons.strokeRoundedPin,
+                      fallback: isPinned
                           ? Icons.push_pin_outlined
                           : Icons.push_pin,
                       color: titleColor,
                     ),
                     title: Text(
-                      isPinned
-                          ? 'Unpin notification'
-                          : 'Pin notification',
+                      isPinned ? 'Unpin notification' : 'Pin notification',
                       style: TextStyle(
-                          color: titleColor, fontWeight: FontWeight.w800),
+                        color: titleColor,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                     subtitle: Text(
                       'Pinned notifications stay on top.',
                       style: TextStyle(
-                          color: subtle, fontWeight: FontWeight.w600),
+                        color: subtle,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     onTap: () async {
                       Navigator.of(ctx).pop();
                       await NotificationCenterStore.setPinned(
-                          id: id, pinned: !isPinned);
+                        id: id,
+                        pinned: !isPinned,
+                      );
                     },
                   ),
                   if (isRead)
                     ListTile(
-                      leading:
-                          Icon(Icons.markunread_outlined, color: titleColor),
+                      leading: _SheetIcon(
+                        isPremium: isPremium,
+                        icon: HugeIcons.strokeRoundedMailOpen,
+                        fallback: Icons.markunread_outlined,
+                        color: titleColor,
+                      ),
                       title: Text(
                         'Mark as unread',
                         style: TextStyle(
-                            color: titleColor, fontWeight: FontWeight.w800),
+                          color: titleColor,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                       onTap: () async {
                         Navigator.of(ctx).pop();
@@ -206,12 +249,18 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       },
                     ),
                   ListTile(
-                    leading: const Icon(Icons.delete_outline,
-                        color: Colors.red),
+                    leading: _SheetIcon(
+                      isPremium: isPremium,
+                      icon: HugeIcons.strokeRoundedDelete01,
+                      fallback: Icons.delete_outline,
+                      color: Colors.red,
+                    ),
                     title: const Text(
                       'Delete notification',
                       style: TextStyle(
-                          color: Colors.red, fontWeight: FontWeight.w900),
+                        color: Colors.red,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                     onTap: () async {
                       Navigator.of(ctx).pop();
@@ -239,117 +288,169 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = isDark ? const Color(0xFF171620) : const Color(0xFFF4F4F6);
-    final titleColor = isDark ? Colors.white : Colors.black;
-    final cardColor = isDark ? const Color(0xFF2A2A35) : Colors.white;
-    final subtitleColor = isDark ? Colors.white70 : Colors.black54;
-    final borderColor = isDark ? Colors.white12 : Colors.black12;
+    return ListenableBuilder(
+      listenable: themeNotifier,
+      builder: (context, _) {
+        final isPremium = themeNotifier.isPremiumMode;
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final bg = isPremium
+            ? const Color(0xFFFDFEFF)
+            : isDark
+            ? const Color(0xFF171620)
+            : const Color(0xFFF4F4F6);
+        final titleColor = isPremium
+            ? _premiumInk
+            : isDark
+            ? Colors.white
+            : Colors.black;
+        final cardColor = isPremium
+            ? Colors.white.withValues(alpha: 0.86)
+            : isDark
+            ? const Color(0xFF2A2A35)
+            : Colors.white;
+        final subtitleColor = isPremium
+            ? _premiumSub
+            : isDark
+            ? Colors.white70
+            : Colors.black54;
+        final borderColor = isPremium
+            ? Colors.white.withValues(alpha: 0.72)
+            : isDark
+            ? Colors.white12
+            : Colors.black12;
 
-    return Scaffold(
-      backgroundColor: bg,
-      appBar: AppBar(
-        backgroundColor: bg,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        title: Text(
-          'Notifications',
-          style: TextStyle(fontWeight: FontWeight.w900, color: titleColor),
-        ),
-        actions: [
-          IconButton(
-            tooltip: 'Mark all as read',
-            onPressed: () async => NotificationCenterStore.markAllRead(),
-            icon: Icon(Icons.done_all_rounded, color: titleColor),
+        return Scaffold(
+          backgroundColor: bg,
+          appBar: AppBar(
+            backgroundColor: bg,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            title: Text(
+              'Notifications',
+              style: TextStyle(fontWeight: FontWeight.w900, color: titleColor),
+            ),
+            actions: [
+              IconButton(
+                tooltip: 'Mark all as read',
+                onPressed: () async => NotificationCenterStore.markAllRead(),
+                icon: isPremium
+                    ? const HugeIcon(
+                        icon: HugeIcons.strokeRoundedTickDouble02,
+                        color: _premiumInk,
+                        size: 23,
+                        strokeWidth: 1.9,
+                      )
+                    : Icon(Icons.done_all_rounded, color: titleColor),
+              ),
+            ],
           ),
-        ],
-      ),
-      body: RefreshIndicator(
-        color: Colors.black,
-        backgroundColor: Colors.white,
-        onRefresh: () async => NotificationCenterStore.refresh(),
-        child: ValueListenableBuilder<List<Map<String, dynamic>>>(
-          valueListenable: NotificationCenterStore.items,
-          builder: (context, allItems, _) {
-            final unreadCount =
-                allItems.where((n) => n['read'] != true).length;
-            final filtered = _filtered(allItems);
+          body: Container(
+            decoration: isPremium
+                ? const BoxDecoration(gradient: _premiumBg)
+                : null,
+            child: RefreshIndicator(
+              color: isPremium ? _premiumBlue : Colors.black,
+              backgroundColor: Colors.white,
+              onRefresh: () async => NotificationCenterStore.refresh(),
+              child: ValueListenableBuilder<List<Map<String, dynamic>>>(
+                valueListenable: NotificationCenterStore.items,
+                builder: (context, allItems, _) {
+                  final unreadCount = allItems
+                      .where((n) => n['read'] != true)
+                      .length;
+                  final filtered = _filtered(allItems);
 
-            return CustomScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              slivers: [
-                // ── Sticky header: unread count + filter chips ──────────
-                SliverPersistentHeader(
-                  pinned: true,
-                  delegate: _StickyHeaderDelegate(
-                    bg: bg,
-                    isDark: isDark,
-                    unreadCount: unreadCount,
-                    selected: _selected,
-                    onSelect: (cat) => setState(() => _selected = cat),
-                  ),
-                ),
-
-                // ── Notification list ───────────────────────────────────
-                if (filtered.isEmpty)
-                  SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: Center(
-                      child: Padding(
-                        padding: const EdgeInsets.only(bottom: 80),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.notifications_none_rounded,
-                                size: 48, color: subtitleColor),
-                            const SizedBox(height: 12),
-                            Text(
-                              _selected == _NotifCategory.all
-                                  ? 'No notifications yet.'
-                                  : 'No ${_selected.label.toLowerCase()} notifications.',
-                              style: TextStyle(
-                                color: subtitleColor,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
+                  return CustomScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    slivers: [
+                      // ── Sticky header: unread count + filter chips ──────────
+                      SliverPersistentHeader(
+                        pinned: true,
+                        delegate: _StickyHeaderDelegate(
+                          bg: bg,
+                          isDark: isDark,
+                          isPremium: isPremium,
+                          unreadCount: unreadCount,
+                          selected: _selected,
+                          onSelect: (cat) => setState(() => _selected = cat),
                         ),
                       ),
-                    ),
-                  )
-                else
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
-                    sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          if (index.isOdd) {
-                            return const SizedBox(height: 8);
-                          }
-                          final item = filtered[index ~/ 2];
-                          return _NotifCard(
-                            item: item,
-                            titleColor: titleColor,
-                            cardColor: cardColor,
-                            subtitleColor: subtitleColor,
-                            borderColor: borderColor,
-                            formatTime: _formatRelativeTime,
-                            onMoreTap: () => _showActionsSheet(
-                              id: (item['id'] as num?)?.toInt() ?? 0,
-                              isRead: item['read'] == true,
-                              isPinned: item['pinned'] == true,
+
+                      // ── Notification list ───────────────────────────────────
+                      if (filtered.isEmpty)
+                        SliverFillRemaining(
+                          hasScrollBody: false,
+                          child: Center(
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 80),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  isPremium
+                                      ? const HugeIcon(
+                                          icon: HugeIcons
+                                              .strokeRoundedNotification03,
+                                          size: 48,
+                                          color: _premiumBlue,
+                                          strokeWidth: 1.7,
+                                        )
+                                      : Icon(
+                                          Icons.notifications_none_rounded,
+                                          size: 48,
+                                          color: subtitleColor,
+                                        ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    _selected == _NotifCategory.all
+                                        ? 'No notifications yet.'
+                                        : 'No ${_selected.label.toLowerCase()} notifications.',
+                                    style: TextStyle(
+                                      color: subtitleColor,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          );
-                        },
-                        childCount: filtered.length * 2 - 1,
-                      ),
-                    ),
-                  ),
-              ],
-            );
-          },
-        ),
-      ),
+                          ),
+                        )
+                      else
+                        SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+                          sliver: SliverList(
+                            delegate: SliverChildBuilderDelegate((
+                              context,
+                              index,
+                            ) {
+                              if (index.isOdd) {
+                                return const SizedBox(height: 8);
+                              }
+                              final item = filtered[index ~/ 2];
+                              return _NotifCard(
+                                item: item,
+                                titleColor: titleColor,
+                                cardColor: cardColor,
+                                subtitleColor: subtitleColor,
+                                borderColor: borderColor,
+                                isPremium: isPremium,
+                                formatTime: _formatRelativeTime,
+                                onMoreTap: () => _showActionsSheet(
+                                  id: (item['id'] as num?)?.toInt() ?? 0,
+                                  isRead: item['read'] == true,
+                                  isPinned: item['pinned'] == true,
+                                ),
+                              );
+                            }, childCount: filtered.length * 2 - 1),
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -360,6 +461,7 @@ class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
   const _StickyHeaderDelegate({
     required this.bg,
     required this.isDark,
+    required this.isPremium,
     required this.unreadCount,
     required this.selected,
     required this.onSelect,
@@ -367,6 +469,7 @@ class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   final Color bg;
   final bool isDark;
+  final bool isPremium;
   final int unreadCount;
   final _NotifCategory selected;
   final ValueChanged<_NotifCategory> onSelect;
@@ -382,13 +485,25 @@ class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
   bool shouldRebuild(_StickyHeaderDelegate old) =>
       old.unreadCount != unreadCount ||
       old.selected != selected ||
-      old.isDark != isDark;
+      old.isDark != isDark ||
+      old.isPremium != isPremium;
 
   @override
   Widget build(
-      BuildContext context, double shrinkOffset, bool overlapsContent) {
-    final titleColor = isDark ? Colors.white : Colors.black;
-    final subtitleColor = isDark ? Colors.white60 : Colors.black45;
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    final titleColor = isPremium
+        ? _premiumInk
+        : isDark
+        ? Colors.white
+        : Colors.black;
+    final subtitleColor = isPremium
+        ? _premiumSub
+        : isDark
+        ? Colors.white60
+        : Colors.black45;
 
     return Container(
       color: bg,
@@ -408,10 +523,12 @@ class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
           const SizedBox(height: 8),
           // Filter chips — horizontally scrollable
           SizedBox(
-            height: 36,
+            height: 44,
             child: ListView(
               scrollDirection: Axis.horizontal,
-              padding: EdgeInsets.zero,
+              physics: const BouncingScrollPhysics(),
+              clipBehavior: Clip.none,
+              padding: const EdgeInsets.fromLTRB(10, 3, 18, 7),
               children: _NotifCategory.values.map((cat) {
                 final isSelected = cat == selected;
                 return Padding(
@@ -420,6 +537,7 @@ class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
                     label: cat.label,
                     selected: isSelected,
                     isDark: isDark,
+                    isPremium: isPremium,
                     onTap: () => onSelect(cat),
                   ),
                 );
@@ -439,32 +557,64 @@ class _FilterChip extends StatelessWidget {
     required this.label,
     required this.selected,
     required this.isDark,
+    required this.isPremium,
     required this.onTap,
   });
 
   final String label;
   final bool selected;
   final bool isDark;
+  final bool isPremium;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final selectedBg = isDark ? Colors.white : Colors.black;
-    final selectedFg = isDark ? Colors.black : Colors.white;
-    final unselectedBg =
-        isDark ? const Color(0xFF2A2A35) : const Color(0xFFEEEEEE);
-    final unselectedFg = isDark ? Colors.white70 : Colors.black54;
+    final selectedBg = isPremium
+        ? _premiumBlue
+        : isDark
+        ? Colors.white
+        : Colors.black;
+    final selectedFg = isPremium
+        ? Colors.white
+        : isDark
+        ? Colors.black
+        : Colors.white;
+    final unselectedBg = isPremium
+        ? Colors.white.withValues(alpha: 0.72)
+        : isDark
+        ? const Color(0xFF2A2A35)
+        : const Color(0xFFEEEEEE);
+    final unselectedFg = isPremium
+        ? _premiumSub
+        : isDark
+        ? Colors.white70
+        : Colors.black54;
 
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         curve: Curves.easeOut,
-        padding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
         decoration: BoxDecoration(
           color: selected ? selectedBg : unselectedBg,
           borderRadius: BorderRadius.circular(99),
+          border: isPremium
+              ? Border.all(
+                  color: selected
+                      ? _premiumGold.withValues(alpha: 0.7)
+                      : Colors.white.withValues(alpha: 0.92),
+                )
+              : null,
+          boxShadow: isPremium && selected
+              ? [
+                  BoxShadow(
+                    color: _premiumBlue.withValues(alpha: 0.22),
+                    blurRadius: 14,
+                    offset: const Offset(0, 6),
+                  ),
+                ]
+              : null,
         ),
         alignment: Alignment.center,
         child: Text(
@@ -489,6 +639,7 @@ class _NotifCard extends StatelessWidget {
     required this.cardColor,
     required this.subtitleColor,
     required this.borderColor,
+    required this.isPremium,
     required this.formatTime,
     required this.onMoreTap,
   });
@@ -498,6 +649,7 @@ class _NotifCard extends StatelessWidget {
   final Color cardColor;
   final Color subtitleColor;
   final Color borderColor;
+  final bool isPremium;
   final String Function(String) formatTime;
   final VoidCallback onMoreTap;
 
@@ -508,10 +660,15 @@ class _NotifCard extends StatelessWidget {
     final title = (item['title'] ?? '').toString();
     final body = (item['body'] ?? '').toString();
     final time = formatTime((item['created_at'] ?? '').toString());
+    final category = _categorise(item);
 
     return Material(
       color: cardColor,
       borderRadius: BorderRadius.circular(14),
+      shadowColor: isPremium
+          ? _premiumBlue.withValues(alpha: 0.18)
+          : Colors.transparent,
+      elevation: isPremium ? 8 : 0,
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
         onTap: () async {
@@ -523,23 +680,77 @@ class _NotifCard extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: borderColor),
+            gradient: isPremium
+                ? LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.white.withValues(alpha: 0.94),
+                      const Color(0xFFF7FAFF).withValues(alpha: 0.88),
+                    ],
+                  )
+                : null,
           ),
-          padding: const EdgeInsets.fromLTRB(14, 14, 6, 14),
+          padding: EdgeInsets.fromLTRB(isPremium ? 12 : 14, 14, 6, 14),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Unread dot
-              Padding(
-                padding: const EdgeInsets.only(top: 5, right: 10),
-                child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: isRead ? Colors.transparent : Colors.red,
-                    shape: BoxShape.circle,
+              if (isPremium)
+                Padding(
+                  padding: const EdgeInsets.only(right: 10),
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: _premiumBlue.withValues(alpha: 0.10),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: _premiumGold.withValues(alpha: 0.65),
+                          ),
+                        ),
+                        alignment: Alignment.center,
+                        child: HugeIcon(
+                          icon: _premiumCategoryIcon(category),
+                          color: _premiumBlue,
+                          size: 19,
+                          strokeWidth: 1.8,
+                        ),
+                      ),
+                      if (!isRead)
+                        Positioned(
+                          right: -1,
+                          top: -1,
+                          child: Container(
+                            width: 9,
+                            height: 9,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFF5A3C),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.white,
+                                width: 1.4,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.only(top: 5, right: 10),
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: isRead ? Colors.transparent : Colors.red,
+                      shape: BoxShape.circle,
+                    ),
                   ),
                 ),
-              ),
 
               // Content
               Expanded(
@@ -550,8 +761,7 @@ class _NotifCard extends StatelessWidget {
                       title.isEmpty ? 'Notification' : title,
                       style: TextStyle(
                         color: titleColor,
-                        fontWeight:
-                            isRead ? FontWeight.w700 : FontWeight.w900,
+                        fontWeight: isRead ? FontWeight.w700 : FontWeight.w900,
                         fontSize: 14,
                         height: 1.2,
                       ),
@@ -587,7 +797,14 @@ class _NotifCard extends StatelessWidget {
               IconButton(
                 tooltip: 'More',
                 onPressed: onMoreTap,
-                icon: Icon(Icons.more_horiz_rounded, color: titleColor),
+                icon: isPremium
+                    ? const HugeIcon(
+                        icon: HugeIcons.strokeRoundedMoreHorizontal,
+                        color: _premiumInk,
+                        size: 21,
+                        strokeWidth: 1.9,
+                      )
+                    : Icon(Icons.more_horiz_rounded, color: titleColor),
                 visualDensity: VisualDensity.compact,
                 padding: const EdgeInsets.all(8),
                 constraints: const BoxConstraints(),
@@ -598,4 +815,55 @@ class _NotifCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _SheetIcon extends StatelessWidget {
+  const _SheetIcon({
+    required this.isPremium,
+    required this.icon,
+    required this.fallback,
+    required this.color,
+  });
+
+  final bool isPremium;
+  final List<List<dynamic>> icon;
+  final IconData fallback;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!isPremium) return Icon(fallback, color: color);
+    return Container(
+      width: 38,
+      height: 38,
+      decoration: BoxDecoration(
+        color: color == Colors.red
+            ? Colors.red.withValues(alpha: 0.10)
+            : _premiumBlue.withValues(alpha: 0.10),
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: color == Colors.red
+              ? Colors.red.withValues(alpha: 0.24)
+              : _premiumGold.withValues(alpha: 0.62),
+        ),
+      ),
+      alignment: Alignment.center,
+      child: HugeIcon(
+        icon: icon,
+        color: color == Colors.red ? Colors.red : _premiumBlue,
+        size: 20,
+        strokeWidth: 1.9,
+      ),
+    );
+  }
+}
+
+List<List<dynamic>> _premiumCategoryIcon(_NotifCategory category) {
+  return switch (category) {
+    _NotifCategory.voting => HugeIcons.strokeRoundedCheckList,
+    _NotifCategory.results => HugeIcons.strokeRoundedChartBarLine,
+    _NotifCategory.schedule => HugeIcons.strokeRoundedCalendar03,
+    _NotifCategory.receipt => HugeIcons.strokeRoundedInvoice03,
+    _NotifCategory.all => HugeIcons.strokeRoundedNotification03,
+  };
 }

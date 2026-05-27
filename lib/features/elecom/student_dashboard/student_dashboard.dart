@@ -689,8 +689,19 @@ class _StudentDashboardState extends State<StudentDashboard> {
                       borderRadius: BorderRadius.circular(18),
                       onTap: () {
                         Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const CandidateSearchScreen(),
+                          PageRouteBuilder<void>(
+                            transitionDuration: Duration.zero,
+                            reverseTransitionDuration: Duration.zero,
+                            pageBuilder:
+                                (context, animation, secondaryAnimation) =>
+                                    const CandidateSearchScreen(),
+                            transitionsBuilder:
+                                (
+                                  context,
+                                  animation,
+                                  secondaryAnimation,
+                                  child,
+                                ) => child,
                           ),
                         );
                       },
