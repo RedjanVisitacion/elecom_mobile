@@ -138,7 +138,8 @@ class ElectionTransparencyCard extends StatelessWidget {
                           padding: const EdgeInsets.only(bottom: 6),
                           child: _blockPreviewRow(
                             blockNo: _readInt(b, 'id'),
-                            hash: _readStr(b, 'hash', fallback: '-'),
+                            voteHash: _readStr(b, 'vote_hash', fallback: '-'),
+                            blockHash: _readStr(b, 'hash', fallback: '-'),
                             isValid:
                                 _readStr(
                                   b,
@@ -243,7 +244,8 @@ class ElectionTransparencyCard extends StatelessWidget {
 
   Widget _blockPreviewRow({
     required int blockNo,
-    required String hash,
+    required String voteHash,
+    required String blockHash,
     required bool isValid,
     required Color titleColor,
     required Color subColor,
@@ -266,7 +268,16 @@ class ElectionTransparencyCard extends StatelessWidget {
           ),
           const SizedBox(height: 2),
           Text(
-            'Hash: $hash',
+            'Vote hash: $voteHash',
+            style: TextStyle(
+              color: subColor,
+              fontWeight: FontWeight.w600,
+              fontSize: 12.5,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'Block hash: $blockHash',
             style: TextStyle(
               color: subColor,
               fontWeight: FontWeight.w600,
@@ -286,6 +297,7 @@ class ElectionTransparencyCard extends StatelessWidget {
       ),
     );
   }
+
   String _readStr(
     Map<String, dynamic>? source,
     String key, {

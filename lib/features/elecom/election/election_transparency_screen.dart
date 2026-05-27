@@ -19,6 +19,7 @@ class _ElectionTransparencyScreenState
   final ElecomMobileApi _api = ElecomMobileApi();
 
   bool _loading = true;
+  bool _publicLedgerExpanded = false;
   String? _error;
   Map<String, dynamic> _summary = <String, dynamic>{};
   List<Map<String, dynamic>> _blocks = <Map<String, dynamic>>[];
@@ -285,144 +286,215 @@ class _ElectionTransparencyScreenState
                 ),
               ),
               const SizedBox(height: 14),
-              if (!_loading && _error == null)
-                ..._blocks.map((b) {
-                  final blockId = _n(b, 'id');
-                  final previousHash = _s(b, 'previous_hash');
-                  final linkedLabel = previousHash == '-'
-                      ? 'Linked to previous block'
-                      : 'Linked to Block #${blockId > 1 ? blockId - 1 : blockId}';
-                  final isValid =
-                      _s(b, 'status', fallback: 'valid').toLowerCase() ==
-                      'valid';
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: card,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: border),
-                      ),
-                      padding: const EdgeInsets.all(10),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Block #$blockId',
-                            style: TextStyle(
-                              color: fg,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          const SizedBox(height: 1),
-                          Text(
-                            linkedLabel,
-                            style: TextStyle(
-                              color: sub,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 12,
-                            ),
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            'Hash:',
-                            style: TextStyle(
-                              color: sub,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 1),
-                          Row(
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  _s(b, 'hash'),
-                                  style: TextStyle(
-                                    color: sub,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
+              if (!_loading && _error == null) ...[
+                _publicLedgerToggle(
+                  card: card,
+                  border: border,
+                  fg: fg,
+                  sub: sub,
+                  count: _blocks.length,
+                ),
+                if (_publicLedgerExpanded) const SizedBox(height: 10),
+                if (_publicLedgerExpanded)
+                  ..._blocks.map((b) {
+                    final blockId = _n(b, 'id');
+                    final voteHash = _s(b, 'vote_hash');
+                    final previousHash = _s(b, 'previous_hash');
+                    final linkedLabel = previousHash == '-'
+                        ? 'Linked to previous block'
+                        : 'Linked to Block #${blockId > 1 ? blockId - 1 : blockId}';
+                    final isValid =
+                        _s(b, 'status', fallback: 'valid').toLowerCase() ==
+                        'valid';
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: card,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: border),
+                        ),
+                        padding: const EdgeInsets.all(10),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Block #$blockId',
+                              style: TextStyle(
+                                color: fg,
+                                fontWeight: FontWeight.w900,
                               ),
-                              const SizedBox(width: 2),
-                              IconButton(
-                                onPressed: () async {
-                                  final fullHash = _s(
-                                    b,
-                                    'hash_full',
-                                    fallback: _s(b, 'hash'),
-                                  );
-                                  if (fullHash == '-') return;
-                                  await Clipboard.setData(
-                                    ClipboardData(text: fullHash),
-                                  );
-                                  if (!mounted) return;
-                                  AppToast.info(context, 'Hash copied.');
-                                },
-                                icon: Icon(
-                                  Icons.copy_rounded,
-                                  size: 16,
-                                  color: sub,
-                                ),
-                                tooltip: 'Copy hash',
-                                visualDensity: VisualDensity.compact,
-                                constraints: const BoxConstraints(
-                                  minHeight: 28,
-                                  minWidth: 28,
-                                ),
-                                padding: EdgeInsets.zero,
+                            ),
+                            const SizedBox(height: 1),
+                            Text(
+                              linkedLabel,
+                              style: TextStyle(
+                                color: sub,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
                               ),
-                            ],
-                          ),
-                          const SizedBox(height: 1),
-                          Text(
-                            'Previous: $previousHash',
-                            style: TextStyle(
-                              color: sub,
-                              fontWeight: FontWeight.w700,
                             ),
-                          ),
-                          const SizedBox(height: 1),
-                          Text(
-                            'Submitted: ${_formatBlockDate(_s(b, 'submitted_at'))}',
-                            style: TextStyle(
-                              color: sub,
-                              fontWeight: FontWeight.w700,
+                            const SizedBox(height: 3),
+                            _hashRow(
+                              label: 'Vote hash',
+                              hash: voteHash,
+                              fullHash: _s(
+                                b,
+                                'vote_hash_full',
+                                fallback: voteHash,
+                              ),
+                              sub: sub,
+                              copiedMessage: 'Vote hash copied.',
                             ),
-                          ),
-                          const SizedBox(height: 1),
-                          Text(
-                            'Status: ${isValid ? 'Valid' : 'Warning'}',
-                            style: TextStyle(
-                              color: isValid
-                                  ? const Color(0xFF1E8E3E)
-                                  : const Color(0xFFD97706),
-                              fontWeight: FontWeight.w900,
+                            _hashRow(
+                              label: 'Block hash',
+                              hash: _s(b, 'hash'),
+                              fullHash: _s(
+                                b,
+                                'hash_full',
+                                fallback: _s(b, 'hash'),
+                              ),
+                              sub: sub,
+                              copiedMessage: 'Block hash copied.',
                             ),
-                          ),
-                          const SizedBox(height: 1),
-                          Text(
-                            'Block status: ${_s(b, 'block_status', fallback: 'pending')}',
-                            style: TextStyle(
-                              color:
-                                  _s(
-                                        b,
-                                        'block_status',
-                                        fallback: '',
-                                      ).toLowerCase() ==
-                                      'accepted'
-                                  ? const Color(0xFF1E8E3E)
-                                  : const Color(0xFFD97706),
-                              fontWeight: FontWeight.w800,
+                            const SizedBox(height: 1),
+                            Text(
+                              'Previous: $previousHash',
+                              style: TextStyle(
+                                color: sub,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 1),
+                            Text(
+                              'Submitted: ${_formatBlockDate(_s(b, 'submitted_at'))}',
+                              style: TextStyle(
+                                color: sub,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 1),
+                            Text(
+                              'Status: ${isValid ? 'Valid' : 'Warning'}',
+                              style: TextStyle(
+                                color: isValid
+                                    ? const Color(0xFF1E8E3E)
+                                    : const Color(0xFFD97706),
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const SizedBox(height: 1),
+                            Text(
+                              'Block status: ${_s(b, 'block_status', fallback: 'pending')}',
+                              style: TextStyle(
+                                color:
+                                    _s(
+                                          b,
+                                          'block_status',
+                                          fallback: '',
+                                        ).toLowerCase() ==
+                                        'accepted'
+                                    ? const Color(0xFF1E8E3E)
+                                    : const Color(0xFFD97706),
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  );
-                }),
+                    );
+                  }),
+              ],
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _publicLedgerToggle({
+    required Color card,
+    required Color border,
+    required Color fg,
+    required Color sub,
+    required int count,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: border),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+        onTap: () {
+          setState(() => _publicLedgerExpanded = !_publicLedgerExpanded);
+        },
+        leading: Icon(Icons.account_tree_outlined, color: sub),
+        title: Text(
+          'Public Ledger',
+          style: TextStyle(color: fg, fontWeight: FontWeight.w900),
+        ),
+        subtitle: Text(
+          _publicLedgerExpanded
+              ? '$count vote hash record(s) visible'
+              : 'Tap to show vote hashes and block hashes',
+          style: TextStyle(color: sub, fontWeight: FontWeight.w700),
+        ),
+        trailing: Icon(
+          _publicLedgerExpanded
+              ? Icons.keyboard_arrow_up_rounded
+              : Icons.keyboard_arrow_down_rounded,
+          color: sub,
+        ),
+      ),
+    );
+  }
+
+  Widget _hashRow({
+    required String label,
+    required String hash,
+    required String fullHash,
+    required Color sub,
+    required String copiedMessage,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 1),
+      child: Row(
+        children: [
+          Expanded(
+            child: RichText(
+              text: TextSpan(
+                style: TextStyle(
+                  color: sub,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                ),
+                children: [
+                  TextSpan(text: '$label: '),
+                  TextSpan(
+                    text: hash,
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 2),
+          IconButton(
+            onPressed: () async {
+              if (fullHash == '-') return;
+              await Clipboard.setData(ClipboardData(text: fullHash));
+              if (!mounted) return;
+              AppToast.info(context, copiedMessage);
+            },
+            icon: Icon(Icons.copy_rounded, size: 16, color: sub),
+            tooltip: 'Copy $label',
+            visualDensity: VisualDensity.compact,
+            constraints: const BoxConstraints(minHeight: 28, minWidth: 28),
+            padding: EdgeInsets.zero,
+          ),
+        ],
       ),
     );
   }
