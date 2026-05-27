@@ -64,6 +64,7 @@ class _ElectionScreenState extends State<ElectionScreen>
   Timer? _windowTicker;
 
   final Map<String, dynamic> _selections = {};
+  final Set<String> _straightPartyKeys = <String>{};
 
   String _positionKey(String org, String position) =>
       '${org.toUpperCase().trim()}::${position.trim()}';
@@ -71,6 +72,125 @@ class _ElectionScreenState extends State<ElectionScreen>
   bool _isMultiSelect(String org, String position) =>
       org.toUpperCase() == 'USG' &&
       position.toUpperCase().contains('REPRESENTATIVE');
+
+  int _candidateId(Map<String, dynamic> candidate) {
+    final idVal = candidate['id'];
+    if (idVal is int) return idVal;
+    return int.tryParse(idVal.toString()) ?? 0;
+  }
+
+  String _candidateParty(Map<String, dynamic> candidate) =>
+      (candidate['party_name'] ?? '').toString().trim();
+
+  String _straightPartyKey(String orgName, String partyLabel) =>
+      '${orgName.trim().toUpperCase()}::${partyLabel.trim().toLowerCase()}';
+
+  int _orgSortPriority(String orgName) =>
+      orgName.trim().toUpperCase() == 'USG' ? 0 : 1;
+
+  List<_StraightPartyOption> _straightPartyOptions() {
+    final byParty = <String, _StraightPartyOption>{};
+    for (final org in _orgList) {
+      final orgName = (org['organization'] ?? '').toString().trim();
+      final positions = org['positions'];
+      if (orgName.isEmpty || positions is! List) continue;
+      for (final raw in positions) {
+        if (raw is! Map) continue;
+        final p = Map<String, dynamic>.from(raw);
+        final pos = (p['position'] ?? '').toString().trim();
+        final cands = p['candidates'];
+        if (pos.isEmpty || cands is! List) continue;
+
+        final seenInPosition = <String>{};
+        for (final rawCand in cands.whereType<Map>()) {
+          final candidate = Map<String, dynamic>.from(rawCand);
+          final party = _candidateParty(candidate);
+          if (party.isEmpty || _candidateId(candidate) == 0) continue;
+          final normalized = _straightPartyKey(orgName, party);
+          final current = byParty.putIfAbsent(
+            normalized,
+            () => _StraightPartyOption(label: party, organization: orgName),
+          );
+          current.candidateCount++;
+          if (seenInPosition.add(normalized)) {
+            current.positionCount++;
+          }
+        }
+      }
+    }
+    final out = byParty.values.toList()
+      ..sort((a, b) {
+        final byOrg = _orgSortPriority(
+          a.organization,
+        ).compareTo(_orgSortPriority(b.organization));
+        if (byOrg != 0) return byOrg;
+        final byOrgName = a.organization.toLowerCase().compareTo(
+          b.organization.toLowerCase(),
+        );
+        if (byOrgName != 0) return byOrgName;
+        final byPositions = b.positionCount.compareTo(a.positionCount);
+        if (byPositions != 0) return byPositions;
+        return a.label.toLowerCase().compareTo(b.label.toLowerCase());
+      });
+    return out;
+  }
+
+  void _selectStraightParty(_StraightPartyOption option) {
+    final normalized = option.label.trim().toLowerCase();
+    if (normalized.isEmpty) return;
+    final targetOrg = option.organization.trim();
+    final targetOrgKey = targetOrg.toUpperCase();
+    var filled = 0;
+
+    setState(() {
+      for (final org in _orgList) {
+        final orgName = (org['organization'] ?? '').toString();
+        final positions = org['positions'];
+        if (orgName.isEmpty || positions is! List) continue;
+        if (orgName.trim().toUpperCase() != targetOrgKey) continue;
+        for (final raw in positions) {
+          if (raw is! Map) continue;
+          final p = Map<String, dynamic>.from(raw);
+          final pos = (p['position'] ?? '').toString();
+          final cands = p['candidates'];
+          if (pos.isEmpty || cands is! List) continue;
+
+          final key = _positionKey(orgName, pos);
+          final matches = cands
+              .whereType<Map>()
+              .map((c) => Map<String, dynamic>.from(c))
+              .where((c) => _candidateParty(c).toLowerCase() == normalized)
+              .map(_candidateId)
+              .where((id) => id != 0)
+              .toList();
+          if (matches.isEmpty) continue;
+
+          if (_isMultiSelect(orgName, pos)) {
+            final ids = matches.take(2).toList();
+            _selections[key] = ids;
+            filled += ids.length;
+          } else {
+            _selections[key] = matches.first;
+            filled++;
+          }
+        }
+      }
+      if (filled > 0) {
+        _straightPartyKeys.removeWhere(
+          (key) => key.startsWith('$targetOrgKey::'),
+        );
+        _straightPartyKeys.add(option.key);
+      }
+    });
+
+    if (!mounted) return;
+    AppToast.success(
+      context,
+      filled == 0
+          ? 'No candidates found for ${option.label} in $targetOrg.'
+          : '$targetOrg ${option.label} slate selected. You can still edit manually.',
+    );
+  }
 
   List<Map<String, dynamic>> get _orgList {
     final b = _ballotPayload['ballot'];
@@ -207,6 +327,7 @@ class _ElectionScreenState extends State<ElectionScreen>
           _loading = false;
           _ballotPayload = const {};
           _selections.clear();
+          _straightPartyKeys.clear();
           _loadError = null;
         });
         return;
@@ -221,6 +342,7 @@ class _ElectionScreenState extends State<ElectionScreen>
           _loading = false;
           _ballotPayload = const {};
           _selections.clear();
+          _straightPartyKeys.clear();
         });
         return;
       }
@@ -230,6 +352,7 @@ class _ElectionScreenState extends State<ElectionScreen>
         _alreadyVoted = false;
         _ballotPayload = const {};
         _selections.clear();
+        _straightPartyKeys.clear();
         _loading = false;
         _loadError = null;
       });
@@ -258,6 +381,7 @@ class _ElectionScreenState extends State<ElectionScreen>
           _loading = false;
           _ballotPayload = const {};
           _selections.clear();
+          _straightPartyKeys.clear();
         });
         AppToast.warning(context, 'Election is not active.');
         return;
@@ -272,6 +396,7 @@ class _ElectionScreenState extends State<ElectionScreen>
           _loading = false;
           _ballotPayload = const {};
           _selections.clear();
+          _straightPartyKeys.clear();
         });
         AppToast.info(context, 'You already submitted your vote.');
         return;
@@ -284,6 +409,7 @@ class _ElectionScreenState extends State<ElectionScreen>
           _loading = false;
           _ballotPayload = const {};
           _selections.clear();
+          _straightPartyKeys.clear();
           _loadError = 'Face verification did not complete.';
         });
         return;
@@ -305,6 +431,7 @@ class _ElectionScreenState extends State<ElectionScreen>
         _alreadyVoted = false;
         _ballotPayload = ballot;
         _selections.clear();
+        _straightPartyKeys.clear();
         _loading = false;
         _loadError = null;
       });
@@ -1863,6 +1990,9 @@ class _ElectionScreenState extends State<ElectionScreen>
                     ),
                   ),
                   const SizedBox(height: 16),
+                  ..._straightPartySection(isDark, palette, titleColor),
+                  if (_straightPartyOptions().isNotEmpty)
+                    const SizedBox(height: 14),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -1982,7 +2112,10 @@ class _ElectionScreenState extends State<ElectionScreen>
                             : palette.accent,
                         padding: const EdgeInsets.symmetric(horizontal: 8),
                       ),
-                      onPressed: () => setState(() => _selections.remove(key)),
+                      onPressed: () => setState(() {
+                        _selections.remove(key);
+                        _straightPartyKeys.clear();
+                      }),
                       child: const Text(
                         'Clear',
                         style: TextStyle(fontWeight: FontWeight.w700),
@@ -1997,7 +2130,10 @@ class _ElectionScreenState extends State<ElectionScreen>
                             : palette.accent,
                         padding: const EdgeInsets.symmetric(horizontal: 8),
                       ),
-                      onPressed: () => setState(() => _selections.remove(key)),
+                      onPressed: () => setState(() {
+                        _selections.remove(key);
+                        _straightPartyKeys.clear();
+                      }),
                       child: const Text(
                         'Clear',
                         style: TextStyle(fontWeight: FontWeight.w700),
@@ -2157,6 +2293,7 @@ class _ElectionScreenState extends State<ElectionScreen>
                             next.remove(id);
                           }
                           _selections[key] = next;
+                          _straightPartyKeys.clear();
                         });
                       },
                     ),
@@ -2169,6 +2306,7 @@ class _ElectionScreenState extends State<ElectionScreen>
                           if (next.length < 2) next.add(id);
                         }
                         _selections[key] = next;
+                        _straightPartyKeys.clear();
                       });
                     },
                   );
@@ -2183,12 +2321,18 @@ class _ElectionScreenState extends State<ElectionScreen>
                     activeColor: palette.accent,
                     onChanged: (v) {
                       if (v == null) return;
-                      setState(() => _selections[key] = v);
+                      setState(() {
+                        _selections[key] = v;
+                        _straightPartyKeys.clear();
+                      });
                     },
                   ),
                   onTap: () {
                     if (selected) return;
-                    setState(() => _selections[key] = id);
+                    setState(() {
+                      _selections[key] = id;
+                      _straightPartyKeys.clear();
+                    });
                   },
                 );
               }),
@@ -2200,9 +2344,222 @@ class _ElectionScreenState extends State<ElectionScreen>
 
     return widgets;
   }
+
+  List<Widget> _straightPartySection(
+    bool isDark,
+    ElectionThemePalette palette,
+    Color titleColor,
+  ) {
+    final options = _straightPartyOptions();
+    if (options.isEmpty) return const <Widget>[];
+
+    final card = isDark ? const Color(0xFF2A2A35) : Colors.white;
+    final border = isDark ? Colors.white24 : const Color(0xFFD7D7D7);
+    final sub = isDark ? Colors.white60 : Colors.black54;
+
+    return [
+      Container(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+        decoration: BoxDecoration(
+          color: card,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Straight party vote',
+                    style: TextStyle(
+                      color: titleColor,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+                if (_straightPartyKeys.isNotEmpty)
+                  TextButton(
+                    style: TextButton.styleFrom(
+                      foregroundColor: isDark ? Colors.white70 : palette.accent,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                    ),
+                    onPressed: () => setState(() {
+                      _straightPartyKeys.clear();
+                      _selections.clear();
+                    }),
+                    child: const Text(
+                      'Clear all',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Tap a USG or organization party to auto-select that slate. You can still change any position manually.',
+              style: TextStyle(
+                color: sub,
+                fontWeight: FontWeight.w600,
+                fontSize: 12.5,
+                height: 1.35,
+              ),
+            ),
+            const SizedBox(height: 10),
+            ...options.map((option) {
+              final selected = _straightPartyKeys.contains(option.key);
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _StraightPartyButton(
+                  option: option,
+                  selected: selected,
+                  isDark: isDark,
+                  palette: palette,
+                  onTap: () => _selectStraightParty(option),
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    ];
+  }
 }
 
 enum _ElectionAccessState { upcoming, active, closed }
+
+class _StraightPartyOption {
+  _StraightPartyOption({required this.label, required this.organization});
+
+  final String label;
+  final String organization;
+  int candidateCount = 0;
+  int positionCount = 0;
+
+  String get key =>
+      '${organization.trim().toUpperCase()}::${label.trim().toLowerCase()}';
+}
+
+class _StraightPartyButton extends StatelessWidget {
+  const _StraightPartyButton({
+    required this.option,
+    required this.selected,
+    required this.isDark,
+    required this.palette,
+    required this.onTap,
+  });
+
+  final _StraightPartyOption option;
+  final bool selected;
+  final bool isDark;
+  final ElectionThemePalette palette;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = selected
+        ? palette.accent
+        : isDark
+        ? Colors.white10
+        : const Color(0xFFF3F4F6);
+    final fg = selected
+        ? palette.onAccent
+        : isDark
+        ? Colors.white
+        : Colors.black87;
+    final sub = selected
+        ? palette.onAccent.withValues(alpha: 0.78)
+        : isDark
+        ? Colors.white60
+        : Colors.black54;
+
+    return Material(
+      color: bg,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Container(
+          width: double.infinity,
+          constraints: const BoxConstraints(minHeight: 50),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: selected
+                  ? palette.accent
+                  : isDark
+                  ? Colors.white12
+                  : const Color(0xFFE5E7EB),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                selected ? Icons.check_circle : Icons.how_to_vote_outlined,
+                color: fg,
+                size: 18,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      option.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: fg,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 12.5,
+                        height: 1,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            option.organization,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: sub,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 10.5,
+                              height: 1.1,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '${option.positionCount} position${option.positionCount == 1 ? '' : 's'}',
+                          style: TextStyle(
+                            color: sub,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 10.5,
+                            height: 1.1,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(Icons.chevron_right_rounded, color: sub, size: 18),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 /// Black/white-only control colors for the Election tab (avoids seed/brown Material tints).
 class ElectionThemePalette {
