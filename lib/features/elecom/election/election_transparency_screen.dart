@@ -270,6 +270,22 @@ class _ElectionTransparencyScreenState
                                   ),
                                   sub: sub,
                                 ),
+                                if (_n(_summary, 'changed_vote_count') > 0)
+                                  _line(
+                                    label: 'Changed Votes',
+                                    value:
+                                        '${_n(_summary, 'changed_vote_count')} flagged',
+                                    valueColor: const Color(0xFFB3261E),
+                                    sub: sub,
+                                  ),
+                                if (_n(_summary, 'missing_vote_rows_count') > 0)
+                                  _line(
+                                    label: 'Missing Vote Rows',
+                                    value:
+                                        '${_n(_summary, 'missing_vote_rows_count')} flagged',
+                                    valueColor: const Color(0xFFB3261E),
+                                    sub: sub,
+                                  ),
                               ],
                               const SizedBox(height: 6),
                               Text(
@@ -299,13 +315,20 @@ class _ElectionTransparencyScreenState
                   ..._blocks.map((b) {
                     final blockId = _n(b, 'id');
                     final voteHash = _s(b, 'vote_hash');
+                    final liveVoteHash = _s(b, 'live_vote_hash');
+                    final voteChanged = b['vote_changed'] == true;
+                    final voteRowsMissing = b['vote_rows_missing'] == true;
+                    final hasVoteIssue = voteChanged || voteRowsMissing;
                     final previousHash = _s(b, 'previous_hash');
                     final linkedLabel = previousHash == '-'
                         ? 'Linked to previous block'
                         : 'Linked to Block #${blockId > 1 ? blockId - 1 : blockId}';
-                    final isValid =
-                        _s(b, 'status', fallback: 'valid').toLowerCase() ==
-                        'valid';
+                    final blockStatusLabel = _ledgerBlockStatusLabel(
+                      _s(b, 'block_status', fallback: 'pending'),
+                    );
+                    final blockStatusTone = _ledgerStatusColor(
+                      blockStatusLabel,
+                    );
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 10),
                       child: Container(
@@ -335,8 +358,26 @@ class _ElectionTransparencyScreenState
                               ),
                             ),
                             const SizedBox(height: 3),
+                            if (hasVoteIssue) ...[
+                              _tamperWarning(
+                                message: voteRowsMissing
+                                    ? 'Vote rows are missing for this block.'
+                                    : 'Vote changed after submission.',
+                                changedAt: _formatBlockDate(
+                                  _s(b, 'vote_changed_at'),
+                                ),
+                                source: _s(
+                                  b,
+                                  'vote_change_time_source',
+                                  fallback: 'detected',
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                            ],
                             _hashRow(
-                              label: 'Vote hash',
+                              label: hasVoteIssue
+                                  ? 'Original vote hash'
+                                  : 'Vote hash',
                               hash: voteHash,
                               fullHash: _s(
                                 b,
@@ -346,6 +387,18 @@ class _ElectionTransparencyScreenState
                               sub: sub,
                               copiedMessage: 'Vote hash copied.',
                             ),
+                            if (voteChanged)
+                              _hashRow(
+                                label: 'Current vote hash',
+                                hash: liveVoteHash,
+                                fullHash: _s(
+                                  b,
+                                  'live_vote_hash_full',
+                                  fallback: liveVoteHash,
+                                ),
+                                sub: sub,
+                                copiedMessage: 'Current vote hash copied.',
+                              ),
                             _hashRow(
                               label: 'Block hash',
                               hash: _s(b, 'hash'),
@@ -375,27 +428,9 @@ class _ElectionTransparencyScreenState
                             ),
                             const SizedBox(height: 1),
                             Text(
-                              'Status: ${isValid ? 'Valid' : 'Warning'}',
+                              'Block status: $blockStatusLabel',
                               style: TextStyle(
-                                color: isValid
-                                    ? const Color(0xFF1E8E3E)
-                                    : const Color(0xFFD97706),
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                            const SizedBox(height: 1),
-                            Text(
-                              'Block status: ${_s(b, 'block_status', fallback: 'pending')}',
-                              style: TextStyle(
-                                color:
-                                    _s(
-                                          b,
-                                          'block_status',
-                                          fallback: '',
-                                        ).toLowerCase() ==
-                                        'accepted'
-                                    ? const Color(0xFF1E8E3E)
-                                    : const Color(0xFFD97706),
+                                color: blockStatusTone,
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
@@ -497,6 +532,58 @@ class _ElectionTransparencyScreenState
         ],
       ),
     );
+  }
+
+  Widget _tamperWarning({
+    required String message,
+    required String changedAt,
+    required String source,
+  }) {
+    final sourceText = source == 'audit'
+        ? 'Changed at $changedAt'
+        : 'Detected at $changedAt';
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+      decoration: BoxDecoration(
+        color: const Color(0xFFB3261E).withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: const Color(0xFFB3261E).withValues(alpha: 0.35),
+        ),
+      ),
+      child: Text(
+        '$message $sourceText.',
+        style: const TextStyle(
+          color: Color(0xFFB3261E),
+          fontWeight: FontWeight.w900,
+          fontSize: 12.5,
+          height: 1.25,
+        ),
+      ),
+    );
+  }
+
+  String _ledgerBlockStatusLabel(String raw) {
+    final value = raw.trim().toLowerCase();
+    if (value == 'valid') return 'Valid';
+    if (value == 'accepted') return 'Accepted';
+    if (value == 'modified' || value == 'tampered') return 'Modified';
+    if (value == 'rejected') return 'Rejected';
+    if (value == 'pending') return 'Pending';
+    if (value == 'warning') return 'Modified';
+    return raw.trim().isEmpty ? '-' : raw.trim();
+  }
+
+  Color _ledgerStatusColor(String label) {
+    final value = label.toLowerCase();
+    if (value == 'valid' || value == 'accepted') {
+      return const Color(0xFF1E8E3E);
+    }
+    if (value == 'modified' || value == 'rejected') {
+      return const Color(0xFFB3261E);
+    }
+    return const Color(0xFFD97706);
   }
 
   Widget _line({

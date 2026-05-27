@@ -38,6 +38,8 @@ class ElectionTransparencyCard extends StatelessWidget {
     final lastVerified = _formatDisplayDate(
       _readStr(summary, 'last_verified', fallback: '-'),
     );
+    final changedVoteCount = _readInt(summary, 'changed_vote_count');
+    final missingVoteRowsCount = _readInt(summary, 'missing_vote_rows_count');
     final preview = _readList(summary, 'preview_blocks');
 
     return Column(
@@ -121,6 +123,22 @@ class ElectionTransparencyCard extends StatelessWidget {
                       subColor: subColor,
                       textColor: titleColor,
                     ),
+                    if (changedVoteCount > 0)
+                      _kv(
+                        label: 'Changed Votes',
+                        value: '$changedVoteCount flagged',
+                        valueColor: const Color(0xFFB3261E),
+                        subColor: subColor,
+                        textColor: titleColor,
+                      ),
+                    if (missingVoteRowsCount > 0)
+                      _kv(
+                        label: 'Missing Vote Rows',
+                        value: '$missingVoteRowsCount flagged',
+                        valueColor: const Color(0xFFB3261E),
+                        subColor: subColor,
+                        textColor: titleColor,
+                      ),
                     const SizedBox(height: 8),
                     Text(
                       'Vote choices and student identities are kept private. Only public verification hashes are shown.',
@@ -139,14 +157,14 @@ class ElectionTransparencyCard extends StatelessWidget {
                           child: _blockPreviewRow(
                             blockNo: _readInt(b, 'id'),
                             voteHash: _readStr(b, 'vote_hash', fallback: '-'),
+                            liveVoteHash: _readStr(
+                              b,
+                              'live_vote_hash',
+                              fallback: '-',
+                            ),
                             blockHash: _readStr(b, 'hash', fallback: '-'),
-                            isValid:
-                                _readStr(
-                                  b,
-                                  'status',
-                                  fallback: 'valid',
-                                ).toLowerCase() ==
-                                'valid',
+                            voteChanged: b['vote_changed'] == true,
+                            voteRowsMissing: b['vote_rows_missing'] == true,
                             titleColor: titleColor,
                             subColor: subColor,
                           ),
@@ -245,14 +263,13 @@ class ElectionTransparencyCard extends StatelessWidget {
   Widget _blockPreviewRow({
     required int blockNo,
     required String voteHash,
+    required String liveVoteHash,
     required String blockHash,
-    required bool isValid,
+    required bool voteChanged,
+    required bool voteRowsMissing,
     required Color titleColor,
     required Color subColor,
   }) {
-    final statusColor = isValid
-        ? const Color(0xFF1E8E3E)
-        : const Color(0xFFD97706);
     return Container(
       padding: const EdgeInsets.all(9),
       decoration: BoxDecoration(
@@ -267,29 +284,46 @@ class ElectionTransparencyCard extends StatelessWidget {
             style: TextStyle(color: titleColor, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 2),
+          if (voteChanged || voteRowsMissing) ...[
+            Text(
+              voteRowsMissing
+                  ? 'Vote rows are missing for this block'
+                  : 'Vote changed after submission',
+              style: TextStyle(
+                color: const Color(0xFFB3261E),
+                fontWeight: FontWeight.w900,
+                fontSize: 12.5,
+              ),
+            ),
+            const SizedBox(height: 2),
+          ],
           Text(
-            'Vote hash: $voteHash',
+            voteChanged || voteRowsMissing
+                ? 'Original vote hash: $voteHash'
+                : 'Vote hash: $voteHash',
             style: TextStyle(
               color: subColor,
               fontWeight: FontWeight.w600,
               fontSize: 12.5,
             ),
           ),
+          if (voteChanged) ...[
+            const SizedBox(height: 2),
+            Text(
+              'Current vote hash: $liveVoteHash',
+              style: TextStyle(
+                color: subColor,
+                fontWeight: FontWeight.w600,
+                fontSize: 12.5,
+              ),
+            ),
+          ],
           const SizedBox(height: 2),
           Text(
             'Block hash: $blockHash',
             style: TextStyle(
               color: subColor,
               fontWeight: FontWeight.w600,
-              fontSize: 12.5,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            'Status: ${isValid ? 'Valid' : 'Warning'}',
-            style: TextStyle(
-              color: statusColor,
-              fontWeight: FontWeight.w800,
               fontSize: 12.5,
             ),
           ),
