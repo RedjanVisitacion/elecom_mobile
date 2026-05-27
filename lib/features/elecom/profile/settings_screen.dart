@@ -42,6 +42,21 @@ class SettingsScreen extends StatelessWidget {
         surfaceTintColor: isPremiumMode ? Colors.white : Colors.transparent,
         foregroundColor: titleColor,
         elevation: 0,
+        flexibleSpace: isPremiumMode
+            ? DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.06),
+                      Colors.white,
+                      _premiumGold.withValues(alpha: 0.10),
+                    ],
+                  ),
+                ),
+              )
+            : null,
         title: Text(
           'Settings',
           style: TextStyle(fontWeight: FontWeight.w900, color: titleColor),
@@ -234,7 +249,7 @@ class SettingsScreen extends StatelessWidget {
                           color: isDarkMode
                               ? Colors.white24
                               : isPremiumMode
-                              ? _premiumBlue.withValues(alpha: 0.18)
+                              ? Colors.black.withValues(alpha: 0.18)
                               : Theme.of(ctx).colorScheme.outlineVariant,
                           borderRadius: BorderRadius.circular(100),
                         ),
@@ -243,18 +258,26 @@ class SettingsScreen extends StatelessWidget {
                     const SizedBox(height: 12),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 6),
-                      child: Row(
-                        children: [
-                          if (isPremiumMode) ...[
-                            HugeIcon(
-                              icon: HugeIcons.strokeRoundedUserStar01,
-                              color: _premiumBlue,
-                              size: 20,
-                              strokeWidth: 1.9,
-                            ),
-                            const SizedBox(width: 8),
-                          ],
-                          Text(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: isPremiumMode
+                              ? LinearGradient(
+                                  begin: Alignment.centerLeft,
+                                  end: Alignment.centerRight,
+                                  colors: [
+                                    Colors.black.withValues(alpha: 0.08),
+                                    Colors.white.withValues(alpha: 0.0),
+                                  ],
+                                )
+                              : null,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isPremiumMode ? 10 : 0,
+                            vertical: isPremiumMode ? 8 : 0,
+                          ),
+                          child: Text(
                             'Choose appearance',
                             style: TextStyle(
                               fontSize: 17,
@@ -262,7 +285,7 @@ class SettingsScreen extends StatelessWidget {
                               color: titleColor,
                             ),
                           ),
-                        ],
+                        ),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -286,8 +309,6 @@ class SettingsScreen extends StatelessWidget {
                             title: 'Premium mode',
                             subtitle: 'ELECOM glassmorphism style',
                             value: AppAppearance.premium,
-                            icon: Icons.auto_awesome_rounded,
-                            premiumIcon: HugeIcons.strokeRoundedUserStar01,
                             isPremiumFlow: isPremiumMode,
                           ),
                           _ThemeModeTile(
@@ -467,14 +488,10 @@ class _ThemeModeTile extends StatelessWidget {
     required this.value,
     required this.isPremiumFlow,
     this.subtitle,
-    this.icon,
-    this.premiumIcon,
   });
 
   final String title;
   final String? subtitle;
-  final IconData? icon;
-  final List<List<dynamic>>? premiumIcon;
   final AppAppearance value;
   final bool isPremiumFlow;
 
@@ -484,30 +501,19 @@ class _ThemeModeTile extends StatelessWidget {
     final groupValue = RadioGroup.maybeOf<AppAppearance>(context)?.groupValue;
     final selected = value == groupValue;
     final isPremium = value == AppAppearance.premium;
-    final activeColor = isPremium ? _premiumBlue : null;
+    final activeColor = isPremiumFlow
+        ? _premiumInk
+        : isPremium
+        ? _premiumBlue
+        : null;
     final titleColor = isPremiumFlow
-        ? (selected ? _premiumBlue : _premiumInk)
+        ? _premiumInk
         : selected && isPremium
         ? const Color(0xFFFACC15)
         : (isDarkMode ? Colors.white : Colors.black);
 
-    return RadioListTile<AppAppearance>(
+    final tile = RadioListTile<AppAppearance>(
       value: value,
-      secondary: isPremiumFlow && premiumIcon != null
-          ? HugeIcon(
-              icon: premiumIcon!,
-              color: selected ? _premiumBlue : _premiumSub,
-              size: 22,
-              strokeWidth: 1.9,
-            )
-          : icon == null
-          ? null
-          : Icon(
-              icon,
-              color: selected
-                  ? const Color(0xFFFACC15)
-                  : (isDarkMode ? Colors.white70 : Colors.black54),
-            ),
       title: Text(
         title,
         style: TextStyle(
@@ -531,6 +537,44 @@ class _ThemeModeTile extends StatelessWidget {
         activeColor ?? (isDarkMode ? Colors.white70 : Colors.black),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+    );
+
+    if (!isPremiumFlow) return tile;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+      margin: const EdgeInsets.symmetric(vertical: 3),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        gradient: selected
+            ? LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.black.withValues(alpha: 0.08),
+                  Colors.white,
+                  _premiumGold.withValues(alpha: 0.12),
+                ],
+              )
+            : null,
+        border: Border.all(
+          color: selected
+              ? Colors.black.withValues(alpha: 0.16)
+              : Colors.transparent,
+        ),
+        boxShadow: selected
+            ? [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.10),
+                  blurRadius: 20,
+                  spreadRadius: 1,
+                  offset: const Offset(0, 8),
+                ),
+              ]
+            : null,
+      ),
+      child: tile,
     );
   }
 }

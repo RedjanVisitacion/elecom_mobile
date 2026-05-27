@@ -769,43 +769,75 @@ class _StudentDashboardState extends State<StudentDashboard> {
                           padding: const EdgeInsets.all(14),
                           child: Row(
                             children: [
-                              Container(
-                                width: 62,
-                                height: 62,
-                                padding: const EdgeInsets.all(2),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: isDarkMode
-                                        ? Colors.white24
-                                        : isPremiumMode
-                                        ? const Color(0xFFFACC15)
-                                        : const Color(0xFFFEA501),
-                                    width: 2,
+                              Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  Container(
+                                    width: 62,
+                                    height: 62,
+                                    padding: const EdgeInsets.all(2),
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: isDarkMode
+                                            ? Colors.white24
+                                            : isPremiumMode
+                                            ? const Color(0xFFFACC15)
+                                            : const Color(0xFFFEA501),
+                                        width: 2,
+                                      ),
+                                    ),
+                                    child: CircleAvatar(
+                                      radius: 28,
+                                      backgroundColor: isDarkMode
+                                          ? Colors.white12
+                                          : const Color(0xFFEAF1FF),
+                                      backgroundImage: photoUrl.isNotEmpty
+                                          ? NetworkImage(photoUrl)
+                                          : null,
+                                      child: photoUrl.isNotEmpty
+                                          ? null
+                                          : Icon(
+                                              isPremiumMode
+                                                  ? Iconsax.profile_circle
+                                                  : Icons.person,
+                                              color: isDarkMode
+                                                  ? Colors.white70
+                                                  : isPremiumMode
+                                                  ? const Color(0xFF2563EB)
+                                                  : Colors.blue,
+                                              size: 28,
+                                            ),
+                                    ),
                                   ),
-                                ),
-                                child: CircleAvatar(
-                                  radius: 28,
-                                  backgroundColor: isDarkMode
-                                      ? Colors.white12
-                                      : const Color(0xFFEAF1FF),
-                                  backgroundImage: photoUrl.isNotEmpty
-                                      ? NetworkImage(photoUrl)
-                                      : null,
-                                  child: photoUrl.isNotEmpty
-                                      ? null
-                                      : Icon(
-                                          isPremiumMode
-                                              ? Iconsax.profile_circle
-                                              : Icons.person,
+                                  Positioned(
+                                    right: 0,
+                                    bottom: 0,
+                                    child: Container(
+                                      width: 20,
+                                      height: 20,
+                                      decoration: BoxDecoration(
+                                        color: isPremiumMode
+                                            ? const Color(0xFF0F172A)
+                                            : isDarkMode
+                                            ? const Color(0xFF3A3A44)
+                                            : const Color(0xFF4B5563),
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
                                           color: isDarkMode
-                                              ? Colors.white70
-                                              : isPremiumMode
-                                              ? const Color(0xFF2563EB)
-                                              : Colors.blue,
-                                          size: 28,
+                                              ? const Color(0xFF171620)
+                                              : Colors.white,
+                                          width: 2,
                                         ),
-                                ),
+                                      ),
+                                      child: const Icon(
+                                        Icons.keyboard_arrow_down_rounded,
+                                        color: Colors.white,
+                                        size: 15,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                               const SizedBox(width: 12),
                               Expanded(
