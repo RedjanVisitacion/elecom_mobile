@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:io';
+import 'package:hugeicons/hugeicons.dart';
 
 import '../../../core/utils/toast_service.dart';
 
@@ -13,8 +14,13 @@ import '../data/elecom_mobile_api.dart';
 import '../data/election_window_utils.dart';
 import '../face/face_enrollment_screen.dart';
 import '../face/live_face_capture_screen.dart';
+import '../student_dashboard/utils/theme_notifier.dart';
 import 'election_transparency_screen.dart';
 import 'receipt_screen.dart';
+
+const _premiumBlue = Color(0xFF2563EB);
+const _premiumGold = Color(0xFFFACC15);
+const _premiumInk = Color(0xFF0F172A);
 
 /// Election / voting tab: ballot from [GET /api/mobile/ballot/], submit via [POST /api/mobile/vote/submit/].
 /// Program-based organizations and USG representative rows are enforced server-side.
@@ -82,6 +88,21 @@ class _ElectionScreenState extends State<ElectionScreen>
   String _candidateParty(Map<String, dynamic> candidate) =>
       (candidate['party_name'] ?? '').toString().trim();
 
+  String _candidatePartyLogo(Map<String, dynamic> candidate) {
+    for (final key in const [
+      'party_logo_url',
+      'partyLogoUrl',
+      'party_logo',
+      'partyLogo',
+      'logo_url',
+      'logoUrl',
+    ]) {
+      final value = (candidate[key] ?? '').toString().trim();
+      if (value.isNotEmpty) return value;
+    }
+    return '';
+  }
+
   String _straightPartyKey(String orgName, String partyLabel) =>
       '${orgName.trim().toUpperCase()}::${partyLabel.trim().toLowerCase()}';
 
@@ -106,11 +127,19 @@ class _ElectionScreenState extends State<ElectionScreen>
           final candidate = Map<String, dynamic>.from(rawCand);
           final party = _candidateParty(candidate);
           if (party.isEmpty || _candidateId(candidate) == 0) continue;
+          final partyLogo = _candidatePartyLogo(candidate);
           final normalized = _straightPartyKey(orgName, party);
           final current = byParty.putIfAbsent(
             normalized,
-            () => _StraightPartyOption(label: party, organization: orgName),
+            () => _StraightPartyOption(
+              label: party,
+              organization: orgName,
+              logoUrl: partyLogo,
+            ),
           );
+          if (current.logoUrl.isEmpty && partyLogo.isNotEmpty) {
+            current.logoUrl = partyLogo;
+          }
           current.candidateCount++;
           if (seenInPosition.add(normalized)) {
             current.positionCount++;
@@ -483,10 +512,14 @@ class _ElectionScreenState extends State<ElectionScreen>
     return out;
   }
 
-  ElectionThemePalette _electionPalette(BuildContext context, bool isDark) =>
-      ElectionThemePalette.fromBrightness(
-        isDark ? Brightness.dark : Brightness.light,
-      );
+  ElectionThemePalette _electionPalette(
+    BuildContext context,
+    bool isDark,
+    bool isPremiumMode,
+  ) => ElectionThemePalette.fromBrightness(
+    isDark ? Brightness.dark : Brightness.light,
+    isPremiumMode: isPremiumMode,
+  );
 
   Future<void> _maybeStartVotingTutorial({bool force = false}) async {
     if (!mounted || !widget.isActive) return;
@@ -1512,8 +1545,17 @@ class _ElectionScreenState extends State<ElectionScreen>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final titleColor = isDark ? Colors.white : Colors.black;
-    final subtitleColor = isDark ? Colors.white70 : Colors.black54;
+    final isPremiumMode = themeNotifier.isPremiumMode;
+    final titleColor = isPremiumMode
+        ? _premiumInk
+        : isDark
+        ? Colors.white
+        : Colors.black;
+    final subtitleColor = isPremiumMode
+        ? const Color(0xFF475569)
+        : isDark
+        ? Colors.white70
+        : Colors.black54;
     final electionState = _isElectionActiveNow(_electionWindow)
         ? _ElectionAccessState.active
         : (_isElectionUpcoming(_electionWindow)
@@ -1615,12 +1657,36 @@ class _ElectionScreenState extends State<ElectionScreen>
     }
 
     if (_alreadyVoted) {
-      final pageBg = isDark ? const Color(0xFF121212) : const Color(0xFFF3F4F6);
-      final cardBg = isDark ? const Color(0xFF1E1E1E) : Colors.white;
-      final cardBorder = isDark ? Colors.white12 : const Color(0xFFE5E7EB);
-      final iconBg = isDark ? const Color(0xFF163427) : const Color(0xFFDCFCE7);
-      final primary = isDark ? Colors.white : const Color(0xFF111111);
-      final secondaryText = isDark ? Colors.white70 : const Color(0xFF6B7280);
+      final pageBg = isPremiumMode
+          ? Colors.transparent
+          : isDark
+          ? const Color(0xFF121212)
+          : const Color(0xFFF3F4F6);
+      final cardBg = isPremiumMode
+          ? Colors.white.withValues(alpha: 0.90)
+          : isDark
+          ? const Color(0xFF1E1E1E)
+          : Colors.white;
+      final cardBorder = isPremiumMode
+          ? _premiumGold.withValues(alpha: 0.45)
+          : isDark
+          ? Colors.white12
+          : const Color(0xFFE5E7EB);
+      final iconBg = isPremiumMode
+          ? _premiumBlue.withValues(alpha: 0.10)
+          : isDark
+          ? const Color(0xFF163427)
+          : const Color(0xFFDCFCE7);
+      final primary = isPremiumMode
+          ? _premiumInk
+          : isDark
+          ? Colors.white
+          : const Color(0xFF111111);
+      final secondaryText = isPremiumMode
+          ? const Color(0xFF475569)
+          : isDark
+          ? Colors.white70
+          : const Color(0xFF6B7280);
 
       return RefreshIndicator(
         color: Colors.black,
@@ -1631,8 +1697,21 @@ class _ElectionScreenState extends State<ElectionScreen>
           slivers: [
             SliverFillRemaining(
               hasScrollBody: false,
-              child: ColoredBox(
-                color: pageBg,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: pageBg,
+                  gradient: isPremiumMode
+                      ? LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Colors.white.withValues(alpha: 0.20),
+                            _premiumBlue.withValues(alpha: 0.08),
+                            _premiumGold.withValues(alpha: 0.08),
+                          ],
+                        )
+                      : null,
+                ),
                 child: SafeArea(
                   top: false,
                   child: Padding(
@@ -1654,10 +1733,18 @@ class _ElectionScreenState extends State<ElectionScreen>
                             border: Border.all(color: cardBorder),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(
-                                  alpha: isDark ? 0.30 : 0.10,
-                                ),
-                                blurRadius: 24,
+                                color:
+                                    (isPremiumMode
+                                            ? _premiumBlue
+                                            : Colors.black)
+                                        .withValues(
+                                          alpha: isPremiumMode
+                                              ? 0.18
+                                              : isDark
+                                              ? 0.30
+                                              : 0.10,
+                                        ),
+                                blurRadius: isPremiumMode ? 30 : 24,
                                 offset: const Offset(0, 10),
                               ),
                             ],
@@ -1706,11 +1793,19 @@ class _ElectionScreenState extends State<ElectionScreen>
                                               ),
                                             ],
                                           ),
-                                          child: const Icon(
-                                            Icons.check_rounded,
-                                            size: 34,
-                                            color: Color(0xFF16A34A),
-                                          ),
+                                          child: isPremiumMode
+                                              ? HugeIcon(
+                                                  icon: HugeIcons
+                                                      .strokeRoundedShieldBlockchain,
+                                                  size: 34,
+                                                  color: _premiumBlue,
+                                                  strokeWidth: 2,
+                                                )
+                                              : const Icon(
+                                                  Icons.check_rounded,
+                                                  size: 34,
+                                                  color: Color(0xFF16A34A),
+                                                ),
                                         ),
                                       ),
                                     );
@@ -1755,8 +1850,14 @@ class _ElectionScreenState extends State<ElectionScreen>
                                 loading: _checkingReceipt,
                                 label: 'View Receipt',
                                 icon: Icons.receipt_long_outlined,
-                                background: const Color(0xFF0D0D0D),
-                                gold: isDark
+                                premiumIcon: HugeIcons.strokeRoundedInvoice03,
+                                isPremiumMode: isPremiumMode,
+                                background: isPremiumMode
+                                    ? _premiumBlue
+                                    : const Color(0xFF0D0D0D),
+                                gold: isPremiumMode
+                                    ? _premiumGold
+                                    : isDark
                                     ? Colors.white12
                                     : const Color(0xFFE5E7EB),
                                 onPressed: () async {
@@ -1816,9 +1917,13 @@ class _ElectionScreenState extends State<ElectionScreen>
                                   );
                                 },
                                 icon: Icon(
-                                  Icons.link_rounded,
+                                  isPremiumMode
+                                      ? Icons.security_rounded
+                                      : Icons.link_rounded,
                                   size: 16,
-                                  color: isDark
+                                  color: isPremiumMode
+                                      ? _premiumBlue
+                                      : isDark
                                       ? Colors.white60
                                       : Colors.black54,
                                 ),
@@ -1880,7 +1985,7 @@ class _ElectionScreenState extends State<ElectionScreen>
         .toString()
         .trim();
 
-    final palette = _electionPalette(context, isDark);
+    final palette = _electionPalette(context, isDark, isPremiumMode);
 
     if (_expectedKeys.isEmpty) {
       return RefreshIndicator(
@@ -1990,14 +2095,25 @@ class _ElectionScreenState extends State<ElectionScreen>
                     ),
                   ),
                   const SizedBox(height: 16),
-                  ..._straightPartySection(isDark, palette, titleColor),
+                  ..._straightPartySection(
+                    isDark,
+                    isPremiumMode,
+                    palette,
+                    titleColor,
+                  ),
                   if (_straightPartyOptions().isNotEmpty)
                     const SizedBox(height: 14),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       for (final org in _orgList)
-                        ..._orgSection(context, org, isDark, palette),
+                        ..._orgSection(
+                          context,
+                          org,
+                          isDark,
+                          isPremiumMode,
+                          palette,
+                        ),
                     ],
                   ),
                 ],
@@ -2011,25 +2127,19 @@ class _ElectionScreenState extends State<ElectionScreen>
               child: SizedBox(
                 key: ElecomTutorialKeys.votingSubmit,
                 width: double.infinity,
-                child: FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: palette.accent,
-                    foregroundColor: palette.onAccent,
-                  ),
-                  onPressed: _submitInFlight ? null : () => _submit(palette),
-                  icon: Icon(
-                    _submitInFlight
-                        ? Icons.hourglass_top_rounded
-                        : Icons.how_to_vote_outlined,
-                    color: palette.onAccent,
-                  ),
-                  label: Text(
-                    _submitInFlight ? 'Submitting...' : 'Submit ballot',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      color: palette.onAccent,
-                    ),
-                  ),
+                child: _SecureActionButton(
+                  loading: _submitInFlight,
+                  label: _submitInFlight ? 'Submitting...' : 'Submit ballot',
+                  icon: Icons.how_to_vote_outlined,
+                  premiumIcon: HugeIcons.strokeRoundedSent,
+                  isPremiumMode: isPremiumMode,
+                  background: palette.accent,
+                  gold: isPremiumMode
+                      ? _premiumGold
+                      : isDark
+                      ? Colors.white12
+                      : const Color(0xFFE5E7EB),
+                  onPressed: () => _submit(palette),
                 ),
               ),
             ),
@@ -2043,6 +2153,7 @@ class _ElectionScreenState extends State<ElectionScreen>
     BuildContext context,
     Map<String, dynamic> org,
     bool isDark,
+    bool isPremiumMode,
     ElectionThemePalette palette,
   ) {
     final orgName = (org['organization'] ?? '').toString();
@@ -2050,8 +2161,16 @@ class _ElectionScreenState extends State<ElectionScreen>
     if (positions is! List || orgName.isEmpty) return [];
 
     final titleColor = isDark ? Colors.white : Colors.black;
-    final card = isDark ? const Color(0xFF2A2A35) : Colors.white;
-    final border = isDark ? Colors.white38 : Colors.black26;
+    final card = isPremiumMode
+        ? Colors.white.withValues(alpha: 0.92)
+        : isDark
+        ? const Color(0xFF2A2A35)
+        : Colors.white;
+    final border = isPremiumMode
+        ? _premiumBlue.withValues(alpha: 0.16)
+        : isDark
+        ? Colors.white38
+        : Colors.black26;
 
     final widgets = <Widget>[
       const SizedBox(height: 8),
@@ -2087,6 +2206,15 @@ class _ElectionScreenState extends State<ElectionScreen>
             color: card,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: border, width: 1),
+            boxShadow: isPremiumMode
+                ? [
+                    BoxShadow(
+                      color: _premiumBlue.withValues(alpha: 0.08),
+                      blurRadius: 18,
+                      offset: const Offset(0, 8),
+                    ),
+                  ]
+                : null,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -2347,15 +2475,28 @@ class _ElectionScreenState extends State<ElectionScreen>
 
   List<Widget> _straightPartySection(
     bool isDark,
+    bool isPremiumMode,
     ElectionThemePalette palette,
     Color titleColor,
   ) {
     final options = _straightPartyOptions();
     if (options.isEmpty) return const <Widget>[];
 
-    final card = isDark ? const Color(0xFF2A2A35) : Colors.white;
-    final border = isDark ? Colors.white24 : const Color(0xFFD7D7D7);
-    final sub = isDark ? Colors.white60 : Colors.black54;
+    final card = isPremiumMode
+        ? Colors.white.withValues(alpha: 0.92)
+        : isDark
+        ? const Color(0xFF2A2A35)
+        : Colors.white;
+    final border = isPremiumMode
+        ? _premiumGold.withValues(alpha: 0.45)
+        : isDark
+        ? Colors.white24
+        : const Color(0xFFD7D7D7);
+    final sub = isPremiumMode
+        ? const Color(0xFF475569)
+        : isDark
+        ? Colors.white60
+        : Colors.black54;
 
     return [
       Container(
@@ -2364,6 +2505,15 @@ class _ElectionScreenState extends State<ElectionScreen>
           color: card,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: border),
+          boxShadow: isPremiumMode
+              ? [
+                  BoxShadow(
+                    color: _premiumBlue.withValues(alpha: 0.10),
+                    blurRadius: 22,
+                    offset: const Offset(0, 10),
+                  ),
+                ]
+              : null,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2371,13 +2521,28 @@ class _ElectionScreenState extends State<ElectionScreen>
             Row(
               children: [
                 Expanded(
-                  child: Text(
-                    'Straight party vote',
-                    style: TextStyle(
-                      color: titleColor,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 15,
-                    ),
+                  child: Row(
+                    children: [
+                      if (isPremiumMode) ...[
+                        HugeIcon(
+                          icon: HugeIcons.strokeRoundedCheckList,
+                          color: _premiumBlue,
+                          size: 18,
+                          strokeWidth: 1.9,
+                        ),
+                        const SizedBox(width: 7),
+                      ],
+                      Flexible(
+                        child: Text(
+                          'Straight party vote',
+                          style: TextStyle(
+                            color: titleColor,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 if (_straightPartyKeys.isNotEmpty)
@@ -2416,6 +2581,7 @@ class _ElectionScreenState extends State<ElectionScreen>
                   option: option,
                   selected: selected,
                   isDark: isDark,
+                  isPremiumMode: isPremiumMode,
                   palette: palette,
                   onTap: () => _selectStraightParty(option),
                 ),
@@ -2431,10 +2597,15 @@ class _ElectionScreenState extends State<ElectionScreen>
 enum _ElectionAccessState { upcoming, active, closed }
 
 class _StraightPartyOption {
-  _StraightPartyOption({required this.label, required this.organization});
+  _StraightPartyOption({
+    required this.label,
+    required this.organization,
+    required this.logoUrl,
+  });
 
   final String label;
   final String organization;
+  String logoUrl;
   int candidateCount = 0;
   int positionCount = 0;
 
@@ -2447,6 +2618,7 @@ class _StraightPartyButton extends StatelessWidget {
     required this.option,
     required this.selected,
     required this.isDark,
+    required this.isPremiumMode,
     required this.palette,
     required this.onTap,
   });
@@ -2454,22 +2626,36 @@ class _StraightPartyButton extends StatelessWidget {
   final _StraightPartyOption option;
   final bool selected;
   final bool isDark;
+  final bool isPremiumMode;
   final ElectionThemePalette palette;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final bg = selected
+    final logo = resolvedCandidatePhotoUrl(option.logoUrl);
+    final bg = isPremiumMode
+        ? selected
+              ? _premiumBlue
+              : _premiumBlue.withValues(alpha: 0.06)
+        : selected
         ? palette.accent
         : isDark
         ? Colors.white10
         : const Color(0xFFF3F4F6);
-    final fg = selected
+    final fg = isPremiumMode
+        ? selected
+              ? Colors.white
+              : _premiumInk
+        : selected
         ? palette.onAccent
         : isDark
         ? Colors.white
         : Colors.black87;
-    final sub = selected
+    final sub = isPremiumMode
+        ? selected
+              ? Colors.white.withValues(alpha: 0.78)
+              : const Color(0xFF475569)
+        : selected
         ? palette.onAccent.withValues(alpha: 0.78)
         : isDark
         ? Colors.white60
@@ -2489,7 +2675,7 @@ class _StraightPartyButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: selected
-                  ? palette.accent
+                  ? (isPremiumMode ? _premiumGold : palette.accent)
                   : isDark
                   ? Colors.white12
                   : const Color(0xFFE5E7EB),
@@ -2498,10 +2684,12 @@ class _StraightPartyButton extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                selected ? Icons.check_circle : Icons.how_to_vote_outlined,
-                color: fg,
-                size: 18,
+              _PartyLogoBadge(
+                logoUrl: logo,
+                label: option.label,
+                selected: selected,
+                isPremiumMode: isPremiumMode,
+                foreground: fg,
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -2561,6 +2749,79 @@ class _StraightPartyButton extends StatelessWidget {
   }
 }
 
+class _PartyLogoBadge extends StatelessWidget {
+  const _PartyLogoBadge({
+    required this.logoUrl,
+    required this.label,
+    required this.selected,
+    required this.isPremiumMode,
+    required this.foreground,
+  });
+
+  final String? logoUrl;
+  final String label;
+  final bool selected;
+  final bool isPremiumMode;
+  final Color foreground;
+
+  @override
+  Widget build(BuildContext context) {
+    final initials = label
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .take(2)
+        .map((part) => part.substring(0, 1).toUpperCase())
+        .join();
+    final borderColor = isPremiumMode
+        ? _premiumGold.withValues(alpha: selected ? 0.95 : 0.55)
+        : Colors.black12;
+    final bg = isPremiumMode
+        ? (selected ? Colors.white.withValues(alpha: 0.16) : Colors.white)
+        : Colors.white;
+
+    return Container(
+      width: 30,
+      height: 30,
+      decoration: BoxDecoration(
+        color: bg,
+        shape: BoxShape.circle,
+        border: Border.all(color: borderColor),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: logoUrl == null
+          ? Center(
+              child: Text(
+                initials.isEmpty ? '?' : initials,
+                style: TextStyle(
+                  color: isPremiumMode && selected ? Colors.white : foreground,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            )
+          : Image.network(
+              logoUrl!,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Center(
+                  child: Text(
+                    initials.isEmpty ? '?' : initials,
+                    style: TextStyle(
+                      color: isPremiumMode && selected
+                          ? Colors.white
+                          : foreground,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                );
+              },
+            ),
+    );
+  }
+}
+
 /// Black/white-only control colors for the Election tab (avoids seed/brown Material tints).
 class ElectionThemePalette {
   const ElectionThemePalette({
@@ -2575,7 +2836,18 @@ class ElectionThemePalette {
   final Color snackNeutral;
   final Color snackFg;
 
-  factory ElectionThemePalette.fromBrightness(Brightness b) {
+  factory ElectionThemePalette.fromBrightness(
+    Brightness b, {
+    bool isPremiumMode = false,
+  }) {
+    if (isPremiumMode) {
+      return const ElectionThemePalette(
+        accent: _premiumBlue,
+        onAccent: Colors.white,
+        snackNeutral: _premiumInk,
+        snackFg: Colors.white,
+      );
+    }
     if (b == Brightness.dark) {
       return const ElectionThemePalette(
         accent: Colors.white,
@@ -2601,11 +2873,15 @@ class _SecureActionButton extends StatefulWidget {
     required this.background,
     required this.gold,
     required this.onPressed,
+    this.premiumIcon,
+    this.isPremiumMode = false,
   });
 
   final bool loading;
   final String label;
   final IconData icon;
+  final List<List<dynamic>>? premiumIcon;
+  final bool isPremiumMode;
   final Color background;
   final Color gold;
   final VoidCallback onPressed;
@@ -2620,7 +2896,7 @@ class _SecureActionButtonState extends State<_SecureActionButton> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final fg = Colors.white;
+    final fg = widget.isPremiumMode ? Colors.white : Colors.white;
     final disabled = widget.loading;
 
     return AnimatedScale(
@@ -2646,10 +2922,15 @@ class _SecureActionButtonState extends State<_SecureActionButton> {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: widget.gold.withValues(
-                    alpha: disabled ? 0.0 : (isDark ? 0.10 : 0.12),
-                  ),
-                  blurRadius: 18,
+                  color: (widget.isPremiumMode ? _premiumBlue : widget.gold)
+                      .withValues(
+                        alpha: disabled
+                            ? 0.0
+                            : widget.isPremiumMode
+                            ? 0.24
+                            : (isDark ? 0.10 : 0.12),
+                      ),
+                  blurRadius: widget.isPremiumMode ? 24 : 18,
                   offset: const Offset(0, 10),
                 ),
               ],
@@ -2667,7 +2948,15 @@ class _SecureActionButtonState extends State<_SecureActionButton> {
                   : Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(widget.icon, size: 18, color: fg),
+                        if (widget.isPremiumMode && widget.premiumIcon != null)
+                          HugeIcon(
+                            icon: widget.premiumIcon!,
+                            size: 18,
+                            color: fg,
+                            strokeWidth: 1.9,
+                          )
+                        else
+                          Icon(widget.icon, size: 18, color: fg),
                         const SizedBox(width: 10),
                         Text(
                           widget.label,

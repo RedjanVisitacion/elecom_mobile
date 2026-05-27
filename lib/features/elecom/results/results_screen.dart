@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -7,6 +8,13 @@ import '../../../core/session/user_session.dart';
 import '../candidates/candidate_profile_screen.dart';
 import '../data/elecom_mobile_api.dart';
 import '../data/election_window_utils.dart';
+import '../student_dashboard/utils/theme_notifier.dart';
+
+const _premiumBlue = Color(0xFF2563EB);
+const _premiumGold = Color(0xFFFACC15);
+const _premiumInk = Color(0xFF0F172A);
+const _premiumSub = Color(0xFF475569);
+const _afproPink = Color(0xFFEC4899);
 
 class ResultsScreen extends StatefulWidget {
   const ResultsScreen({super.key});
@@ -43,7 +51,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
     'USG',
     'SITE',
     'PAFE',
-    'AFPROTECHS',
+    'AFPRO',
   ];
 
   @override
@@ -126,10 +134,17 @@ class _ResultsScreenState extends State<ResultsScreen> {
         _published = res['published'] != false;
         _canViewResults = true;
         _message = (res['message'] ?? '').toString();
-        _orgTotals = res['org_totals'] is Map ? Map<String, dynamic>.from(res['org_totals']) : <String, dynamic>{};
-        _positionTotals = res['position_totals'] is Map ? Map<String, dynamic>.from(res['position_totals']) : <String, dynamic>{};
+        _orgTotals = res['org_totals'] is Map
+            ? Map<String, dynamic>.from(res['org_totals'])
+            : <String, dynamic>{};
+        _positionTotals = res['position_totals'] is Map
+            ? Map<String, dynamic>.from(res['position_totals'])
+            : <String, dynamic>{};
         _grouped = res['grouped'] is List
-            ? (res['grouped'] as List).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList()
+            ? (res['grouped'] as List)
+                  .whereType<Map>()
+                  .map((e) => Map<String, dynamic>.from(e))
+                  .toList()
             : <Map<String, dynamic>>[];
         _analytics = analyticsRes;
         _chartAnimSeed++;
@@ -162,6 +177,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
 
   Widget _analyticsSection({
     required bool isDark,
+    required bool isPremiumMode,
     required Color fg,
     required Color sub,
     required Color card,
@@ -169,7 +185,9 @@ class _ResultsScreenState extends State<ResultsScreen> {
   }) {
     final turnout = _m(_analytics, 'turnout');
     final prog = _analytics['participation_by_program'] is Map
-        ? Map<String, dynamic>.from(_analytics['participation_by_program'] as Map)
+        ? Map<String, dynamic>.from(
+            _analytics['participation_by_program'] as Map,
+          )
         : <String, dynamic>{};
     final completion = _m(_analytics, 'vote_completion');
     final peak = _m(_analytics, 'peak_voting_time');
@@ -181,13 +199,21 @@ class _ResultsScreenState extends State<ResultsScreen> {
         ? turnoutPctRaw.toDouble()
         : double.tryParse('${turnoutPctRaw ?? ''}') ?? 0.0;
 
-
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       decoration: BoxDecoration(
         color: card,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: border),
+        boxShadow: isPremiumMode
+            ? [
+                BoxShadow(
+                  color: _premiumBlue.withValues(alpha: 0.10),
+                  blurRadius: 22,
+                  offset: const Offset(0, 10),
+                ),
+              ]
+            : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -195,17 +221,33 @@ class _ResultsScreenState extends State<ResultsScreen> {
           Row(
             children: [
               Expanded(
-                child: Text(
-                  'Election Analytics',
-                  style: TextStyle(
-                    color: fg,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 16,
-                  ),
+                child: Row(
+                  children: [
+                    if (isPremiumMode) ...[
+                      HugeIcon(
+                        icon: HugeIcons.strokeRoundedChartBarLine,
+                        color: _premiumBlue,
+                        size: 19,
+                        strokeWidth: 1.9,
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    Flexible(
+                      child: Text(
+                        'Election Analytics',
+                        style: TextStyle(
+                          color: fg,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               IconButton(
-                onPressed: () => setState(() => _analyticsExpanded = !_analyticsExpanded),
+                onPressed: () =>
+                    setState(() => _analyticsExpanded = !_analyticsExpanded),
                 icon: Icon(
                   _analyticsExpanded ? Icons.expand_less : Icons.expand_more,
                   color: sub,
@@ -227,9 +269,14 @@ class _ResultsScreenState extends State<ResultsScreen> {
                 // Turnout
                 _miniCard(
                   icon: Icons.groups_rounded,
+                  premiumIcon: HugeIcons.strokeRoundedUserMultiple,
+                  isPremiumMode: isPremiumMode,
                   title: 'Voter Turnout',
-                  value: '${turnoutPct.toStringAsFixed(turnoutPct == turnoutPct.roundToDouble() ? 0 : 1)}%',
-                  subtitle: eligible > 0 ? '$voted of $eligible eligible voters' : '$voted voted',
+                  value:
+                      '${turnoutPct.toStringAsFixed(turnoutPct == turnoutPct.roundToDouble() ? 0 : 1)}%',
+                  subtitle: eligible > 0
+                      ? '$voted of $eligible eligible voters'
+                      : '$voted voted',
                   fg: fg,
                   sub: sub,
                   border: border,
@@ -238,6 +285,8 @@ class _ResultsScreenState extends State<ResultsScreen> {
                 // Program participation
                 _rowCard(
                   icon: Icons.school_rounded,
+                  premiumIcon: HugeIcons.strokeRoundedSchool,
+                  isPremiumMode: isPremiumMode,
                   title: 'Participation by Program',
                   fg: fg,
                   sub: sub,
@@ -252,6 +301,8 @@ class _ResultsScreenState extends State<ResultsScreen> {
                 // Completion
                 _rowCard(
                   icon: Icons.checklist_rounded,
+                  premiumIcon: HugeIcons.strokeRoundedCheckList,
+                  isPremiumMode: isPremiumMode,
                   title: 'Position Participation',
                   fg: fg,
                   sub: sub,
@@ -269,6 +320,8 @@ class _ResultsScreenState extends State<ResultsScreen> {
                 // Peak time
                 _peakVotingCard(
                   icon: Icons.schedule_rounded,
+                  premiumIcon: HugeIcons.strokeRoundedClock01,
+                  isPremiumMode: isPremiumMode,
                   title: 'Voting Trend',
                   value: _s(peak, 'label', fallback: 'Not enough data yet'),
                   note: _toInt(peak['votes_submitted']) > 0
@@ -293,11 +346,12 @@ class _ResultsScreenState extends State<ResultsScreen> {
     String label,
     String value, {
     Color? valueColor,
-  }) =>
-      (label: label, value: value, valueColor: valueColor);
+  }) => (label: label, value: value, valueColor: valueColor);
 
   Widget _miniCard({
     required IconData icon,
+    required List<List<dynamic>> premiumIcon,
+    required bool isPremiumMode,
     required String title,
     required String value,
     required String subtitle,
@@ -321,21 +375,45 @@ class _ResultsScreenState extends State<ResultsScreen> {
               color: Colors.black.withValues(alpha: 0.04),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: sub, size: 20),
+            child: isPremiumMode
+                ? HugeIcon(
+                    icon: premiumIcon,
+                    color: _premiumBlue,
+                    size: 20,
+                    strokeWidth: 1.9,
+                  )
+                : Icon(icon, color: sub, size: 20),
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: TextStyle(color: fg, fontWeight: FontWeight.w800)),
+                Text(
+                  title,
+                  style: TextStyle(color: fg, fontWeight: FontWeight.w800),
+                ),
                 const SizedBox(height: 1),
-                Text(subtitle, style: TextStyle(color: sub, fontWeight: FontWeight.w600, fontSize: 12)),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    color: sub,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
+                ),
               ],
             ),
           ),
           const SizedBox(width: 8),
-          Text(value, style: TextStyle(color: fg, fontWeight: FontWeight.w900, fontSize: 18)),
+          Text(
+            value,
+            style: TextStyle(
+              color: fg,
+              fontWeight: FontWeight.w900,
+              fontSize: 18,
+            ),
+          ),
         ],
       ),
     );
@@ -343,6 +421,8 @@ class _ResultsScreenState extends State<ResultsScreen> {
 
   Widget _rowCard({
     required IconData icon,
+    required List<List<dynamic>> premiumIcon,
+    required bool isPremiumMode,
     required String title,
     required Color fg,
     required Color sub,
@@ -366,14 +446,26 @@ class _ResultsScreenState extends State<ResultsScreen> {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: (highlightColor ?? Colors.black).withValues(alpha: 0.06),
+                  color: (highlightColor ?? Colors.black).withValues(
+                    alpha: 0.06,
+                  ),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, color: highlightColor ?? sub, size: 20),
+                child: isPremiumMode
+                    ? HugeIcon(
+                        icon: premiumIcon,
+                        color: highlightColor ?? _premiumBlue,
+                        size: 20,
+                        strokeWidth: 1.9,
+                      )
+                    : Icon(icon, color: highlightColor ?? sub, size: 20),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(title, style: TextStyle(color: fg, fontWeight: FontWeight.w900)),
+                child: Text(
+                  title,
+                  style: TextStyle(color: fg, fontWeight: FontWeight.w900),
+                ),
               ),
             ],
           ),
@@ -381,11 +473,16 @@ class _ResultsScreenState extends State<ResultsScreen> {
           ...rows.asMap().entries.map((entry) {
             final r = entry.value;
             return Padding(
-              padding: EdgeInsets.only(bottom: entry.key == rows.length - 1 ? 0 : 6),
+              padding: EdgeInsets.only(
+                bottom: entry.key == rows.length - 1 ? 0 : 6,
+              ),
               child: Row(
                 children: [
                   Expanded(
-                    child: Text(r.label, style: TextStyle(color: sub, fontWeight: FontWeight.w700)),
+                    child: Text(
+                      r.label,
+                      style: TextStyle(color: sub, fontWeight: FontWeight.w700),
+                    ),
                   ),
                   const SizedBox(width: 8),
                   Flexible(
@@ -409,6 +506,8 @@ class _ResultsScreenState extends State<ResultsScreen> {
 
   Widget _peakVotingCard({
     required IconData icon,
+    required List<List<dynamic>> premiumIcon,
+    required bool isPremiumMode,
     required String title,
     required String value,
     required String subtitle,
@@ -421,9 +520,9 @@ class _ResultsScreenState extends State<ResultsScreen> {
   }) {
     final trendRows = trend is List
         ? trend
-            .whereType<Map>()
-            .map((e) => Map<String, dynamic>.from(e))
-            .toList()
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList()
         : <Map<String, dynamic>>[];
     final spots = <FlSpot>[];
     final labels = <int, String>{};
@@ -478,7 +577,14 @@ class _ResultsScreenState extends State<ResultsScreen> {
                   color: Colors.black.withValues(alpha: 0.06),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, color: sub, size: 20),
+                child: isPremiumMode
+                    ? HugeIcon(
+                        icon: premiumIcon,
+                        color: _premiumBlue,
+                        size: 20,
+                        strokeWidth: 1.9,
+                      )
+                    : Icon(icon, color: sub, size: 20),
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -502,155 +608,191 @@ class _ResultsScreenState extends State<ResultsScreen> {
           if (!hasEnoughData || spots.isEmpty) ...[
             Text(
               'Not enough data yet',
-              style: TextStyle(color: fg, fontWeight: FontWeight.w900, fontSize: 18),
+              style: TextStyle(
+                color: fg,
+                fontWeight: FontWeight.w900,
+                fontSize: 18,
+              ),
             ),
             const SizedBox(height: 2),
             Text(
               note,
-              style: TextStyle(color: sub, fontWeight: FontWeight.w600, fontSize: 12),
+              style: TextStyle(
+                color: sub,
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
             ),
           ] else ...[
             Padding(
               padding: const EdgeInsets.fromLTRB(6, 0, 10, 0),
               child: SizedBox(
-              height: 170,
-              child: LineChart(
-                LineChartData(
-                  minX: pointCount <= 1 ? -0.5 : -0.15,
-                  maxX: pointCount <= 1 ? 0.5 : (spots.length - 1).toDouble(),
-                  minY: 0,
-                  maxY: maxY * 1.25,
-                  gridData: FlGridData(
-                    show: true,
-                    drawVerticalLine: true,
-                    horizontalInterval: math.max(1, (maxY / 4).ceilToDouble()),
-                    verticalInterval: 1,
-                    getDrawingHorizontalLine: (_) => FlLine(
-                      color: Colors.black.withValues(alpha: 0.08),
-                      strokeWidth: 1,
+                height: 170,
+                child: LineChart(
+                  LineChartData(
+                    minX: pointCount <= 1 ? -0.5 : -0.15,
+                    maxX: pointCount <= 1 ? 0.5 : (spots.length - 1).toDouble(),
+                    minY: 0,
+                    maxY: maxY * 1.25,
+                    gridData: FlGridData(
+                      show: true,
+                      drawVerticalLine: true,
+                      horizontalInterval: math.max(
+                        1,
+                        (maxY / 4).ceilToDouble(),
+                      ),
+                      verticalInterval: 1,
+                      getDrawingHorizontalLine: (_) => FlLine(
+                        color: Colors.black.withValues(alpha: 0.08),
+                        strokeWidth: 1,
+                      ),
+                      getDrawingVerticalLine: (_) => FlLine(
+                        color: Colors.black.withValues(alpha: 0.06),
+                        strokeWidth: 1,
+                      ),
                     ),
-                    getDrawingVerticalLine: (_) => FlLine(
-                      color: Colors.black.withValues(alpha: 0.06),
-                      strokeWidth: 1,
+                    borderData: FlBorderData(
+                      show: true,
+                      border: Border.all(color: border),
                     ),
-                  ),
-                  borderData: FlBorderData(
-                    show: true,
-                    border: Border.all(color: border),
-                  ),
-                  titlesData: FlTitlesData(
-                    rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 30,
-                        interval: math.max(1, (maxY / 4).ceilToDouble()),
-                        getTitlesWidget: (v, meta) => Text(
-                          v.toInt().toString(),
-                          style: TextStyle(
-                            color: sub,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
+                    titlesData: FlTitlesData(
+                      rightTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      topTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 30,
+                          interval: math.max(1, (maxY / 4).ceilToDouble()),
+                          getTitlesWidget: (v, meta) => Text(
+                            v.toInt().toString(),
+                            style: TextStyle(
+                              color: sub,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        interval: 1,
-                        reservedSize: 32,
-                        getTitlesWidget: (v, meta) {
-                          // Avoid duplicate labels caused by non-integer tick positions.
-                          if ((v - v.roundToDouble()).abs() > 0.001) {
-                            return const SizedBox.shrink();
-                          }
-                          final idx = v.round();
-                          final label = labels[idx];
-                          if (label == null || label.isEmpty) return const SizedBox.shrink();
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Text(
-                              label,
-                              style: TextStyle(
-                                color: sub,
-                                fontSize: 8.5,
-                                fontWeight: FontWeight.w600,
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          interval: 1,
+                          reservedSize: 32,
+                          getTitlesWidget: (v, meta) {
+                            // Avoid duplicate labels caused by non-integer tick positions.
+                            if ((v - v.roundToDouble()).abs() > 0.001) {
+                              return const SizedBox.shrink();
+                            }
+                            final idx = v.round();
+                            final label = labels[idx];
+                            if (label == null || label.isEmpty)
+                              return const SizedBox.shrink();
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(
+                                label,
+                                style: TextStyle(
+                                  color: sub,
+                                  fontSize: 8.5,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                    lineBarsData: [
+                      LineChartBarData(
+                        spots: spots,
+                        isCurved: true,
+                        color: isPremiumMode
+                            ? _premiumBlue
+                            : const Color(0xFF2563EB),
+                        barWidth: 2.5,
+                        dotData: FlDotData(
+                          show: true,
+                          getDotPainter: (spot, percent, barData, index) {
+                            final isPeak = peakXs.contains(spot.x);
+                            return FlDotCirclePainter(
+                              radius: isPeak ? 4.5 : 3,
+                              color: isPeak
+                                  ? (isPremiumMode
+                                        ? _premiumGold
+                                        : const Color(0xFF16A34A))
+                                  : (isPremiumMode
+                                        ? _premiumBlue
+                                        : const Color(0xFF2563EB)),
+                              strokeWidth: isPeak ? 1.5 : 1,
+                              strokeColor: Colors.white,
+                            );
+                          },
+                        ),
+                        belowBarData: BarAreaData(
+                          show: true,
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              (isPremiumMode
+                                      ? _premiumBlue
+                                      : const Color(0xFF2563EB))
+                                  .withValues(alpha: 0.28),
+                              (isPremiumMode
+                                      ? _premiumBlue
+                                      : const Color(0xFF2563EB))
+                                  .withValues(alpha: 0.04),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                    lineTouchData: LineTouchData(
+                      touchTooltipData: LineTouchTooltipData(
+                        getTooltipColor: (_) => Colors.black87,
+                        fitInsideHorizontally: true,
+                        fitInsideVertically: true,
+                        maxContentWidth: 120,
+                        getTooltipItems: (items) => items.map((it) {
+                          final idx = it.x.round();
+                          final w =
+                              trendRows[idx]['window_label']?.toString() ?? '';
+                          return LineTooltipItem(
+                            '$w\n${it.y.toInt()} votes',
+                            const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 11,
                             ),
                           );
-                        },
+                        }).toList(),
                       ),
-                    ),
-                  ),
-                  lineBarsData: [
-                    LineChartBarData(
-                      spots: spots,
-                      isCurved: true,
-                      color: const Color(0xFF2563EB),
-                      barWidth: 2.5,
-                      dotData: FlDotData(
-                        show: true,
-                        getDotPainter: (spot, percent, barData, index) {
-                          final isPeak = peakXs.contains(spot.x);
-                          return FlDotCirclePainter(
-                            radius: isPeak ? 4.5 : 3,
-                            color: isPeak ? const Color(0xFF16A34A) : const Color(0xFF2563EB),
-                            strokeWidth: isPeak ? 1.5 : 1,
-                            strokeColor: Colors.white,
-                          );
-                        },
-                      ),
-                      belowBarData: BarAreaData(
-                        show: true,
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            const Color(0xFF2563EB).withValues(alpha: 0.28),
-                            const Color(0xFF2563EB).withValues(alpha: 0.04),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                  lineTouchData: LineTouchData(
-                    touchTooltipData: LineTouchTooltipData(
-                      getTooltipColor: (_) => Colors.black87,
-                      fitInsideHorizontally: true,
-                      fitInsideVertically: true,
-                      maxContentWidth: 120,
-                      getTooltipItems: (items) => items.map((it) {
-                        final idx = it.x.round();
-                        final w = trendRows[idx]['window_label']?.toString() ?? '';
-                        return LineTooltipItem(
-                          '$w\n${it.y.toInt()} votes',
-                          const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 11,
-                          ),
-                        );
-                      }).toList(),
                     ),
                   ),
                 ),
               ),
-            )),
+            ),
             const SizedBox(height: 6),
             Text(
               'Peak Time: $value',
-              style: TextStyle(color: fg, fontWeight: FontWeight.w800, fontSize: 14),
+              style: TextStyle(
+                color: fg,
+                fontWeight: FontWeight.w800,
+                fontSize: 14,
+              ),
             ),
             const SizedBox(height: 2),
             Text(
               'Peak Votes: $note',
-              style: TextStyle(color: sub, fontWeight: FontWeight.w600, fontSize: 12),
+              style: TextStyle(
+                color: sub,
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
             ),
           ],
         ],
@@ -675,7 +817,9 @@ class _ResultsScreenState extends State<ResultsScreen> {
     var label = raw.trim().toUpperCase();
     if (label.isEmpty) return '';
     label = label.replaceAll(RegExp(r'\s+'), ' ');
-    final amPmMatch = RegExp(r'^(\d{1,2})(?::00)?\s*(AM|PM)$').firstMatch(label);
+    final amPmMatch = RegExp(
+      r'^(\d{1,2})(?::00)?\s*(AM|PM)$',
+    ).firstMatch(label);
     if (amPmMatch != null) {
       final hour = amPmMatch.group(1);
       final suffix = amPmMatch.group(2);
@@ -688,7 +832,11 @@ class _ResultsScreenState extends State<ResultsScreen> {
     final first = (c['first_name'] ?? '').toString().trim();
     final middle = (c['middle_name'] ?? '').toString().trim();
     final last = (c['last_name'] ?? '').toString().trim();
-    final joined = [first, if (middle.isNotEmpty) middle, last].where((x) => x.isNotEmpty).join(' ').trim();
+    final joined = [
+      first,
+      if (middle.isNotEmpty) middle,
+      last,
+    ].where((x) => x.isNotEmpty).join(' ').trim();
     return joined.isNotEmpty ? joined : (c['name'] ?? 'Candidate').toString();
   }
 
@@ -699,21 +847,31 @@ class _ResultsScreenState extends State<ResultsScreen> {
     final photo = resolvedCandidatePhotoUrl(photoUrlRaw);
     final stroke = isDark ? Colors.white24 : const Color(0xFFD7D7D7);
     return Container(
-      decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: stroke, width: 1.5)),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: stroke, width: 1.5),
+      ),
       padding: const EdgeInsets.all(1),
       child: CircleAvatar(
         radius: 14,
         backgroundColor: isDark ? Colors.white12 : const Color(0xFFEAF1FF),
         backgroundImage: photo != null ? NetworkImage(photo) : null,
-        child: photo == null ? Icon(Icons.person, size: 13, color: isDark ? Colors.white54 : Colors.black54) : null,
+        child: photo == null
+            ? Icon(
+                Icons.person,
+                size: 13,
+                color: isDark ? Colors.white54 : Colors.black54,
+              )
+            : null,
       ),
     );
   }
 
   Color _orgColor(String org) {
     switch (org.toUpperCase().trim()) {
+      case 'AFPRO':
       case 'AFPROTECHS':
-        return const Color(0xFFEC4899);
+        return _afproPink;
       case 'SITE':
         return const Color(0xFF7F1D1D);
       case 'PAFE':
@@ -733,13 +891,18 @@ class _ResultsScreenState extends State<ResultsScreen> {
     if (p.contains('associate') && p.contains('secret')) return 3;
     if (p.contains('treasurer') || p.contains('treas')) return 4;
     if (p.contains('auditor') || p.contains('audit')) return 5;
-    if (p.contains('public information officer') || p.contains('p.i.o') || p.contains('pio')) return 6;
+    if (p.contains('public information officer') ||
+        p.contains('p.i.o') ||
+        p.contains('pio'))
+      return 6;
     if (p.contains('representative') || p.contains('rep')) return 7;
     return 99;
   }
 
   String _normalizeToken(String value) {
-    return value.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
+    final normalized = value.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
+    if (normalized.startsWith('AFPRO')) return 'AFPRO';
+    return normalized;
   }
 
   String? _preferredOrganizationFromDepartment(String? departmentRaw) {
@@ -748,7 +911,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
 
     if (department.contains('BSIT')) return 'SITE';
     if (department.contains('BTLED')) return 'PAFE';
-    if (department.contains('BFPT')) return 'AFPROTECHS';
+    if (department.contains('BFPT')) return 'AFPRO';
     return null;
   }
 
@@ -758,16 +921,22 @@ class _ResultsScreenState extends State<ResultsScreen> {
   }) {
     final normalizedOrg = _normalizeToken(orgName);
     if (normalizedOrg == 'USG') return 0;
-    if (preferredOrganization != null && normalizedOrg == _normalizeToken(preferredOrganization)) return 1;
+    if (preferredOrganization != null &&
+        normalizedOrg == _normalizeToken(preferredOrganization))
+      return 1;
     return 2;
   }
 
-  Map<String, Map<String, List<Map<String, dynamic>>>> _byOrganizationPosition() {
+  Map<String, Map<String, List<Map<String, dynamic>>>>
+  _byOrganizationPosition() {
     final out = <String, Map<String, List<Map<String, dynamic>>>>{};
     for (final party in _grouped) {
       final orgsRaw = party['organizations'];
       final orgs = orgsRaw is List
-          ? orgsRaw.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList()
+          ? orgsRaw
+                .whereType<Map>()
+                .map((e) => Map<String, dynamic>.from(e))
+                .toList()
           : <Map<String, dynamic>>[];
       for (final org in orgs) {
         final orgName = (org['organization'] ?? '').toString().trim();
@@ -775,7 +944,10 @@ class _ResultsScreenState extends State<ResultsScreen> {
         out.putIfAbsent(orgName, () => <String, List<Map<String, dynamic>>>{});
         final positionsRaw = org['positions'];
         final positions = positionsRaw is List
-            ? positionsRaw.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList()
+            ? positionsRaw
+                  .whereType<Map>()
+                  .map((e) => Map<String, dynamic>.from(e))
+                  .toList()
             : <Map<String, dynamic>>[];
         for (final pos in positions) {
           final posLabel = (pos['position'] ?? '').toString().trim();
@@ -783,7 +955,10 @@ class _ResultsScreenState extends State<ResultsScreen> {
           out[orgName]!.putIfAbsent(posLabel, () => <Map<String, dynamic>>[]);
           final candidatesRaw = pos['candidates'];
           final candidates = candidatesRaw is List
-              ? candidatesRaw.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList()
+              ? candidatesRaw
+                    .whereType<Map>()
+                    .map((e) => Map<String, dynamic>.from(e))
+                    .toList()
               : <Map<String, dynamic>>[];
           out[orgName]![posLabel]!.addAll(candidates);
         }
@@ -811,11 +986,32 @@ class _ResultsScreenState extends State<ResultsScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final fg = isDark ? Colors.white : Colors.black87;
-    final sub = isDark ? Colors.white70 : const Color(0xFF5C5C5C);
-    final card = isDark ? const Color(0xFF2A2A35) : Colors.white;
-    final border = isDark ? Colors.white12 : const Color(0xFFE0E0E0);
-    final pageBg = isDark ? const Color(0xFF171620) : const Color(0xFFF2F3F5);
+    final isPremiumMode = themeNotifier.isPremiumMode;
+    final fg = isPremiumMode
+        ? _premiumInk
+        : isDark
+        ? Colors.white
+        : Colors.black87;
+    final sub = isPremiumMode
+        ? _premiumSub
+        : isDark
+        ? Colors.white70
+        : const Color(0xFF5C5C5C);
+    final card = isPremiumMode
+        ? Colors.white.withValues(alpha: 0.92)
+        : isDark
+        ? const Color(0xFF2A2A35)
+        : Colors.white;
+    final border = isPremiumMode
+        ? _premiumBlue.withValues(alpha: 0.14)
+        : isDark
+        ? Colors.white12
+        : const Color(0xFFE0E0E0);
+    final pageBg = isPremiumMode
+        ? Colors.transparent
+        : isDark
+        ? const Color(0xFF171620)
+        : const Color(0xFFF2F3F5);
     final trackGrey = isDark ? Colors.white12 : const Color(0xFFE8E9EC);
 
     if (_loading) {
@@ -834,13 +1030,27 @@ class _ResultsScreenState extends State<ResultsScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.error_outline, size: 48, color: sub),
+                isPremiumMode
+                    ? HugeIcon(
+                        icon: HugeIcons.strokeRoundedAlert02,
+                        size: 48,
+                        color: _premiumBlue,
+                        strokeWidth: 1.8,
+                      )
+                    : Icon(Icons.error_outline, size: 48, color: sub),
                 const SizedBox(height: 12),
-                Text(_error!, textAlign: TextAlign.center, style: TextStyle(color: sub)),
+                Text(
+                  _error!,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: sub),
+                ),
                 const SizedBox(height: 16),
                 FilledButton(
                   onPressed: _load,
-                  style: FilledButton.styleFrom(backgroundColor: fg, foregroundColor: isDark ? Colors.black : Colors.white),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: fg,
+                    foregroundColor: isDark ? Colors.black : Colors.white,
+                  ),
                   child: const Text('Retry'),
                 ),
               ],
@@ -868,18 +1078,38 @@ class _ResultsScreenState extends State<ResultsScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.bar_chart_outlined, size: 56, color: sub),
+                        isPremiumMode
+                            ? HugeIcon(
+                                icon: HugeIcons.strokeRoundedChartBarLine,
+                                size: 56,
+                                color: _premiumBlue,
+                                strokeWidth: 1.8,
+                              )
+                            : Icon(
+                                Icons.bar_chart_outlined,
+                                size: 56,
+                                color: sub,
+                              ),
                         const SizedBox(height: 16),
                         Text(
                           'Results',
                           textAlign: TextAlign.center,
-                          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20, color: fg),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 20,
+                            color: fg,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          _message.isNotEmpty ? _message : 'Results are not yet available.',
+                          _message.isNotEmpty
+                              ? _message
+                              : 'Results are not yet available.',
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: sub, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            color: sub,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ],
                     ),
@@ -892,8 +1122,12 @@ class _ResultsScreenState extends State<ResultsScreen> {
       );
     }
 
-    final totalVotes = _orgTotals.values.fold<int>(0, (sum, v) => sum + _toInt(v));
-    final orgEntries = _orgTotals.entries.toList()..sort((a, b) => _toInt(b.value).compareTo(_toInt(a.value)));
+    final totalVotes = _orgTotals.values.fold<int>(
+      0,
+      (sum, v) => sum + _toInt(v),
+    );
+    final orgEntries = _orgTotals.entries.toList()
+      ..sort((a, b) => _toInt(b.value).compareTo(_toInt(a.value)));
     final positionEntries = _positionTotals.entries.toList()
       ..sort((a, b) {
         final ai = _positionOrderIndex(a.key);
@@ -901,13 +1135,23 @@ class _ResultsScreenState extends State<ResultsScreen> {
         if (ai != bi) return ai.compareTo(bi);
         return a.key.compareTo(b.key);
       });
-    final maxPositionVotes = positionEntries.isEmpty ? 1 : _toInt(positionEntries.first.value).clamp(1, 1 << 30);
+    final maxPositionVotes = positionEntries.isEmpty
+        ? 1
+        : _toInt(positionEntries.first.value).clamp(1, 1 << 30);
     final organizationsByPosition = _byOrganizationPosition();
-    final preferredOrganization = _preferredOrganizationFromDepartment(_viewerDepartment);
+    final preferredOrganization = _preferredOrganizationFromDepartment(
+      _viewerDepartment,
+    );
     var orderedOrganizationEntries = organizationsByPosition.entries.toList()
       ..sort((a, b) {
-        final aPriority = _organizationPriority(orgName: a.key, preferredOrganization: preferredOrganization);
-        final bPriority = _organizationPriority(orgName: b.key, preferredOrganization: preferredOrganization);
+        final aPriority = _organizationPriority(
+          orgName: a.key,
+          preferredOrganization: preferredOrganization,
+        );
+        final bPriority = _organizationPriority(
+          orgName: b.key,
+          preferredOrganization: preferredOrganization,
+        );
         if (aPriority != bPriority) return aPriority.compareTo(bPriority);
 
         final av = _toInt(_orgTotals[a.key]);
@@ -917,8 +1161,9 @@ class _ResultsScreenState extends State<ResultsScreen> {
       });
 
     if (_orgFilter != 'ALL') {
-      orderedOrganizationEntries =
-          orderedOrganizationEntries.where((e) => _normalizeToken(e.key) == _normalizeToken(_orgFilter)).toList();
+      orderedOrganizationEntries = orderedOrganizationEntries
+          .where((e) => _normalizeToken(e.key) == _normalizeToken(_orgFilter))
+          .toList();
     }
 
     final showVotesByPosition = _orgFilter == 'ALL';
@@ -934,7 +1179,12 @@ class _ResultsScreenState extends State<ResultsScreen> {
             final maxW = math.min(constraints.maxWidth, 560.0);
             return ListView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: EdgeInsets.fromLTRB(16, 12, 16, math.max(MediaQuery.paddingOf(context).bottom + 16, 24)),
+              padding: EdgeInsets.fromLTRB(
+                16,
+                12,
+                16,
+                math.max(MediaQuery.paddingOf(context).bottom + 16, 24),
+              ),
               children: [
                 Center(
                   child: ConstrainedBox(
@@ -942,11 +1192,37 @@ class _ResultsScreenState extends State<ResultsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text('Election Results', style: TextStyle(color: fg, fontWeight: FontWeight.w900, fontSize: 22)),
+                        Row(
+                          children: [
+                            if (isPremiumMode) ...[
+                              HugeIcon(
+                                icon: HugeIcons.strokeRoundedChartBarLine,
+                                color: _premiumBlue,
+                                size: 24,
+                                strokeWidth: 1.9,
+                              ),
+                              const SizedBox(width: 9),
+                            ],
+                            Expanded(
+                              child: Text(
+                                'Election Results',
+                                style: TextStyle(
+                                  color: fg,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 22,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                         const SizedBox(height: 4),
                         Text(
                           'Real-time tally from ELECOM database',
-                          style: TextStyle(color: sub, fontWeight: FontWeight.w600, fontSize: 13),
+                          style: TextStyle(
+                            color: sub,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
                         ),
                         const SizedBox(height: 14),
 
@@ -957,14 +1233,50 @@ class _ResultsScreenState extends State<ResultsScreen> {
                             color: card,
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(color: border),
+                            boxShadow: isPremiumMode
+                                ? [
+                                    BoxShadow(
+                                      color: _premiumBlue.withValues(
+                                        alpha: 0.10,
+                                      ),
+                                      blurRadius: 22,
+                                      offset: const Offset(0, 10),
+                                    ),
+                                  ]
+                                : null,
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Overall Vote Distribution', style: TextStyle(color: fg, fontWeight: FontWeight.w800, fontSize: 15)),
+                              Row(
+                                children: [
+                                  if (isPremiumMode) ...[
+                                    HugeIcon(
+                                      icon: HugeIcons.strokeRoundedPieChart,
+                                      color: _premiumBlue,
+                                      size: 18,
+                                      strokeWidth: 1.9,
+                                    ),
+                                    const SizedBox(width: 8),
+                                  ],
+                                  Expanded(
+                                    child: Text(
+                                      'Overall Vote Distribution',
+                                      style: TextStyle(
+                                        color: fg,
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 15,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                               const SizedBox(height: 10),
                               if (orgEntries.isEmpty)
-                                Text('No votes recorded yet.', style: TextStyle(color: sub, fontSize: 13))
+                                Text(
+                                  'No votes recorded yet.',
+                                  style: TextStyle(color: sub, fontSize: 13),
+                                )
                               else ...[
                                 Center(
                                   child: SizedBox(
@@ -972,7 +1284,9 @@ class _ResultsScreenState extends State<ResultsScreen> {
                                     height: 148,
                                     child: TweenAnimationBuilder<double>(
                                       key: ValueKey('donut_$_chartAnimSeed'),
-                                      duration: const Duration(milliseconds: 650),
+                                      duration: const Duration(
+                                        milliseconds: 650,
+                                      ),
                                       curve: Curves.easeOutCubic,
                                       tween: Tween<double>(begin: 0, end: 1),
                                       builder: (context, t, _) => Stack(
@@ -981,9 +1295,19 @@ class _ResultsScreenState extends State<ResultsScreen> {
                                           CustomPaint(
                                             size: const Size(148, 148),
                                             painter: _DonutChartPainter(
-                                              values: orgEntries.map((e) => _toInt(e.value).toDouble()).toList(),
-                                              colors: orgEntries.map((e) => _orgColor(e.key)).toList(),
-                                              trackColor: isDark ? Colors.white12 : Colors.black12,
+                                              values: orgEntries
+                                                  .map(
+                                                    (e) => _toInt(
+                                                      e.value,
+                                                    ).toDouble(),
+                                                  )
+                                                  .toList(),
+                                              colors: orgEntries
+                                                  .map((e) => _orgColor(e.key))
+                                                  .toList(),
+                                              trackColor: isDark
+                                                  ? Colors.white12
+                                                  : Colors.black12,
                                               progress: t,
                                               strokeWidth: 16,
                                             ),
@@ -993,8 +1317,22 @@ class _ResultsScreenState extends State<ResultsScreen> {
                                             child: Column(
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
-                                                Text('$totalVotes', style: TextStyle(color: fg, fontWeight: FontWeight.w900, fontSize: 26)),
-                                                Text('Total Votes', style: TextStyle(color: sub, fontWeight: FontWeight.w700, fontSize: 11)),
+                                                Text(
+                                                  '$totalVotes',
+                                                  style: TextStyle(
+                                                    color: fg,
+                                                    fontWeight: FontWeight.w900,
+                                                    fontSize: 26,
+                                                  ),
+                                                ),
+                                                Text(
+                                                  'Total Votes',
+                                                  style: TextStyle(
+                                                    color: sub,
+                                                    fontWeight: FontWeight.w700,
+                                                    fontSize: 11,
+                                                  ),
+                                                ),
                                               ],
                                             ),
                                           ),
@@ -1004,22 +1342,31 @@ class _ResultsScreenState extends State<ResultsScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 12),
-                                LayoutBuilder(builder: (context, legConstraints) {
-                                  final w = legConstraints.maxWidth.isFinite ? legConstraints.maxWidth : 320.0;
-                                  final half = math.max((w - 8) / 2, 120.0);
-                                  return Wrap(
-                                    alignment: WrapAlignment.start,
-                                    spacing: 8,
-                                    runSpacing: 8,
-                                    children: orgEntries.map((e) => _LegendChip(
-                                      label: '${e.key}  ·  ${_toInt(e.value)}',
-                                      color: _orgColor(e.key),
-                                      textColor: fg,
-                                      borderColor: border,
-                                      maxChipWidth: half,
-                                    )).toList(),
-                                  );
-                                }),
+                                LayoutBuilder(
+                                  builder: (context, legConstraints) {
+                                    final w = legConstraints.maxWidth.isFinite
+                                        ? legConstraints.maxWidth
+                                        : 320.0;
+                                    final half = math.max((w - 8) / 2, 120.0);
+                                    return Wrap(
+                                      alignment: WrapAlignment.start,
+                                      spacing: 8,
+                                      runSpacing: 8,
+                                      children: orgEntries
+                                          .map(
+                                            (e) => _LegendChip(
+                                              label:
+                                                  '${e.key}  ·  ${_toInt(e.value)}',
+                                              color: _orgColor(e.key),
+                                              textColor: fg,
+                                              borderColor: border,
+                                              maxChipWidth: half,
+                                            ),
+                                          )
+                                          .toList(),
+                                    );
+                                  },
+                                ),
                               ],
                             ],
                           ),
@@ -1029,6 +1376,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
                         const SizedBox(height: 12),
                         _analyticsSection(
                           isDark: isDark,
+                          isPremiumMode: isPremiumMode,
                           fg: fg,
                           sub: sub,
                           card: card,
@@ -1037,42 +1385,68 @@ class _ResultsScreenState extends State<ResultsScreen> {
 
                         /// Organization filters
                         const SizedBox(height: 12),
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children: _fixedOrgFilters.map((filterKey) {
+                        SizedBox(
+                          height: 46,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            physics: const BouncingScrollPhysics(),
+                            clipBehavior: Clip.none,
+                            padding: const EdgeInsets.fromLTRB(0, 4, 28, 8),
+                            itemCount: _fixedOrgFilters.length,
+                            separatorBuilder: (context, index) =>
+                                const SizedBox(width: 8),
+                            itemBuilder: (context, index) {
+                              final filterKey = _fixedOrgFilters[index];
                               final selected = filterKey == 'ALL'
                                   ? (_orgFilter == 'ALL')
-                                  : (_normalizeToken(_orgFilter) == _normalizeToken(filterKey));
-                              final label = filterKey == 'ALL' ? 'All' : filterKey;
-                              return Padding(
-                                padding: const EdgeInsets.only(right: 8),
-                                child: FilterChip(
-                                  label: Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 2),
-                                    child: Text(
-                                      label,
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 13,
-                                        color: selected ? (isDark ? Colors.white : Colors.white) : (isDark ? Colors.white70 : sub),
-                                      ),
+                                  : (_normalizeToken(_orgFilter) ==
+                                        _normalizeToken(filterKey));
+                              final label = filterKey == 'ALL'
+                                  ? 'All'
+                                  : filterKey;
+                              return FilterChip(
+                                label: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 2,
+                                  ),
+                                  child: Text(
+                                    label,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13,
+                                      color: selected
+                                          ? Colors.white
+                                          : (isDark ? Colors.white70 : sub),
                                     ),
                                   ),
-                                  selected: selected,
-                                  showCheckmark: false,
-                                  backgroundColor: isDark ? Colors.white10 : Colors.white,
-                                  selectedColor: isDark ? Colors.white24 : Colors.black87,
-                                  side: BorderSide(color: selected ? Colors.transparent : border),
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-                                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                  visualDensity: VisualDensity.compact,
-                                  onSelected: (_) {
-                                    setState(() => _orgFilter = filterKey);
-                                  },
                                 ),
+                                selected: selected,
+                                showCheckmark: false,
+                                backgroundColor: isPremiumMode
+                                    ? Colors.white.withValues(alpha: 0.88)
+                                    : isDark
+                                    ? Colors.white10
+                                    : Colors.white,
+                                selectedColor: isPremiumMode
+                                    ? _premiumBlue
+                                    : isDark
+                                    ? Colors.white24
+                                    : Colors.black87,
+                                side: BorderSide(
+                                  color: selected ? Colors.transparent : border,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 0,
+                                ),
+                                materialTapTargetSize:
+                                    MaterialTapTargetSize.shrinkWrap,
+                                visualDensity: VisualDensity.compact,
+                                onSelected: (_) {
+                                  setState(() => _orgFilter = filterKey);
+                                },
                               );
-                            }).toList(),
+                            },
                           ),
                         ),
 
@@ -1081,7 +1455,12 @@ class _ResultsScreenState extends State<ResultsScreen> {
                           padding: const EdgeInsets.only(top: 10, bottom: 4),
                           child: Text(
                             'Percentages are based on votes cast for each position.',
-                            style: TextStyle(color: sub, fontSize: 12, fontWeight: FontWeight.w500, height: 1.3),
+                            style: TextStyle(
+                              color: sub,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              height: 1.3,
+                            ),
                           ),
                         ),
 
@@ -1093,23 +1472,68 @@ class _ResultsScreenState extends State<ResultsScreen> {
                               color: card,
                               borderRadius: BorderRadius.circular(14),
                               border: Border.all(color: border),
+                              boxShadow: isPremiumMode
+                                  ? [
+                                      BoxShadow(
+                                        color: _premiumBlue.withValues(
+                                          alpha: 0.08,
+                                        ),
+                                        blurRadius: 18,
+                                        offset: const Offset(0, 8),
+                                      ),
+                                    ]
+                                  : null,
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('Votes by Position', style: TextStyle(color: fg, fontWeight: FontWeight.w800, fontSize: 15)),
+                                Row(
+                                  children: [
+                                    if (isPremiumMode) ...[
+                                      HugeIcon(
+                                        icon: HugeIcons.strokeRoundedCheckList,
+                                        color: _premiumBlue,
+                                        size: 18,
+                                        strokeWidth: 1.9,
+                                      ),
+                                      const SizedBox(width: 8),
+                                    ],
+                                    Expanded(
+                                      child: Text(
+                                        'Votes by Position',
+                                        style: TextStyle(
+                                          color: fg,
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 15,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                                 const SizedBox(height: 10),
                                 if (positionEntries.isEmpty)
-                                  Text('No position data yet.', style: TextStyle(color: sub, fontSize: 13))
+                                  Text(
+                                    'No position data yet.',
+                                    style: TextStyle(color: sub, fontSize: 13),
+                                  )
                                 else
-                                  ...positionEntries.asMap().entries.map((entry) {
+                                  ...positionEntries.asMap().entries.map((
+                                    entry,
+                                  ) {
                                     final e = entry.value;
                                     final votes = _toInt(e.value);
                                     final ratio = votes / maxPositionVotes;
                                     return Padding(
-                                      padding: EdgeInsets.only(bottom: entry.key == positionEntries.length - 1 ? 0 : 10),
+                                      padding: EdgeInsets.only(
+                                        bottom:
+                                            entry.key ==
+                                                positionEntries.length - 1
+                                            ? 0
+                                            : 10,
+                                      ),
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Row(
                                             children: [
@@ -1117,31 +1541,54 @@ class _ResultsScreenState extends State<ResultsScreen> {
                                                 child: Text(
                                                   e.key,
                                                   maxLines: 2,
-                                                  overflow: TextOverflow.ellipsis,
-                                                  style: TextStyle(color: fg, fontWeight: FontWeight.w600, fontSize: 13),
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: TextStyle(
+                                                    color: fg,
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 13,
+                                                  ),
                                                 ),
                                               ),
                                               Text(
                                                 _formatPercent(ratio),
-                                                style: TextStyle(color: sub, fontWeight: FontWeight.w700, fontSize: 12),
+                                                style: TextStyle(
+                                                  color: sub,
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 12,
+                                                ),
                                               ),
                                             ],
                                           ),
                                           const SizedBox(height: 4),
                                           TweenAnimationBuilder<double>(
-                                            key: ValueKey('position_${entry.key}_$_chartAnimSeed'),
-                                            duration: Duration(milliseconds: 500 + (entry.key * 50)),
-                                            curve: Curves.easeOutCubic,
-                                            tween: Tween<double>(begin: 0, end: ratio.clamp(0, 1)),
-                                            builder: (context, v, _) => ClipRRect(
-                                              borderRadius: BorderRadius.circular(99),
-                                              child: LinearProgressIndicator(
-                                                value: v,
-                                                minHeight: 4,
-                                                backgroundColor: trackGrey,
-                                                color: fg,
-                                              ),
+                                            key: ValueKey(
+                                              'position_${entry.key}_$_chartAnimSeed',
                                             ),
+                                            duration: Duration(
+                                              milliseconds:
+                                                  500 + (entry.key * 50),
+                                            ),
+                                            curve: Curves.easeOutCubic,
+                                            tween: Tween<double>(
+                                              begin: 0,
+                                              end: ratio.clamp(0, 1),
+                                            ),
+                                            builder: (context, v, _) =>
+                                                ClipRRect(
+                                                  borderRadius:
+                                                      BorderRadius.circular(99),
+                                                  child:
+                                                      LinearProgressIndicator(
+                                                        value: v,
+                                                        minHeight: 4,
+                                                        backgroundColor:
+                                                            trackGrey,
+                                                        color: isPremiumMode
+                                                            ? _premiumBlue
+                                                            : fg,
+                                                      ),
+                                                ),
                                           ),
                                         ],
                                       ),
@@ -1166,7 +1613,10 @@ class _ResultsScreenState extends State<ResultsScreen> {
                               _orgFilter == 'ALL'
                                   ? 'No organization results loaded yet.'
                                   : 'No results for ${_orgFilter == 'ALL' ? '' : _orgFilter} yet.',
-                              style: TextStyle(color: sub, fontWeight: FontWeight.w600),
+                              style: TextStyle(
+                                color: sub,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           )
                         else
@@ -1175,7 +1625,9 @@ class _ResultsScreenState extends State<ResultsScreen> {
                             final posMap = orgEntry.value;
                             final orgVotes = _toInt(_orgTotals[orgName]);
                             final orgColor = _orgColor(orgName);
-                            final expanded = _expandedOrgNames.contains(orgName);
+                            final expanded = _expandedOrgNames.contains(
+                              orgName,
+                            );
                             final sortedPosEntries = posMap.entries.toList()
                               ..sort((a, b) {
                                 final ai = _positionOrderIndex(a.key);
@@ -1190,6 +1642,17 @@ class _ResultsScreenState extends State<ResultsScreen> {
                                 color: card,
                                 borderRadius: BorderRadius.circular(14),
                                 border: Border.all(color: border),
+                                boxShadow: isPremiumMode
+                                    ? [
+                                        BoxShadow(
+                                          color: orgColor.withValues(
+                                            alpha: 0.12,
+                                          ),
+                                          blurRadius: 18,
+                                          offset: const Offset(0, 8),
+                                        ),
+                                      ]
+                                    : null,
                               ),
                               clipBehavior: Clip.antiAlias,
                               child: Column(
@@ -1200,148 +1663,331 @@ class _ResultsScreenState extends State<ResultsScreen> {
                                     child: InkWell(
                                       onTap: () => _toggleOrgExpanded(orgName),
                                       child: Padding(
-                                        padding: const EdgeInsets.fromLTRB(12, 12, 8, 12),
+                                        padding: const EdgeInsets.fromLTRB(
+                                          12,
+                                          12,
+                                          8,
+                                          12,
+                                        ),
                                         child: Row(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Container(
                                               width: 3,
                                               height: 40,
                                               decoration: BoxDecoration(
                                                 color: orgColor,
-                                                borderRadius: BorderRadius.circular(2),
+                                                borderRadius:
+                                                    BorderRadius.circular(2),
                                               ),
                                             ),
                                             const SizedBox(width: 10),
                                             Expanded(
                                               child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
                                                 children: [
                                                   Text(
                                                     orgName,
-                                                    style: TextStyle(color: fg, fontWeight: FontWeight.w900, fontSize: 17, height: 1.05),
+                                                    style: TextStyle(
+                                                      color: fg,
+                                                      fontWeight:
+                                                          FontWeight.w900,
+                                                      fontSize: 17,
+                                                      height: 1.05,
+                                                    ),
                                                   ),
                                                   const SizedBox(height: 4),
                                                   Text(
                                                     '$orgVotes votes',
-                                                    style: TextStyle(color: sub, fontWeight: FontWeight.w600, fontSize: 13),
+                                                    style: TextStyle(
+                                                      color: sub,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      fontSize: 13,
+                                                    ),
                                                   ),
                                                 ],
                                               ),
                                             ),
-                                            Icon(
-                                              expanded ? Icons.expand_less : Icons.expand_more,
-                                              color: sub,
-                                              size: 26,
-                                            ),
+                                            isPremiumMode
+                                                ? HugeIcon(
+                                                    icon: expanded
+                                                        ? HugeIcons
+                                                              .strokeRoundedArrowUp01
+                                                        : HugeIcons
+                                                              .strokeRoundedArrowDown01,
+                                                    color: _premiumBlue,
+                                                    size: 22,
+                                                    strokeWidth: 1.9,
+                                                  )
+                                                : Icon(
+                                                    expanded
+                                                        ? Icons.expand_less
+                                                        : Icons.expand_more,
+                                                    color: sub,
+                                                    size: 26,
+                                                  ),
                                           ],
                                         ),
                                       ),
                                     ),
                                   ),
                                   AnimatedCrossFade(
-                                    firstChild: const SizedBox(width: double.infinity, height: 0),
+                                    firstChild: const SizedBox(
+                                      width: double.infinity,
+                                      height: 0,
+                                    ),
                                     secondChild: Padding(
-                                      padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+                                      padding: const EdgeInsets.fromLTRB(
+                                        14,
+                                        0,
+                                        14,
+                                        12,
+                                      ),
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                                        children: sortedPosEntries.map((posEntry) {
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
+                                        children: sortedPosEntries.map((
+                                          posEntry,
+                                        ) {
                                           final posLabel = posEntry.key;
                                           final candidates = posEntry.value;
-                                          if (candidates.isEmpty) return const SizedBox.shrink();
-                                          final topVotes = _toInt(candidates.first['votes']).clamp(1, 1 << 30);
+                                          if (candidates.isEmpty)
+                                            return const SizedBox.shrink();
+                                          final topVotes = _toInt(
+                                            candidates.first['votes'],
+                                          ).clamp(1, 1 << 30);
                                           final totalVotesForPosition =
-                                              candidates.fold<int>(0, (sum, cand) => sum + _toInt(cand['votes'])).clamp(1, 1 << 30);
+                                              candidates
+                                                  .fold<int>(
+                                                    0,
+                                                    (sum, cand) =>
+                                                        sum +
+                                                        _toInt(cand['votes']),
+                                                  )
+                                                  .clamp(1, 1 << 30);
                                           final isRepresentative =
-                                              posLabel.toLowerCase().contains('representative') || posLabel.toLowerCase().contains('rep');
+                                              posLabel.toLowerCase().contains(
+                                                'representative',
+                                              ) ||
+                                              posLabel.toLowerCase().contains(
+                                                'rep',
+                                              );
                                           return Padding(
-                                            padding: const EdgeInsets.only(bottom: 16),
+                                            padding: const EdgeInsets.only(
+                                              bottom: 16,
+                                            ),
                                             child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
                                               children: [
                                                 Text(
                                                   posLabel,
-                                                  style: TextStyle(color: fg, fontWeight: FontWeight.w800, fontSize: 13, letterSpacing: 0.1),
+                                                  style: TextStyle(
+                                                    color: fg,
+                                                    fontWeight: FontWeight.w800,
+                                                    fontSize: 13,
+                                                    letterSpacing: 0.1,
+                                                  ),
                                                 ),
                                                 const SizedBox(height: 8),
-                                                ...candidates.asMap().entries.map((candidateEntry) {
-                                                  final candidateIndex = candidateEntry.key;
-                                                  final c = candidateEntry.value;
-                                                  final name = _candidateName(c);
-                                                  final party = (c['party_name'] ?? '').toString().trim();
-                                                  final votes = _toInt(c['votes']);
-                                                  final ratio = isRepresentative ? (votes / topVotes) : (votes / totalVotesForPosition);
-                                                  final clampedRatio = ratio.clamp(0.0, 1.0).toDouble();
-                                                  final photoUrl = c['photo_url'];
-                                                  final barColor = votes == 0 ? (isDark ? Colors.white24 : const Color(0xFFC7C8CC)) : orgColor;
+                                                ...candidates.asMap().entries.map((
+                                                  candidateEntry,
+                                                ) {
+                                                  final candidateIndex =
+                                                      candidateEntry.key;
+                                                  final c =
+                                                      candidateEntry.value;
+                                                  final name = _candidateName(
+                                                    c,
+                                                  );
+                                                  final party =
+                                                      (c['party_name'] ?? '')
+                                                          .toString()
+                                                          .trim();
+                                                  final votes = _toInt(
+                                                    c['votes'],
+                                                  );
+                                                  final ratio = isRepresentative
+                                                      ? (votes / topVotes)
+                                                      : (votes /
+                                                            totalVotesForPosition);
+                                                  final clampedRatio = ratio
+                                                      .clamp(0.0, 1.0)
+                                                      .toDouble();
+                                                  final photoUrl =
+                                                      c['photo_url'];
+                                                  final barColor = votes == 0
+                                                      ? (isDark
+                                                            ? Colors.white24
+                                                            : const Color(
+                                                                0xFFC7C8CC,
+                                                              ))
+                                                      : orgColor;
                                                   return Padding(
-                                                    padding: EdgeInsets.only(bottom: candidateIndex == candidates.length - 1 ? 0 : 10),
+                                                    padding: EdgeInsets.only(
+                                                      bottom:
+                                                          candidateIndex ==
+                                                              candidates
+                                                                      .length -
+                                                                  1
+                                                          ? 0
+                                                          : 10,
+                                                    ),
                                                     child: Column(
-                                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
                                                       children: [
                                                         Row(
-                                                          crossAxisAlignment: CrossAxisAlignment.center,
+                                                          crossAxisAlignment:
+                                                              CrossAxisAlignment
+                                                                  .center,
                                                           children: [
-                                                            _candidateAvatar(photoUrlRaw: photoUrl, isDark: isDark),
-                                                            const SizedBox(width: 10),
+                                                            _candidateAvatar(
+                                                              photoUrlRaw:
+                                                                  photoUrl,
+                                                              isDark: isDark,
+                                                            ),
+                                                            const SizedBox(
+                                                              width: 10,
+                                                            ),
                                                             Expanded(
                                                               child: Align(
-                                                                alignment: Alignment.centerLeft,
+                                                                alignment: Alignment
+                                                                    .centerLeft,
                                                                 child: Text(
                                                                   name,
                                                                   maxLines: 2,
-                                                                  overflow: TextOverflow.ellipsis,
-                                                                  style: TextStyle(color: fg, fontWeight: FontWeight.w600, fontSize: 14, height: 1.2),
+                                                                  overflow:
+                                                                      TextOverflow
+                                                                          .ellipsis,
+                                                                  style: TextStyle(
+                                                                    color: fg,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .w600,
+                                                                    fontSize:
+                                                                        14,
+                                                                    height: 1.2,
+                                                                  ),
                                                                 ),
                                                               ),
                                                             ),
-                                                            const SizedBox(width: 8),
+                                                            const SizedBox(
+                                                              width: 8,
+                                                            ),
                                                             Column(
-                                                              crossAxisAlignment: CrossAxisAlignment.end,
-                                                              mainAxisAlignment: MainAxisAlignment.center,
-                                                              mainAxisSize: MainAxisSize.min,
+                                                              crossAxisAlignment:
+                                                                  CrossAxisAlignment
+                                                                      .end,
+                                                              mainAxisAlignment:
+                                                                  MainAxisAlignment
+                                                                      .center,
+                                                              mainAxisSize:
+                                                                  MainAxisSize
+                                                                      .min,
                                                               children: [
                                                                 Text(
                                                                   '$votes',
-                                                                  style: TextStyle(color: fg, fontWeight: FontWeight.w800, fontSize: 14),
+                                                                  style: TextStyle(
+                                                                    color: fg,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .w800,
+                                                                    fontSize:
+                                                                        14,
+                                                                  ),
                                                                 ),
                                                                 Text(
-                                                                  _formatPercent(ratio),
-                                                                  style: TextStyle(color: sub, fontWeight: FontWeight.w600, fontSize: 11),
+                                                                  _formatPercent(
+                                                                    ratio,
+                                                                  ),
+                                                                  style: TextStyle(
+                                                                    color: sub,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .w600,
+                                                                    fontSize:
+                                                                        11,
+                                                                  ),
                                                                 ),
                                                               ],
                                                             ),
                                                           ],
                                                         ),
-                                                        if (party.isNotEmpty) ...[
-                                                          const SizedBox(height: 2),
+                                                        if (party
+                                                            .isNotEmpty) ...[
+                                                          const SizedBox(
+                                                            height: 2,
+                                                          ),
                                                           Padding(
-                                                            padding: const EdgeInsets.only(left: 38),
+                                                            padding:
+                                                                const EdgeInsets.only(
+                                                                  left: 38,
+                                                                ),
                                                             child: Text(
                                                               party,
-                                                              style: TextStyle(color: sub, fontSize: 11, fontWeight: FontWeight.w500),
+                                                              style: TextStyle(
+                                                                color: sub,
+                                                                fontSize: 11,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w500,
+                                                              ),
                                                             ),
                                                           ),
                                                         ],
-                                                        const SizedBox(height: 6),
+                                                        const SizedBox(
+                                                          height: 6,
+                                                        ),
                                                         Padding(
-                                                          padding: const EdgeInsets.only(left: 38),
+                                                          padding:
+                                                              const EdgeInsets.only(
+                                                                left: 38,
+                                                              ),
                                                           child: TweenAnimationBuilder<double>(
                                                             key: ValueKey(
                                                               'candidate_${orgName}_${posLabel}_${name}_$candidateIndex$_chartAnimSeed',
                                                             ),
-                                                            duration: Duration(milliseconds: 400 + (candidateIndex * 70)),
-                                                            curve: Curves.easeOutCubic,
-                                                            tween: Tween<double>(begin: 0, end: clampedRatio),
-                                                            builder: (context, animatedValue, _) => ClipRRect(
-                                                              borderRadius: BorderRadius.circular(99),
-                                                              child: LinearProgressIndicator(
-                                                                value: votes == 0 ? 0 : animatedValue,
-                                                                minHeight: 3,
-                                                                backgroundColor: trackGrey,
-                                                                color: barColor,
-                                                              ),
+                                                            duration: Duration(
+                                                              milliseconds:
+                                                                  400 +
+                                                                  (candidateIndex *
+                                                                      70),
                                                             ),
+                                                            curve: Curves
+                                                                .easeOutCubic,
+                                                            tween: Tween<double>(
+                                                              begin: 0,
+                                                              end: clampedRatio,
+                                                            ),
+                                                            builder:
+                                                                (
+                                                                  context,
+                                                                  animatedValue,
+                                                                  _,
+                                                                ) => ClipRRect(
+                                                                  borderRadius:
+                                                                      BorderRadius.circular(
+                                                                        99,
+                                                                      ),
+                                                                  child: LinearProgressIndicator(
+                                                                    value:
+                                                                        votes ==
+                                                                            0
+                                                                        ? 0
+                                                                        : animatedValue,
+                                                                    minHeight:
+                                                                        3,
+                                                                    backgroundColor:
+                                                                        trackGrey,
+                                                                    color:
+                                                                        barColor,
+                                                                  ),
+                                                                ),
                                                           ),
                                                         ),
                                                       ],
@@ -1354,7 +2000,9 @@ class _ResultsScreenState extends State<ResultsScreen> {
                                         }).toList(),
                                       ),
                                     ),
-                                    crossFadeState: expanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+                                    crossFadeState: expanded
+                                        ? CrossFadeState.showSecond
+                                        : CrossFadeState.showFirst,
                                     duration: const Duration(milliseconds: 220),
                                   ),
                                 ],
@@ -1394,16 +2042,35 @@ class _LegendChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ConstrainedBox(
-      constraints: BoxConstraints(minWidth: 0, maxWidth: maxChipWidth.clamp(80, double.infinity)),
+      constraints: BoxConstraints(
+        minWidth: 0,
+        maxWidth: maxChipWidth.clamp(80, double.infinity),
+      ),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-        decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), border: Border.all(color: borderColor)),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: borderColor),
+        ),
         child: Row(
           children: [
-            Container(width: 7, height: 7, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+            Container(
+              width: 7,
+              height: 7,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            ),
             const SizedBox(width: 6),
             Expanded(
-              child: Text(label, style: TextStyle(color: textColor, fontWeight: FontWeight.w600, fontSize: 11), maxLines: 2, overflow: TextOverflow.ellipsis),
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: textColor,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 11,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ),
@@ -1452,7 +2119,13 @@ class _DonutChartPainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = strokeWidth
         ..strokeCap = StrokeCap.butt;
-      canvas.drawArc(Rect.fromCircle(center: center, radius: radius), start, sweep, false, paint);
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        start,
+        sweep,
+        false,
+        paint,
+      );
       start += sweep;
     }
   }
