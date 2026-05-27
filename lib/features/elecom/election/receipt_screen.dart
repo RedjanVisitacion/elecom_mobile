@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 import '../candidates/candidate_profile_screen.dart';
 import '../data/elecom_mobile_api.dart';
+import '../student_dashboard/utils/theme_notifier.dart';
+
+const _premiumBlue = Color(0xFF2563EB);
+const _premiumInk = Color(0xFF0F172A);
+const _premiumSub = Color(0xFF475569);
 
 /// Shows the vote receipt for the currently logged-in student.
 /// Displayed in the Receipt tab of the dashboard once the user has voted.
 class ReceiptScreen extends StatefulWidget {
-  const ReceiptScreen({
-    super.key,
-    this.initialReceipt,
-    this.refreshNonce = 0,
-  });
+  const ReceiptScreen({super.key, this.initialReceipt, this.refreshNonce = 0});
 
   final Map<String, dynamic>? initialReceipt;
   final int refreshNonce;
@@ -106,8 +108,17 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final fg = isDark ? Colors.white : Colors.black;
-    final sub = isDark ? Colors.white70 : Colors.black54;
+    final isPremiumMode = themeNotifier.isPremiumMode;
+    final fg = isPremiumMode
+        ? _premiumInk
+        : isDark
+        ? Colors.white
+        : Colors.black;
+    final sub = isPremiumMode
+        ? _premiumSub
+        : isDark
+        ? Colors.white70
+        : Colors.black54;
     final cardBorder = isDark ? Colors.white12 : const Color(0xFFD7D7D7);
 
     if (_loading) {
@@ -123,10 +134,17 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
             children: [
               Icon(Icons.error_outline, size: 48, color: sub),
               const SizedBox(height: 12),
-              Text(_error!, textAlign: TextAlign.center, style: TextStyle(color: sub)),
+              Text(
+                _error!,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: sub),
+              ),
               const SizedBox(height: 16),
               FilledButton(
-                style: FilledButton.styleFrom(backgroundColor: fg, foregroundColor: isDark ? Colors.black : Colors.white),
+                style: FilledButton.styleFrom(
+                  backgroundColor: fg,
+                  foregroundColor: isDark ? Colors.black : Colors.white,
+                ),
                 onPressed: _load,
                 child: const Text('Retry'),
               ),
@@ -152,18 +170,51 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.receipt_long_outlined, size: 56, color: sub),
+                      if (isPremiumMode)
+                        Container(
+                          width: 68,
+                          height: 68,
+                          decoration: BoxDecoration(
+                            color: _premiumBlue.withValues(alpha: 0.10),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: _premiumBlue.withValues(alpha: 0.18),
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: _premiumBlue.withValues(alpha: 0.12),
+                                blurRadius: 22,
+                                offset: const Offset(0, 10),
+                              ),
+                            ],
+                          ),
+                          child: HugeIcon(
+                            icon: HugeIcons.strokeRoundedInvoice03,
+                            size: 36,
+                            color: _premiumBlue,
+                            strokeWidth: 1.9,
+                          ),
+                        )
+                      else
+                        Icon(Icons.receipt_long_outlined, size: 56, color: sub),
                       const SizedBox(height: 16),
                       Text(
                         'No receipt yet',
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: fg),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 18,
+                          color: fg,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         'Your vote receipt will appear here after you have cast your vote.',
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: sub, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                          color: sub,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ],
                   ),
@@ -181,29 +232,47 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
     final totalSelections = receipt['total_selections'];
 
     final selectionsRaw = receipt['selections'];
-    final selections = selectionsRaw is Map ? Map<String, dynamic>.from(selectionsRaw) : <String, dynamic>{};
+    final selections = selectionsRaw is Map
+        ? Map<String, dynamic>.from(selectionsRaw)
+        : <String, dynamic>{};
 
     final candidatesRaw = receipt['candidates'];
-    final candidates = candidatesRaw is Map ? Map<String, dynamic>.from(candidatesRaw) : <String, dynamic>{};
+    final candidates = candidatesRaw is Map
+        ? Map<String, dynamic>.from(candidatesRaw)
+        : <String, dynamic>{};
 
     final ballotDataRaw = receipt['ballot_data'];
-    final ballotData = ballotDataRaw is Map ? Map<String, dynamic>.from(ballotDataRaw) : <String, dynamic>{};
+    final ballotData = ballotDataRaw is Map
+        ? Map<String, dynamic>.from(ballotDataRaw)
+        : <String, dynamic>{};
     final ballotRaw = ballotData['ballot'];
     final ballot = ballotRaw is List
-        ? ballotRaw.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList()
+        ? ballotRaw
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList()
         : <Map<String, dynamic>>[];
 
     Widget avatarFor(dynamic photoUrlRaw) {
       final photo = resolvedCandidatePhotoUrl(photoUrlRaw);
       final stroke = isDark ? Colors.white24 : const Color(0xFFD7D7D7);
       return Container(
-        decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: stroke, width: 2)),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: stroke, width: 2),
+        ),
         padding: const EdgeInsets.all(1.5),
         child: CircleAvatar(
           radius: 20,
           backgroundColor: isDark ? Colors.white12 : const Color(0xFFEAF1FF),
           backgroundImage: photo != null ? NetworkImage(photo) : null,
-          child: photo == null ? Icon(Icons.person, size: 18, color: isDark ? Colors.white54 : Colors.black54) : null,
+          child: photo == null
+              ? Icon(
+                  Icons.person,
+                  size: 18,
+                  color: isDark ? Colors.white54 : Colors.black54,
+                )
+              : null,
         ),
       );
     }
@@ -241,23 +310,39 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
             : <String>[v?.toString() ?? ''].where((x) => x.isNotEmpty).toList();
         if (ids.isEmpty) continue;
 
-        final orgLabel = posKey.contains('::') ? posKey.split('::').first.trim() : '';
-        final posLabel = posKey.contains('::') ? posKey.split('::').last.trim() : posKey;
+        final orgLabel = posKey.contains('::')
+            ? posKey.split('::').first.trim()
+            : '';
+        final posLabel = posKey.contains('::')
+            ? posKey.split('::').last.trim()
+            : posKey;
 
         widgets.add(
           Padding(
             padding: const EdgeInsets.only(top: 12, bottom: 6),
-            child: Text(posLabel, style: TextStyle(fontWeight: FontWeight.w900, color: fg, fontSize: 13.5)),
+            child: Text(
+              posLabel,
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                color: fg,
+                fontSize: 13.5,
+              ),
+            ),
           ),
         );
 
         for (final id in ids) {
           final candRaw = candidates[id];
-          final cand = candRaw is Map ? Map<String, dynamic>.from(candRaw) : <String, dynamic>{};
+          final cand = candRaw is Map
+              ? Map<String, dynamic>.from(candRaw)
+              : <String, dynamic>{};
           final name = (cand['name'] ?? '').toString().trim();
           final party = (cand['party_name'] ?? '').toString().trim();
           final photoUrl = cand['photo_url'];
-          final subtitle = [if (party.isNotEmpty) party, if (orgLabel.isNotEmpty) orgLabel].join(' · ');
+          final subtitle = [
+            if (party.isNotEmpty) party,
+            if (orgLabel.isNotEmpty) orgLabel,
+          ].join(' · ');
 
           widgets.add(
             Container(
@@ -279,7 +364,12 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                           name.isEmpty ? 'Candidate' : name,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: fg, fontWeight: FontWeight.w800, fontSize: 13.5, height: 1.15),
+                          style: TextStyle(
+                            color: fg,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13.5,
+                            height: 1.15,
+                          ),
                         ),
                         if (subtitle.trim().isNotEmpty) ...[
                           const SizedBox(height: 3),
@@ -287,7 +377,11 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                             subtitle,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(color: sub, fontWeight: FontWeight.w500, fontSize: 12),
+                            style: TextStyle(
+                              color: sub,
+                              fontWeight: FontWeight.w500,
+                              fontSize: 12,
+                            ),
                           ),
                         ],
                       ],
@@ -323,11 +417,19 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.check_circle_outline, color: const Color(0xFF2E7D32), size: 22),
+                    Icon(
+                      Icons.check_circle_outline,
+                      color: const Color(0xFF2E7D32),
+                      size: 22,
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       'Vote successfully recorded',
-                      style: TextStyle(color: const Color(0xFF2E7D32), fontWeight: FontWeight.w800, fontSize: 14),
+                      style: TextStyle(
+                        color: const Color(0xFF2E7D32),
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
+                      ),
                     ),
                   ],
                 ),
@@ -336,16 +438,28 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                 const SizedBox(height: 6),
                 _metaRow('Voted at', votedAt, fg, sub),
                 const SizedBox(height: 6),
-                if (totalSelections != null) _metaRow('Selections', totalSelections.toString(), fg, sub),
+                if (totalSelections != null)
+                  _metaRow('Selections', totalSelections.toString(), fg, sub),
               ],
             ),
           ),
           const SizedBox(height: 20),
-          Text('Summary', style: TextStyle(fontWeight: FontWeight.w900, color: fg, fontSize: 15)),
+          Text(
+            'Summary',
+            style: TextStyle(
+              fontWeight: FontWeight.w900,
+              color: fg,
+              fontSize: 15,
+            ),
+          ),
           const SizedBox(height: 4),
           Text(
             'Your selected candidates per position.',
-            style: TextStyle(color: sub, fontSize: 12.5, fontWeight: FontWeight.w500),
+            style: TextStyle(
+              color: sub,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w500,
+            ),
           ),
           ...buildSummary(),
         ],
@@ -360,10 +474,24 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
       children: [
         SizedBox(
           width: 90,
-          child: Text(label, style: TextStyle(color: sub, fontWeight: FontWeight.w600, fontSize: 12.5)),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: sub,
+              fontWeight: FontWeight.w600,
+              fontSize: 12.5,
+            ),
+          ),
         ),
         Expanded(
-          child: Text(value, style: TextStyle(color: fg, fontWeight: FontWeight.w800, fontSize: 12.5)),
+          child: Text(
+            value,
+            style: TextStyle(
+              color: fg,
+              fontWeight: FontWeight.w800,
+              fontSize: 12.5,
+            ),
+          ),
         ),
       ],
     );

@@ -1597,13 +1597,47 @@ class _ElectionScreenState extends State<ElectionScreen>
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Icon(
-                            electionState == _ElectionAccessState.upcoming
-                                ? Icons.schedule
-                                : Icons.lock_clock_outlined,
-                            size: 56,
-                            color: subtitleColor,
-                          ),
+                          if (isPremiumMode)
+                            Center(
+                              child: Container(
+                                width: 68,
+                                height: 68,
+                                decoration: BoxDecoration(
+                                  color: _premiumBlue.withValues(alpha: 0.10),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: _premiumBlue.withValues(alpha: 0.18),
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: _premiumBlue.withValues(
+                                        alpha: 0.12,
+                                      ),
+                                      blurRadius: 22,
+                                      offset: const Offset(0, 10),
+                                    ),
+                                  ],
+                                ),
+                                child: HugeIcon(
+                                  icon:
+                                      electionState ==
+                                          _ElectionAccessState.upcoming
+                                      ? HugeIcons.strokeRoundedClock01
+                                      : HugeIcons.strokeRoundedShieldBlockchain,
+                                  size: 36,
+                                  color: _premiumBlue,
+                                  strokeWidth: 1.9,
+                                ),
+                              ),
+                            )
+                          else
+                            Icon(
+                              electionState == _ElectionAccessState.upcoming
+                                  ? Icons.schedule
+                                  : Icons.lock_clock_outlined,
+                              size: 56,
+                              color: subtitleColor,
+                            ),
                           const SizedBox(height: 12),
                           Text(
                             title,
@@ -1626,23 +1660,38 @@ class _ElectionScreenState extends State<ElectionScreen>
                           ),
                           if (electionState == _ElectionAccessState.closed) ...[
                             const SizedBox(height: 18),
-                            FilledButton.icon(
-                              style: FilledButton.styleFrom(
-                                backgroundColor: isDark
-                                    ? Colors.white
-                                    : Colors.black,
-                                foregroundColor: isDark
-                                    ? Colors.black
-                                    : Colors.white,
-                              ),
-                              onPressed: () =>
-                                  widget.onRequestTabIndex?.call(2),
-                              icon: const Icon(Icons.bar_chart_outlined),
-                              label: const Text(
-                                'View Results',
-                                style: TextStyle(fontWeight: FontWeight.w800),
-                              ),
-                            ),
+                            isPremiumMode
+                                ? _SecureActionButton(
+                                    loading: false,
+                                    label: 'View Results',
+                                    icon: Icons.bar_chart_outlined,
+                                    premiumIcon:
+                                        HugeIcons.strokeRoundedChartBarLine,
+                                    isPremiumMode: true,
+                                    background: _premiumBlue,
+                                    gold: _premiumBlue.withValues(alpha: 0.18),
+                                    onPressed: () =>
+                                        widget.onRequestTabIndex?.call(2),
+                                  )
+                                : FilledButton.icon(
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: isDark
+                                          ? Colors.white
+                                          : Colors.black,
+                                      foregroundColor: isDark
+                                          ? Colors.black
+                                          : Colors.white,
+                                    ),
+                                    onPressed: () =>
+                                        widget.onRequestTabIndex?.call(2),
+                                    icon: const Icon(Icons.bar_chart_outlined),
+                                    label: const Text(
+                                      'View Results',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ),
                           ],
                         ],
                       ),

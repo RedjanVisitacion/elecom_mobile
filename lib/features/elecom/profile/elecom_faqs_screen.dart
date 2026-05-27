@@ -2,11 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/utils/toast_service.dart';
+import '../student_dashboard/utils/theme_notifier.dart';
+
+const _premiumBlue = Color(0xFF2563EB);
+const _premiumGold = Color(0xFFFACC15);
+const _premiumInk = Color(0xFF0F172A);
+const _premiumSub = Color(0xFF475569);
 
 class ElecomFaqsScreen extends StatelessWidget {
   const ElecomFaqsScreen({super.key});
 
-  static final Uri _supportMessengerUri = Uri.parse('https://m.me/redjan.phil.s.visitacion');
+  static final Uri _supportMessengerUri = Uri.parse(
+    'https://m.me/redjan.phil.s.visitacion',
+  );
   static final Uri _supportEmailUri = Uri(
     scheme: 'mailto',
     path: 'rpsvcodes@gmail.com',
@@ -37,7 +45,9 @@ class ElecomFaqsScreen extends StatelessWidget {
           backgroundColor: Colors.white,
           surfaceTintColor: Colors.white,
           title: const Text('Contact Support'),
-          content: const Text('Unable to open Messenger. Please open this link:\n\nhttps://m.me/redjan.phil.s.visitacion'),
+          content: const Text(
+            'Unable to open Messenger. Please open this link:\n\nhttps://m.me/redjan.phil.s.visitacion',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
@@ -74,7 +84,9 @@ class ElecomFaqsScreen extends StatelessWidget {
           backgroundColor: Colors.white,
           surfaceTintColor: Colors.white,
           title: const Text('Contact Support'),
-          content: const Text('Unable to open email app. Please email:\n\nrpsvcodes@gmail.com'),
+          content: const Text(
+            'Unable to open email app. Please email:\n\nrpsvcodes@gmail.com',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
@@ -92,6 +104,22 @@ class ElecomFaqsScreen extends StatelessWidget {
 
   Future<void> _contactSupportOptions(BuildContext context) async {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final isPremiumMode = themeNotifier.isPremiumMode;
+    final sheetColor = isPremiumMode
+        ? Colors.white
+        : isDarkMode
+        ? const Color(0xFF2A2A35)
+        : Colors.white;
+    final titleColor = isPremiumMode
+        ? _premiumInk
+        : isDarkMode
+        ? Colors.white
+        : Colors.black;
+    final subColor = isPremiumMode
+        ? _premiumSub
+        : isDarkMode
+        ? Colors.white70
+        : Colors.black54;
 
     await showModalBottomSheet<void>(
       context: context,
@@ -104,7 +132,7 @@ class ElecomFaqsScreen extends StatelessWidget {
             bottom: MediaQuery.of(ctx).padding.bottom + 10,
           ),
           child: Material(
-            color: isDarkMode ? const Color(0xFF2A2A35) : Colors.white,
+            color: sheetColor,
             borderRadius: BorderRadius.circular(20),
             clipBehavior: Clip.antiAlias,
             child: Column(
@@ -115,7 +143,11 @@ class ElecomFaqsScreen extends StatelessWidget {
                   width: 42,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: isDarkMode ? Colors.white24 : Colors.black12,
+                    color: isPremiumMode
+                        ? _premiumBlue.withValues(alpha: 0.18)
+                        : isDarkMode
+                        ? Colors.white24
+                        : Colors.black12,
                     borderRadius: BorderRadius.circular(99),
                   ),
                 ),
@@ -125,7 +157,7 @@ class ElecomFaqsScreen extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w900,
-                    color: isDarkMode ? Colors.white : Colors.black,
+                    color: titleColor,
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -135,12 +167,12 @@ class ElecomFaqsScreen extends StatelessWidget {
                     'Facebook Messenger',
                     style: TextStyle(
                       fontWeight: FontWeight.w800,
-                      color: isDarkMode ? Colors.white : Colors.black,
+                      color: titleColor,
                     ),
                   ),
                   subtitle: Text(
                     'Chat with support on Facebook',
-                    style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black54),
+                    style: TextStyle(color: subColor),
                   ),
                   onTap: () async {
                     Navigator.of(ctx).pop();
@@ -156,12 +188,12 @@ class ElecomFaqsScreen extends StatelessWidget {
                     'Email',
                     style: TextStyle(
                       fontWeight: FontWeight.w800,
-                      color: isDarkMode ? Colors.white : Colors.black,
+                      color: titleColor,
                     ),
                   ),
                   subtitle: Text(
                     'rpsvcodes@gmail.com',
-                    style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black54),
+                    style: TextStyle(color: subColor),
                   ),
                   onTap: () async {
                     Navigator.of(ctx).pop();
@@ -171,10 +203,11 @@ class ElecomFaqsScreen extends StatelessWidget {
                 const SizedBox(height: 6),
                 TextButton(
                   onPressed: () => Navigator.of(ctx).pop(),
-                  style: TextButton.styleFrom(
-                    foregroundColor: isDarkMode ? Colors.white70 : Colors.black54,
+                  style: TextButton.styleFrom(foregroundColor: subColor),
+                  child: const Text(
+                    'Close',
+                    style: TextStyle(fontWeight: FontWeight.w800),
                   ),
-                  child: const Text('Close', style: TextStyle(fontWeight: FontWeight.w800)),
                 ),
                 const SizedBox(height: 10),
               ],
@@ -188,11 +221,27 @@ class ElecomFaqsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final primary = isDarkMode ? Colors.white : Colors.black;
-    final surface = isDarkMode ? const Color(0xFF171620) : const Color(0xFFF5F5F5);
-    final cardColor = isDarkMode ? const Color(0xFF2A2A35) : Colors.white;
-    final borderColor = isDarkMode ? Colors.white12 : Colors.black12;
-
+    final isPremiumMode = themeNotifier.isPremiumMode;
+    final primary = isPremiumMode
+        ? _premiumInk
+        : isDarkMode
+        ? Colors.white
+        : Colors.black;
+    final surface = isPremiumMode
+        ? Colors.white
+        : isDarkMode
+        ? const Color(0xFF171620)
+        : const Color(0xFFF5F5F5);
+    final cardColor = isPremiumMode
+        ? Colors.white
+        : isDarkMode
+        ? const Color(0xFF2A2A35)
+        : Colors.white;
+    final borderColor = isPremiumMode
+        ? Colors.black12
+        : isDarkMode
+        ? Colors.white12
+        : Colors.black12;
     final faqs = <({String title, String body})>[
       (
         title: 'What is ELECOM (USTP Oroquieta)?',
@@ -230,102 +279,139 @@ class ElecomFaqsScreen extends StatelessWidget {
       backgroundColor: surface,
       appBar: AppBar(
         backgroundColor: surface,
-        foregroundColor: isDarkMode ? Colors.white : Colors.black,
+        surfaceTintColor: surface,
+        foregroundColor: primary,
         elevation: 0,
-        title: const Text(
+        title: Text(
           'Help Center',
-          style: TextStyle(fontWeight: FontWeight.w900),
+          style: TextStyle(fontWeight: FontWeight.w900, color: primary),
         ),
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 4,
-                      height: 20,
-                      decoration: BoxDecoration(
-                        color: primary,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      'Frequently Asked',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
-                    ),
+      body: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: isPremiumMode
+              ? LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.white,
+                    _premiumBlue.withValues(alpha: 0.08),
+                    _premiumGold.withValues(alpha: 0.06),
+                    Colors.white,
                   ],
-                ),
-                const SizedBox(height: 12),
-                ...faqs.map(
-                  (f) => Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    decoration: BoxDecoration(
-                      color: cardColor,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: borderColor),
-                    ),
-                    child: Theme(
-                      data: Theme.of(context).copyWith(
-                        dividerColor: Colors.transparent,
-                      ),
-                      child: ExpansionTile(
-                        iconColor: primary,
-                        collapsedIconColor: primary,
-                        title: Text(
-                          f.title,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w900,
-                            color: isDarkMode ? Colors.white : Colors.black,
-                          ),
+                )
+              : null,
+        ),
+        child: Column(
+          children: [
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 4,
+                        height: 20,
+                        decoration: BoxDecoration(
+                          color: isPremiumMode ? _premiumBlue : primary,
+                          borderRadius: BorderRadius.circular(6),
                         ),
-                        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-                        children: [
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              f.body,
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    height: 1.35,
-                                    color: isDarkMode ? Colors.white : Colors.black87,
-                                    fontWeight: FontWeight.w400,
-                                  ),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Frequently Asked',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w900,
+                          color: primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  ...faqs.map(
+                    (f) => Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: cardColor,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: borderColor),
+                      ),
+                      child: Theme(
+                        data: Theme.of(
+                          context,
+                        ).copyWith(dividerColor: Colors.transparent),
+                        child: ExpansionTile(
+                          iconColor: primary,
+                          collapsedIconColor: primary,
+                          title: Text(
+                            f.title,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w900,
+                              color: primary,
                             ),
                           ),
-                        ],
+                          childrenPadding: const EdgeInsets.fromLTRB(
+                            16,
+                            0,
+                            16,
+                            14,
+                          ),
+                          children: [
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                f.body,
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(
+                                      height: 1.35,
+                                      color: isPremiumMode
+                                          ? _premiumInk
+                                          : isDarkMode
+                                          ? Colors.white
+                                          : Colors.black87,
+                                      fontWeight: FontWeight.w400,
+                                    ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 6),
-              ],
+                  const SizedBox(height: 6),
+                ],
+              ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-            child: SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: ElevatedButton.icon(
-                onPressed: () => _contactSupportOptions(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isDarkMode ? Colors.white : primary,
-                  foregroundColor: isDarkMode ? Colors.black : Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                ),
-                icon: const Icon(Icons.chat_bubble_outline),
-                label: const Text(
-                  'Contact Support',
-                  style: TextStyle(fontWeight: FontWeight.w900),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+              child: SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: () => _contactSupportOptions(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isPremiumMode
+                        ? _premiumBlue
+                        : isDarkMode
+                        ? Colors.white
+                        : primary,
+                    foregroundColor: isDarkMode && !isPremiumMode
+                        ? Colors.black
+                        : Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: const Text(
+                    'Contact Support',
+                    style: TextStyle(fontWeight: FontWeight.w900),
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

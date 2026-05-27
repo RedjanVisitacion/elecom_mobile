@@ -5,11 +5,19 @@ import '../../../core/utils/toast_service.dart';
 
 import 'elecom_privacy_notice_screen.dart';
 import 'elecom_terms_conditions_screen.dart';
+import '../student_dashboard/utils/theme_notifier.dart';
+
+const _premiumBlue = Color(0xFF2563EB);
+const _premiumGold = Color(0xFFFACC15);
+const _premiumInk = Color(0xFF0F172A);
+const _premiumSub = Color(0xFF475569);
 
 class ElecomAboutScreen extends StatelessWidget {
   const ElecomAboutScreen({super.key});
 
-  static final Uri _supportMessengerUri = Uri.parse('https://m.me/redjan.phil.s.visitacion');
+  static final Uri _supportMessengerUri = Uri.parse(
+    'https://m.me/redjan.phil.s.visitacion',
+  );
   static final Uri _supportEmailUri = Uri(
     scheme: 'mailto',
     path: 'rpsvcodes@gmail.com',
@@ -40,7 +48,9 @@ class ElecomAboutScreen extends StatelessWidget {
           backgroundColor: Colors.white,
           surfaceTintColor: Colors.white,
           title: const Text('Contact Support'),
-          content: const Text('Unable to open Messenger. Please open this link:\n\nhttps://m.me/redjan.phil.s.visitacion'),
+          content: const Text(
+            'Unable to open Messenger. Please open this link:\n\nhttps://m.me/redjan.phil.s.visitacion',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
@@ -77,7 +87,9 @@ class ElecomAboutScreen extends StatelessWidget {
           backgroundColor: Colors.white,
           surfaceTintColor: Colors.white,
           title: const Text('Contact Support'),
-          content: const Text('Unable to open email app. Please email:\n\nrpsvcodes@gmail.com'),
+          content: const Text(
+            'Unable to open email app. Please email:\n\nrpsvcodes@gmail.com',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
@@ -95,6 +107,22 @@ class ElecomAboutScreen extends StatelessWidget {
 
   Future<void> _contactSupportOptions(BuildContext context) async {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final isPremiumMode = themeNotifier.isPremiumMode;
+    final sheetColor = isPremiumMode
+        ? Colors.white
+        : isDarkMode
+        ? const Color(0xFF2A2A35)
+        : Colors.white;
+    final titleColor = isPremiumMode
+        ? _premiumInk
+        : isDarkMode
+        ? Colors.white
+        : Colors.black;
+    final subColor = isPremiumMode
+        ? _premiumSub
+        : isDarkMode
+        ? Colors.white70
+        : Colors.black54;
 
     await showModalBottomSheet<void>(
       context: context,
@@ -107,7 +135,7 @@ class ElecomAboutScreen extends StatelessWidget {
             bottom: MediaQuery.of(ctx).padding.bottom + 10,
           ),
           child: Material(
-            color: isDarkMode ? const Color(0xFF2A2A35) : Colors.white,
+            color: sheetColor,
             borderRadius: BorderRadius.circular(20),
             clipBehavior: Clip.antiAlias,
             child: Column(
@@ -118,7 +146,11 @@ class ElecomAboutScreen extends StatelessWidget {
                   width: 42,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: isDarkMode ? Colors.white24 : Colors.black12,
+                    color: isPremiumMode
+                        ? _premiumBlue.withValues(alpha: 0.18)
+                        : isDarkMode
+                        ? Colors.white24
+                        : Colors.black12,
                     borderRadius: BorderRadius.circular(99),
                   ),
                 ),
@@ -128,7 +160,7 @@ class ElecomAboutScreen extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w900,
-                    color: isDarkMode ? Colors.white : Colors.black,
+                    color: titleColor,
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -138,12 +170,12 @@ class ElecomAboutScreen extends StatelessWidget {
                     'Facebook Messenger',
                     style: TextStyle(
                       fontWeight: FontWeight.w800,
-                      color: isDarkMode ? Colors.white : Colors.black,
+                      color: titleColor,
                     ),
                   ),
                   subtitle: Text(
                     'Chat with support on Facebook',
-                    style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black54),
+                    style: TextStyle(color: subColor),
                   ),
                   onTap: () async {
                     Navigator.of(ctx).pop();
@@ -159,12 +191,12 @@ class ElecomAboutScreen extends StatelessWidget {
                     'Email',
                     style: TextStyle(
                       fontWeight: FontWeight.w800,
-                      color: isDarkMode ? Colors.white : Colors.black,
+                      color: titleColor,
                     ),
                   ),
                   subtitle: Text(
                     'rpsvcodes@gmail.com',
-                    style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black54),
+                    style: TextStyle(color: subColor),
                   ),
                   onTap: () async {
                     Navigator.of(ctx).pop();
@@ -174,10 +206,11 @@ class ElecomAboutScreen extends StatelessWidget {
                 const SizedBox(height: 6),
                 TextButton(
                   onPressed: () => Navigator.of(ctx).pop(),
-                  style: TextButton.styleFrom(
-                    foregroundColor: isDarkMode ? Colors.white70 : Colors.black54,
+                  style: TextButton.styleFrom(foregroundColor: subColor),
+                  child: const Text(
+                    'Close',
+                    style: TextStyle(fontWeight: FontWeight.w800),
                   ),
-                  child: const Text('Close', style: TextStyle(fontWeight: FontWeight.w800)),
                 ),
                 const SizedBox(height: 10),
               ],
@@ -190,20 +223,33 @@ class ElecomAboutScreen extends StatelessWidget {
 
   Widget _sectionHeader(BuildContext context, String title) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final isPremiumMode = themeNotifier.isPremiumMode;
+    final textColor = isPremiumMode
+        ? _premiumInk
+        : isDarkMode
+        ? Colors.white
+        : Colors.black;
     return Row(
       children: [
         Container(
           width: 4,
           height: 20,
           decoration: BoxDecoration(
-            color: isDarkMode ? Colors.white : Colors.black,
+            color: isPremiumMode
+                ? _premiumBlue
+                : isDarkMode
+                ? Colors.white
+                : Colors.black,
             borderRadius: BorderRadius.circular(6),
           ),
         ),
         const SizedBox(width: 10),
         Text(
           title,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w900,
+            color: textColor,
+          ),
         ),
       ],
     );
@@ -211,21 +257,32 @@ class ElecomAboutScreen extends StatelessWidget {
 
   Widget _card(BuildContext context, String body) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final isPremiumMode = themeNotifier.isPremiumMode;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isDarkMode ? const Color(0xFF2A2A35) : Colors.white,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: isDarkMode ? Colors.white12 : Colors.black12),
+        border: Border.all(
+          color: isPremiumMode
+              ? Colors.black12
+              : isDarkMode
+              ? Colors.white12
+              : Colors.black12,
+        ),
       ),
       child: Text(
         body,
         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              height: 1.35,
-              color: isDarkMode ? Colors.white : Colors.black87,
-              fontWeight: FontWeight.w400,
-            ),
+          height: 1.35,
+          color: isPremiumMode
+              ? _premiumInk
+              : isDarkMode
+              ? Colors.white
+              : Colors.black87,
+          fontWeight: FontWeight.w400,
+        ),
       ),
     );
   }
@@ -233,114 +290,180 @@ class ElecomAboutScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final surface = isDarkMode ? const Color(0xFF171620) : const Color(0xFFF5F5F5);
+    final isPremiumMode = themeNotifier.isPremiumMode;
+    final surface = isPremiumMode
+        ? Colors.white
+        : isDarkMode
+        ? const Color(0xFF171620)
+        : const Color(0xFFF5F5F5);
+    final primary = isPremiumMode
+        ? _premiumInk
+        : isDarkMode
+        ? Colors.white
+        : Colors.black;
 
     return Scaffold(
       backgroundColor: surface,
       appBar: AppBar(
         backgroundColor: surface,
-        foregroundColor: isDarkMode ? Colors.white : Colors.black,
+        surfaceTintColor: surface,
+        foregroundColor: primary,
         elevation: 0,
-        title: const Text(
+        title: Text(
           'About ELECOM',
-          style: TextStyle(fontWeight: FontWeight.w900),
+          style: TextStyle(fontWeight: FontWeight.w900, color: primary),
         ),
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
-              children: [
-                _sectionHeader(context, 'What is ELECOM?'),
-                const SizedBox(height: 10),
-                _card(
-                  context,
-                  'ELECOM in USTP Oroquieta refers to the Electoral Commission of the University of Science and Technology of Southern Philippines – Oroquieta Campus, the official body responsible for managing and supervising student elections within the campus. It oversees the entire election process, including candidate registration, voter verification, election scheduling, monitoring of voting activities, vote counting, and the announcement of official results.',
-                ),
-                const SizedBox(height: 14),
-                _sectionHeader(context, 'About the Voting Platform'),
-                const SizedBox(height: 10),
-                _card(
-                  context,
-                  'This mobile application helps students participate in campus elections in a secure and organized way. It provides election details, candidate lists, voting access, and official results once published by ELECOM.',
-                ),
-                const SizedBox(height: 14),
-                _sectionHeader(context, 'Privacy Notice and Terms'),
-                const SizedBox(height: 10),
-                _card(
-                  context,
-                  'Please read the Privacy Notice and Terms and Conditions to understand how your data is handled and the rules for using the app.',
-                ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const ElecomPrivacyNoticeScreen()),
-                      );
-                    },
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: isDarkMode ? Colors.white : Colors.black,
-                      side: BorderSide(color: isDarkMode ? Colors.white24 : Colors.black26),
-                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    ),
-                    icon: const Icon(Icons.privacy_tip_outlined),
-                    label: const Text(
-                      'Privacy Notice',
-                      style: TextStyle(fontWeight: FontWeight.w900),
+      body: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: isPremiumMode
+              ? LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.white,
+                    _premiumBlue.withValues(alpha: 0.08),
+                    _premiumGold.withValues(alpha: 0.06),
+                    Colors.white,
+                  ],
+                )
+              : null,
+        ),
+        child: Column(
+          children: [
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
+                children: [
+                  _sectionHeader(context, 'What is ELECOM?'),
+                  const SizedBox(height: 10),
+                  _card(
+                    context,
+                    'ELECOM in USTP Oroquieta refers to the Electoral Commission of the University of Science and Technology of Southern Philippines – Oroquieta Campus, the official body responsible for managing and supervising student elections within the campus. It oversees the entire election process, including candidate registration, voter verification, election scheduling, monitoring of voting activities, vote counting, and the announcement of official results.',
+                  ),
+                  const SizedBox(height: 14),
+                  _sectionHeader(context, 'About the Voting Platform'),
+                  const SizedBox(height: 10),
+                  _card(
+                    context,
+                    'This mobile application helps students participate in campus elections in a secure and organized way. It provides election details, candidate lists, voting access, and official results once published by ELECOM.',
+                  ),
+                  const SizedBox(height: 14),
+                  _sectionHeader(context, 'Privacy Notice and Terms'),
+                  const SizedBox(height: 10),
+                  _card(
+                    context,
+                    'Please read the Privacy Notice and Terms and Conditions to understand how your data is handled and the rules for using the app.',
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const ElecomPrivacyNoticeScreen(),
+                          ),
+                        );
+                      },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: isPremiumMode
+                            ? _premiumBlue
+                            : isDarkMode
+                            ? Colors.white
+                            : Colors.black,
+                        side: BorderSide(
+                          color: isPremiumMode
+                              ? _premiumBlue.withValues(alpha: 0.22)
+                              : isDarkMode
+                              ? Colors.white24
+                              : Colors.black26,
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                          horizontal: 14,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: const Text(
+                        'Privacy Notice',
+                        style: TextStyle(fontWeight: FontWeight.w900),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const ElecomTermsConditionsScreen()),
-                      );
-                    },
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: isDarkMode ? Colors.white : Colors.black,
-                      side: BorderSide(color: isDarkMode ? Colors.white24 : Colors.black26),
-                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    ),
-                    icon: const Icon(Icons.description_outlined),
-                    label: const Text(
-                      'Terms and Conditions',
-                      style: TextStyle(fontWeight: FontWeight.w900),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const ElecomTermsConditionsScreen(),
+                          ),
+                        );
+                      },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: isPremiumMode
+                            ? _premiumBlue
+                            : isDarkMode
+                            ? Colors.white
+                            : Colors.black,
+                        side: BorderSide(
+                          color: isPremiumMode
+                              ? _premiumBlue.withValues(alpha: 0.22)
+                              : isDarkMode
+                              ? Colors.white24
+                              : Colors.black26,
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                          horizontal: 14,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: const Text(
+                        'Terms and Conditions',
+                        style: TextStyle(fontWeight: FontWeight.w900),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 6),
-              ],
+                  const SizedBox(height: 6),
+                ],
+              ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-            child: SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: ElevatedButton.icon(
-                onPressed: () => _contactSupportOptions(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isDarkMode ? Colors.white : Colors.black,
-                  foregroundColor: isDarkMode ? Colors.black : Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                ),
-                icon: const Icon(Icons.chat_bubble_outline),
-                label: const Text(
-                  'Contact Support',
-                  style: TextStyle(fontWeight: FontWeight.w900),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+              child: SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: () => _contactSupportOptions(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isPremiumMode
+                        ? _premiumBlue
+                        : isDarkMode
+                        ? Colors.white
+                        : Colors.black,
+                    foregroundColor: isDarkMode && !isPremiumMode
+                        ? Colors.black
+                        : Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: const Text(
+                    'Contact Support',
+                    style: TextStyle(fontWeight: FontWeight.w900),
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

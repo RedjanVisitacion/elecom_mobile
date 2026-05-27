@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:iconsax_flutter/iconsax_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -18,6 +19,11 @@ import 'elecom_about_screen.dart';
 import 'elecom_faqs_screen.dart';
 import 'settings_screen.dart';
 import 'package:image_picker/image_picker.dart';
+
+const _premiumBlue = Color(0xFF2563EB);
+const _premiumGold = Color(0xFFFACC15);
+const _premiumInk = Color(0xFF0F172A);
+const _premiumSub = Color(0xFF475569);
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -48,7 +54,7 @@ class _RateAppSheetState extends State<_RateAppSheet> {
       _submitting = true;
     });
 
-    final items = _items;
+    final items = _displayItems;
     final chosen = items[idx];
 
     try {
@@ -60,6 +66,8 @@ class _RateAppSheetState extends State<_RateAppSheet> {
     }
   }
 
+  // Kept only as a migration fallback for older encoded builds.
+  // ignore: unused_field
   static const _items = <_RateItem>[
     _RateItem(
       rating: 1,
@@ -78,15 +86,64 @@ class _RateAppSheetState extends State<_RateAppSheet> {
     ),
   ];
 
+  static const _displayItems = <_RateItem>[
+    _RateItem(
+      rating: 1,
+      label: 'Terrible',
+      emoji: '\u{1F620}',
+      color: Color(0xFFF59E0B),
+    ),
+    _RateItem(
+      rating: 2,
+      label: 'Bad',
+      emoji: '\u{1F61E}',
+      color: Color(0xFFF59E0B),
+    ),
+    _RateItem(
+      rating: 3,
+      label: 'Okay',
+      emoji: '\u{1F610}',
+      color: Color(0xFFF59E0B),
+    ),
+    _RateItem(
+      rating: 4,
+      label: 'Good',
+      emoji: '\u{1F60A}',
+      color: Color(0xFF22C55E),
+    ),
+    _RateItem(
+      rating: 5,
+      label: 'Amazing',
+      emoji: '\u{1F970}',
+      color: Color(0xFFEF4444),
+    ),
+  ];
+
   @override
   Widget build(BuildContext context) {
     final safeBottom = MediaQuery.of(context).padding.bottom;
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final isPremiumMode = themeNotifier.isPremiumMode;
+    final sheetColor = isPremiumMode
+        ? Colors.white.withValues(alpha: 0.94)
+        : isDarkMode
+        ? const Color(0xFF2A2A35)
+        : Colors.white;
+    final titleColor = isPremiumMode
+        ? _premiumInk
+        : isDarkMode
+        ? Colors.white
+        : Colors.black;
+    final subColor = isPremiumMode
+        ? _premiumSub
+        : isDarkMode
+        ? Colors.white70
+        : Colors.black54;
 
     return Padding(
       padding: EdgeInsets.only(left: 10, right: 10, bottom: safeBottom + 10),
       child: Material(
-        color: isDarkMode ? const Color(0xFF2A2A35) : Colors.white,
+        color: sheetColor,
         borderRadius: BorderRadius.circular(20),
         clipBehavior: Clip.antiAlias,
         child: Padding(
@@ -98,25 +155,59 @@ class _RateAppSheetState extends State<_RateAppSheet> {
                 width: 42,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: isDarkMode ? Colors.white24 : Colors.black12,
+                  color: isPremiumMode
+                      ? _premiumBlue.withValues(alpha: 0.18)
+                      : isDarkMode
+                      ? Colors.white24
+                      : Colors.black12,
                   borderRadius: BorderRadius.circular(99),
                 ),
               ),
               const SizedBox(height: 18),
-              const Icon(Icons.thumb_up, size: 48, color: Color(0xFF2563EB)),
+              isPremiumMode
+                  ? Container(
+                      width: 62,
+                      height: 62,
+                      decoration: BoxDecoration(
+                        color: _premiumBlue.withValues(alpha: 0.10),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: _premiumGold.withValues(alpha: 0.55),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: _premiumBlue.withValues(alpha: 0.16),
+                            blurRadius: 20,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: HugeIcon(
+                        icon: HugeIcons.strokeRoundedUserStar01,
+                        size: 34,
+                        color: _premiumBlue,
+                        strokeWidth: 1.9,
+                      ),
+                    )
+                  : const Icon(
+                      Icons.thumb_up,
+                      size: 48,
+                      color: Color(0xFF2563EB),
+                    ),
               const SizedBox(height: 12),
               Text(
                 'Enjoying the ELECOM app so far?',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: titleColor,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
                 'We work super hard to serve you better and would love to know how you\'d rate our app.',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: isDarkMode ? Colors.white70 : Colors.black54,
+                  color: subColor,
                   height: 1.3,
                   fontWeight: FontWeight.w500,
                 ),
@@ -127,7 +218,7 @@ class _RateAppSheetState extends State<_RateAppSheet> {
                 height: 78,
                 child: Row(
                   children: [
-                    for (int i = 0; i < _items.length; i++)
+                    for (int i = 0; i < _displayItems.length; i++)
                       Expanded(
                         child: InkWell(
                           onTap: _submitting ? null : () => _select(i),
@@ -150,14 +241,15 @@ class _RateAppSheetState extends State<_RateAppSheet> {
                             });
                           },
                           child: _RateEmojiTile(
-                            emoji: _items[i].emoji,
-                            color: _items[i].color,
-                            label: _items[i].label,
+                            emoji: _displayItems[i].emoji,
+                            color: _displayItems[i].color,
+                            label: _displayItems[i].label,
                             index: i,
-                            total: _items.length,
+                            total: _displayItems.length,
                             active: _selected == i || _pressed == i,
                             selected: _selected == i,
                             disabled: _submitting,
+                            isPremiumMode: isPremiumMode,
                           ),
                         ),
                       ),
@@ -170,7 +262,11 @@ class _RateAppSheetState extends State<_RateAppSheet> {
                     ? null
                     : () => Navigator.of(context).pop(),
                 style: TextButton.styleFrom(
-                  foregroundColor: isDarkMode ? Colors.white70 : Colors.black54,
+                  foregroundColor: isPremiumMode
+                      ? _premiumSub
+                      : isDarkMode
+                      ? Colors.white70
+                      : Colors.black54,
                 ),
                 child: const Text(
                   'Rate later',
@@ -209,6 +305,7 @@ class _RateEmojiTile extends StatefulWidget {
     required this.active,
     required this.selected,
     required this.disabled,
+    required this.isPremiumMode,
   });
 
   final String emoji;
@@ -219,6 +316,7 @@ class _RateEmojiTile extends StatefulWidget {
   final bool active;
   final bool selected;
   final bool disabled;
+  final bool isPremiumMode;
 
   @override
   State<_RateEmojiTile> createState() => _RateEmojiTileState();
@@ -261,8 +359,10 @@ class _RateEmojiTileState extends State<_RateEmojiTile>
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final textStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
-      fontWeight: FontWeight.w700,
-      color: isDarkMode
+      fontWeight: widget.isPremiumMode ? FontWeight.w800 : FontWeight.w700,
+      color: widget.isPremiumMode
+          ? (widget.selected ? _premiumBlue : _premiumSub)
+          : isDarkMode
           ? Colors.white
           : (widget.selected ? Colors.black : Colors.black54),
     );
@@ -287,22 +387,53 @@ class _RateEmojiTileState extends State<_RateEmojiTile>
             : (0.03 * math.sin(t * math.pi * 4)).toDouble();
         final scale = widget.selected ? 1.18 : (widget.active ? 1.12 : 1.02);
 
+        final emoji = Transform.translate(
+          offset: Offset(0, dy),
+          child: Transform.rotate(
+            angle: rot,
+            child: Transform.scale(
+              scale: scale,
+              child: Text(
+                widget.emoji,
+                style: TextStyle(fontSize: widget.isPremiumMode ? 30 : 28),
+              ),
+            ),
+          ),
+        );
+
         return Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Transform.translate(
-              offset: Offset(0, dy),
-              child: Transform.rotate(
-                angle: rot,
-                child: Transform.scale(
-                  scale: scale,
-                  child: Text(
-                    widget.emoji,
-                    style: TextStyle(fontSize: 28, color: widget.color),
+            if (widget.isPremiumMode)
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                width: 42,
+                height: 42,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: (widget.selected || widget.active)
+                      ? _premiumGold.withValues(alpha: 0.26)
+                      : _premiumBlue.withValues(alpha: 0.07),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: widget.selected
+                        ? _premiumGold.withValues(alpha: 0.95)
+                        : _premiumBlue.withValues(alpha: 0.14),
                   ),
+                  boxShadow: widget.selected
+                      ? [
+                          BoxShadow(
+                            color: _premiumBlue.withValues(alpha: 0.18),
+                            blurRadius: 12,
+                            offset: const Offset(0, 6),
+                          ),
+                        ]
+                      : null,
                 ),
-              ),
-            ),
+                child: emoji,
+              )
+            else
+              emoji,
             const SizedBox(height: 6),
             Text(widget.label, style: textStyle),
           ],
