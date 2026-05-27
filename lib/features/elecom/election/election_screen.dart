@@ -225,38 +225,13 @@ class _ElectionScreenState extends State<ElectionScreen>
         return;
       }
 
-      final verified = await _ensureFaceVerifiedBeforeBallot();
-      if (!mounted) return;
-      if (!verified) {
-        setState(() {
-          _loading = false;
-          _ballotPayload = const {};
-          _selections.clear();
-          _loadError = 'Face verification is required before you can vote.';
-        });
-        return;
-      }
-
-      final ballot = await _api.getBallot();
-      if (!mounted) return;
-      if (ballot['ok'] != true) {
-        setState(() {
-          _electionWindow = election;
-          _loadError = (ballot['error'] ?? 'Could not load ballot').toString();
-          _loading = false;
-        });
-        return;
-      }
-
       setState(() {
         _electionWindow = election;
         _alreadyVoted = false;
-        _ballotPayload = ballot;
+        _ballotPayload = const {};
         _selections.clear();
         _loading = false;
-      });
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _maybeStartVotingTutorial();
+        _loadError = null;
       });
     } catch (e) {
       if (!mounted) return;
@@ -1765,7 +1740,7 @@ class _ElectionScreenState extends State<ElectionScreen>
                   backgroundColor: Colors.black,
                   foregroundColor: Colors.white,
                 ),
-                onPressed: _load,
+                onPressed: _handleVoteNowFromHome,
                 child: const Text('Retry'),
               ),
             ],
