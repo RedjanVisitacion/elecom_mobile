@@ -895,6 +895,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                       child: ElectionTransparencyCard(
                         summary: _ledgerSummary,
                         isLoading: _loadingLedger,
+                        isPremiumMode: isPremiumMode,
                         onTapViewLedger: () {
                           Navigator.of(context).push(
                             MaterialPageRoute(

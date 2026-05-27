@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/utils/toast_service.dart';
 
 import '../data/elecom_mobile_api.dart';
+import '../student_dashboard/utils/theme_notifier.dart';
 
 class ElectionTransparencyScreen extends StatefulWidget {
   const ElectionTransparencyScreen({super.key});
@@ -81,12 +83,44 @@ class _ElectionTransparencyScreenState
 
   @override
   Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: themeNotifier,
+      builder: (context, _) {
+        return _buildScaffold(
+          context,
+          isPremiumMode: themeNotifier.isPremiumMode,
+        );
+      },
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context, {required bool isPremiumMode}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = isDark ? const Color(0xFF171620) : const Color(0xFFF3F4F6);
-    final card = isDark ? const Color(0xFF2A2A35) : Colors.white;
-    final border = isDark ? Colors.white12 : const Color(0xFFDADCE0);
-    final fg = isDark ? Colors.white : Colors.black;
-    final sub = isDark ? Colors.white70 : const Color(0xFF4B5563);
+    final bg = isPremiumMode
+        ? const Color(0xFFF8FAFC)
+        : isDark
+        ? const Color(0xFF171620)
+        : const Color(0xFFF3F4F6);
+    final card = isPremiumMode
+        ? Colors.white.withValues(alpha: 0.76)
+        : isDark
+        ? const Color(0xFF2A2A35)
+        : Colors.white;
+    final border = isPremiumMode
+        ? Colors.white.withValues(alpha: 0.72)
+        : isDark
+        ? Colors.white12
+        : const Color(0xFFDADCE0);
+    final fg = isPremiumMode
+        ? const Color(0xFF0F172A)
+        : isDark
+        ? Colors.white
+        : Colors.black;
+    final sub = isPremiumMode
+        ? const Color(0xFF475569)
+        : isDark
+        ? Colors.white70
+        : const Color(0xFF4B5563);
     final statusValid =
         _s(_summary, 'ledger_status', fallback: 'unknown').toLowerCase() ==
         'valid';
@@ -97,8 +131,9 @@ class _ElectionTransparencyScreenState
     return Scaffold(
       backgroundColor: bg,
       appBar: AppBar(
-        backgroundColor: bg,
+        backgroundColor: isPremiumMode ? Colors.transparent : bg,
         elevation: 0,
+        surfaceTintColor: Colors.transparent,
         title: Text(
           'Election Transparency',
           style: TextStyle(color: fg, fontWeight: FontWeight.w900),
@@ -107,340 +142,378 @@ class _ElectionTransparencyScreenState
       ),
       body: SafeArea(
         top: false,
-        child: RefreshIndicator(
-          onRefresh: _load,
-          child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(18),
-            children: [
-              Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 560),
-                  child: Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: card,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: border),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(
-                            alpha: isDark ? 0.26 : 0.10,
-                          ),
-                          blurRadius: 26,
-                          offset: const Offset(0, 14),
+        child: _PremiumTransparencyBackground(
+          enabled: isPremiumMode,
+          child: RefreshIndicator(
+            onRefresh: _load,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(18),
+              children: [
+                Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 560),
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: card,
+                        borderRadius: BorderRadius.circular(
+                          isPremiumMode ? 22 : 20,
                         ),
-                        BoxShadow(
-                          color: statusColor.withValues(
-                            alpha: isDark ? 0.08 : 0.05,
+                        border: Border.all(color: border),
+                        boxShadow: [
+                          BoxShadow(
+                            color: isPremiumMode
+                                ? const Color(
+                                    0xFF2563EB,
+                                  ).withValues(alpha: 0.10)
+                                : Colors.black.withValues(
+                                    alpha: isDark ? 0.26 : 0.10,
+                                  ),
+                            blurRadius: isPremiumMode ? 32 : 26,
+                            offset: Offset(0, isPremiumMode ? 18 : 14),
                           ),
-                          blurRadius: 22,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: _loading
-                        ? const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 20),
-                            child: Center(
-                              child: SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.4,
+                          BoxShadow(
+                            color:
+                                (isPremiumMode
+                                        ? const Color(0xFFFACC15)
+                                        : statusColor)
+                                    .withValues(
+                                      alpha: isPremiumMode ? 0.13 : 0.05,
+                                    ),
+                            blurRadius: isPremiumMode ? 28 : 22,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: _loading
+                          ? const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 20),
+                              child: Center(
+                                child: SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.4,
+                                  ),
                                 ),
                               ),
-                            ),
-                          )
-                        : Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    width: 52,
-                                    height: 52,
-                                    decoration: BoxDecoration(
-                                      color: isDark
-                                          ? Colors.white10
-                                          : const Color(0xFFF5F1E3),
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: statusColor.withValues(
-                                          alpha: 0.55,
+                            )
+                          : Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      width: 52,
+                                      height: 52,
+                                      decoration: BoxDecoration(
+                                        color: isPremiumMode
+                                            ? const Color(0xFFFFF7D6)
+                                            : isDark
+                                            ? Colors.white10
+                                            : const Color(0xFFF5F1E3),
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color:
+                                              (isPremiumMode
+                                                      ? const Color(0xFFFACC15)
+                                                      : statusColor)
+                                                  .withValues(alpha: 0.55),
+                                          width: 1,
                                         ),
-                                        width: 1,
+                                      ),
+                                      child: isPremiumMode
+                                          ? _premiumIcon(
+                                              HugeIcons
+                                                  .strokeRoundedShieldBlockchain,
+                                              size: 28,
+                                            )
+                                          : Icon(
+                                              Icons.verified_user_outlined,
+                                              color: statusColor,
+                                              size: 28,
+                                            ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        'Secured by Vote Ledger',
+                                        style: TextStyle(
+                                          color: fg,
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 17,
+                                        ),
                                       ),
                                     ),
-                                    child: Icon(
-                                      Icons.verified_user_outlined,
-                                      color: statusColor,
-                                      size: 28,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      'Secured by Vote Ledger',
-                                      style: TextStyle(
-                                        color: fg,
-                                        fontWeight: FontWeight.w900,
-                                        fontSize: 17,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Vote blocks are linked with cryptographic hashes to help detect tampering.',
-                                style: TextStyle(
-                                  color: sub,
-                                  fontWeight: FontWeight.w700,
-                                  height: 1.35,
+                                  ],
                                 ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'A hash is a digital fingerprint used to detect changes in vote records.',
-                                style: TextStyle(
-                                  color: sub,
-                                  fontWeight: FontWeight.w700,
-                                  height: 1.3,
-                                  fontSize: 12.5,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              if (_error != null)
+                                const SizedBox(height: 8),
                                 Text(
-                                  _error!,
-                                  style: const TextStyle(
-                                    color: Color(0xFFD97706),
+                                  'Vote blocks are linked with cryptographic hashes to help detect tampering.',
+                                  style: TextStyle(
+                                    color: sub,
                                     fontWeight: FontWeight.w700,
+                                    height: 1.35,
                                   ),
-                                )
-                              else ...[
-                                _line(
-                                  label: 'Ledger Status',
-                                  value: _s(_summary, 'ledger_status'),
-                                  valueColor:
-                                      _s(
-                                            _summary,
-                                            'ledger_status',
-                                          ).toLowerCase() ==
-                                          'valid'
-                                      ? const Color(0xFF1E8E3E)
-                                      : const Color(0xFFD97706),
-                                  sub: sub,
                                 ),
-                                _line(
-                                  label: 'Total Vote Blocks',
-                                  value: _voteBlockText(
-                                    _n(_summary, 'total_vote_blocks'),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'A hash is a digital fingerprint used to detect changes in vote records.',
+                                  style: TextStyle(
+                                    color: sub,
+                                    fontWeight: FontWeight.w700,
+                                    height: 1.3,
+                                    fontSize: 12.5,
                                   ),
-                                  sub: sub,
                                 ),
-                                _line(
-                                  label: 'Latest Hash',
-                                  value: _s(_summary, 'latest_hash'),
-                                  sub: sub,
-                                ),
-                                _line(
-                                  label: 'Latest Block Status',
-                                  value: _s(
-                                    _summary,
-                                    'latest_block_status',
-                                    fallback: '-',
-                                  ),
-                                  valueColor:
-                                      _s(
-                                            _summary,
-                                            'latest_block_status',
-                                            fallback: '',
-                                          ).toLowerCase() ==
-                                          'accepted'
-                                      ? const Color(0xFF1E8E3E)
-                                      : const Color(0xFFD97706),
-                                  sub: sub,
-                                ),
-                                _line(
-                                  label: 'Last Verified',
-                                  value: _formatDisplayDate(
-                                    _s(_summary, 'last_verified'),
-                                  ),
-                                  sub: sub,
-                                ),
-                                if (_n(_summary, 'changed_vote_count') > 0)
+                                const SizedBox(height: 8),
+                                if (_error != null)
+                                  Text(
+                                    _error!,
+                                    style: const TextStyle(
+                                      color: Color(0xFFD97706),
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  )
+                                else ...[
                                   _line(
-                                    label: 'Changed Votes',
-                                    value:
-                                        '${_n(_summary, 'changed_vote_count')} flagged',
-                                    valueColor: const Color(0xFFB3261E),
+                                    label: 'Ledger Status',
+                                    value: _s(_summary, 'ledger_status'),
+                                    valueColor:
+                                        _s(
+                                              _summary,
+                                              'ledger_status',
+                                            ).toLowerCase() ==
+                                            'valid'
+                                        ? const Color(0xFF1E8E3E)
+                                        : const Color(0xFFD97706),
                                     sub: sub,
                                   ),
-                                if (_n(_summary, 'missing_vote_rows_count') > 0)
                                   _line(
-                                    label: 'Missing Vote Rows',
-                                    value:
-                                        '${_n(_summary, 'missing_vote_rows_count')} flagged',
-                                    valueColor: const Color(0xFFB3261E),
+                                    label: 'Total Vote Blocks',
+                                    value: _voteBlockText(
+                                      _n(_summary, 'total_vote_blocks'),
+                                    ),
                                     sub: sub,
                                   ),
+                                  _line(
+                                    label: 'Latest Hash',
+                                    value: _s(_summary, 'latest_hash'),
+                                    sub: sub,
+                                  ),
+                                  _line(
+                                    label: 'Latest Block Status',
+                                    value: _s(
+                                      _summary,
+                                      'latest_block_status',
+                                      fallback: '-',
+                                    ),
+                                    valueColor:
+                                        _s(
+                                              _summary,
+                                              'latest_block_status',
+                                              fallback: '',
+                                            ).toLowerCase() ==
+                                            'accepted'
+                                        ? const Color(0xFF1E8E3E)
+                                        : const Color(0xFFD97706),
+                                    sub: sub,
+                                  ),
+                                  _line(
+                                    label: 'Last Verified',
+                                    value: _formatDisplayDate(
+                                      _s(_summary, 'last_verified'),
+                                    ),
+                                    sub: sub,
+                                  ),
+                                  if (_n(_summary, 'changed_vote_count') > 0)
+                                    _line(
+                                      label: 'Changed Votes',
+                                      value:
+                                          '${_n(_summary, 'changed_vote_count')} flagged',
+                                      valueColor: const Color(0xFFB3261E),
+                                      sub: sub,
+                                    ),
+                                  if (_n(_summary, 'missing_vote_rows_count') >
+                                      0)
+                                    _line(
+                                      label: 'Missing Vote Rows',
+                                      value:
+                                          '${_n(_summary, 'missing_vote_rows_count')} flagged',
+                                      valueColor: const Color(0xFFB3261E),
+                                      sub: sub,
+                                    ),
+                                ],
+                                const SizedBox(height: 6),
+                                Text(
+                                  'Vote choices and student identities are kept private. Only public verification hashes are shown.',
+                                  style: TextStyle(
+                                    color: sub,
+                                    fontWeight: FontWeight.w700,
+                                    height: 1.35,
+                                  ),
+                                ),
                               ],
-                              const SizedBox(height: 6),
-                              Text(
-                                'Vote choices and student identities are kept private. Only public verification hashes are shown.',
-                                style: TextStyle(
-                                  color: sub,
-                                  fontWeight: FontWeight.w700,
-                                  height: 1.35,
-                                ),
-                              ),
-                            ],
-                          ),
+                            ),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 14),
-              if (!_loading && _error == null) ...[
-                _publicLedgerToggle(
-                  card: card,
-                  border: border,
-                  fg: fg,
-                  sub: sub,
-                  count: _blocks.length,
-                ),
-                if (_publicLedgerExpanded) const SizedBox(height: 10),
-                if (_publicLedgerExpanded)
-                  ..._blocks.map((b) {
-                    final blockId = _n(b, 'id');
-                    final voteHash = _s(b, 'vote_hash');
-                    final liveVoteHash = _s(b, 'live_vote_hash');
-                    final voteChanged = b['vote_changed'] == true;
-                    final voteRowsMissing = b['vote_rows_missing'] == true;
-                    final hasVoteIssue = voteChanged || voteRowsMissing;
-                    final previousHash = _s(b, 'previous_hash');
-                    final linkedLabel = previousHash == '-'
-                        ? 'Linked to previous block'
-                        : 'Linked to Block #${blockId > 1 ? blockId - 1 : blockId}';
-                    final blockStatusLabel = _ledgerBlockStatusLabel(
-                      _s(b, 'block_status', fallback: 'pending'),
-                    );
-                    final blockStatusTone = _ledgerStatusColor(
-                      blockStatusLabel,
-                    );
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: card,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: border),
-                        ),
-                        padding: const EdgeInsets.all(10),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Block #$blockId',
-                              style: TextStyle(
-                                color: fg,
-                                fontWeight: FontWeight.w900,
-                              ),
+                const SizedBox(height: 14),
+                if (!_loading && _error == null) ...[
+                  _publicLedgerToggle(
+                    card: card,
+                    border: border,
+                    fg: fg,
+                    sub: sub,
+                    count: _blocks.length,
+                    isPremiumMode: isPremiumMode,
+                  ),
+                  if (_publicLedgerExpanded) const SizedBox(height: 10),
+                  if (_publicLedgerExpanded)
+                    ..._blocks.map((b) {
+                      final blockId = _n(b, 'id');
+                      final voteHash = _s(b, 'vote_hash');
+                      final liveVoteHash = _s(b, 'live_vote_hash');
+                      final voteChanged = b['vote_changed'] == true;
+                      final voteRowsMissing = b['vote_rows_missing'] == true;
+                      final hasVoteIssue = voteChanged || voteRowsMissing;
+                      final previousHash = _s(b, 'previous_hash');
+                      final linkedLabel = previousHash == '-'
+                          ? 'Linked to previous block'
+                          : 'Linked to Block #${blockId > 1 ? blockId - 1 : blockId}';
+                      final blockStatusLabel = _ledgerBlockStatusLabel(
+                        _s(b, 'block_status', fallback: 'pending'),
+                      );
+                      final blockStatusTone = _ledgerStatusColor(
+                        blockStatusLabel,
+                      );
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: card,
+                            borderRadius: BorderRadius.circular(
+                              isPremiumMode ? 16 : 14,
                             ),
-                            const SizedBox(height: 1),
-                            Text(
-                              linkedLabel,
-                              style: TextStyle(
-                                color: sub,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 12,
-                              ),
-                            ),
-                            const SizedBox(height: 3),
-                            if (hasVoteIssue) ...[
-                              _tamperWarning(
-                                message: voteRowsMissing
-                                    ? 'Vote rows are missing for this block.'
-                                    : 'Vote changed after submission.',
-                                changedAt: _formatBlockDate(
-                                  _s(b, 'vote_changed_at'),
-                                ),
-                                source: _s(
-                                  b,
-                                  'vote_change_time_source',
-                                  fallback: 'detected',
+                            border: Border.all(color: border),
+                            boxShadow: isPremiumMode
+                                ? [
+                                    BoxShadow(
+                                      color: const Color(
+                                        0xFF2563EB,
+                                      ).withValues(alpha: 0.08),
+                                      blurRadius: 18,
+                                      offset: const Offset(0, 10),
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                          padding: const EdgeInsets.all(10),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Block #$blockId',
+                                style: TextStyle(
+                                  color: fg,
+                                  fontWeight: FontWeight.w900,
                                 ),
                               ),
-                              const SizedBox(height: 4),
-                            ],
-                            _hashRow(
-                              label: hasVoteIssue
-                                  ? 'Original vote hash'
-                                  : 'Vote hash',
-                              hash: voteHash,
-                              fullHash: _s(
-                                b,
-                                'vote_hash_full',
-                                fallback: voteHash,
+                              const SizedBox(height: 1),
+                              Text(
+                                linkedLabel,
+                                style: TextStyle(
+                                  color: sub,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12,
+                                ),
                               ),
-                              sub: sub,
-                              copiedMessage: 'Vote hash copied.',
-                            ),
-                            if (voteChanged)
+                              const SizedBox(height: 3),
+                              if (hasVoteIssue) ...[
+                                _tamperWarning(
+                                  message: voteRowsMissing
+                                      ? 'Vote rows are missing for this block.'
+                                      : 'Vote changed after submission.',
+                                  changedAt: _formatBlockDate(
+                                    _s(b, 'vote_changed_at'),
+                                  ),
+                                  source: _s(
+                                    b,
+                                    'vote_change_time_source',
+                                    fallback: 'detected',
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                              ],
                               _hashRow(
-                                label: 'Current vote hash',
-                                hash: liveVoteHash,
+                                label: hasVoteIssue
+                                    ? 'Original vote hash'
+                                    : 'Vote hash',
+                                hash: voteHash,
                                 fullHash: _s(
                                   b,
-                                  'live_vote_hash_full',
-                                  fallback: liveVoteHash,
+                                  'vote_hash_full',
+                                  fallback: voteHash,
                                 ),
                                 sub: sub,
-                                copiedMessage: 'Current vote hash copied.',
+                                copiedMessage: 'Vote hash copied.',
                               ),
-                            _hashRow(
-                              label: 'Block hash',
-                              hash: _s(b, 'hash'),
-                              fullHash: _s(
-                                b,
-                                'hash_full',
-                                fallback: _s(b, 'hash'),
+                              if (voteChanged)
+                                _hashRow(
+                                  label: 'Current vote hash',
+                                  hash: liveVoteHash,
+                                  fullHash: _s(
+                                    b,
+                                    'live_vote_hash_full',
+                                    fallback: liveVoteHash,
+                                  ),
+                                  sub: sub,
+                                  copiedMessage: 'Current vote hash copied.',
+                                ),
+                              _hashRow(
+                                label: 'Block hash',
+                                hash: _s(b, 'hash'),
+                                fullHash: _s(
+                                  b,
+                                  'hash_full',
+                                  fallback: _s(b, 'hash'),
+                                ),
+                                sub: sub,
+                                copiedMessage: 'Block hash copied.',
                               ),
-                              sub: sub,
-                              copiedMessage: 'Block hash copied.',
-                            ),
-                            const SizedBox(height: 1),
-                            Text(
-                              'Previous: $previousHash',
-                              style: TextStyle(
-                                color: sub,
-                                fontWeight: FontWeight.w700,
+                              const SizedBox(height: 1),
+                              Text(
+                                'Previous: $previousHash',
+                                style: TextStyle(
+                                  color: sub,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 1),
-                            Text(
-                              'Submitted: ${_formatBlockDate(_s(b, 'submitted_at'))}',
-                              style: TextStyle(
-                                color: sub,
-                                fontWeight: FontWeight.w700,
+                              const SizedBox(height: 1),
+                              Text(
+                                'Submitted: ${_formatBlockDate(_s(b, 'submitted_at'))}',
+                                style: TextStyle(
+                                  color: sub,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 1),
-                            Text(
-                              'Block status: $blockStatusLabel',
-                              style: TextStyle(
-                                color: blockStatusTone,
-                                fontWeight: FontWeight.w800,
+                              const SizedBox(height: 1),
+                              Text(
+                                'Block status: $blockStatusLabel',
+                                style: TextStyle(
+                                  color: blockStatusTone,
+                                  fontWeight: FontWeight.w800,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                    );
-                  }),
+                      );
+                    }),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
@@ -453,6 +526,7 @@ class _ElectionTransparencyScreenState
     required Color fg,
     required Color sub,
     required int count,
+    required bool isPremiumMode,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -465,7 +539,9 @@ class _ElectionTransparencyScreenState
         onTap: () {
           setState(() => _publicLedgerExpanded = !_publicLedgerExpanded);
         },
-        leading: Icon(Icons.account_tree_outlined, color: sub),
+        leading: isPremiumMode
+            ? _premiumIcon(HugeIcons.strokeRoundedBlockchain06, size: 24)
+            : Icon(Icons.account_tree_outlined, color: sub),
         title: Text(
           'Public Ledger',
           style: TextStyle(color: fg, fontWeight: FontWeight.w900),
@@ -483,6 +559,15 @@ class _ElectionTransparencyScreenState
           color: sub,
         ),
       ),
+    );
+  }
+
+  Widget _premiumIcon(List<List<dynamic>> icon, {double size = 24}) {
+    return HugeIcon(
+      icon: icon,
+      color: const Color(0xFF2563EB),
+      size: size,
+      strokeWidth: 1.9,
     );
   }
 
@@ -679,4 +764,59 @@ class _ElectionTransparencyScreenState
     if (total == 1) return '1 vote block';
     return '$total vote blocks';
   }
+}
+
+class _PremiumTransparencyBackground extends StatelessWidget {
+  const _PremiumTransparencyBackground({
+    required this.enabled,
+    required this.child,
+  });
+
+  final bool enabled;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!enabled) return child;
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xFFFFFFFF),
+            Color(0xFFF4F8FF),
+            Color(0xFFEAF2FF),
+            Color(0xFFDCEAFF),
+            Color(0xFFFFFFFF),
+          ],
+          stops: [0, 0.42, 0.68, 0.84, 1],
+        ),
+      ),
+      child: Stack(
+        children: [
+          Positioned.fill(child: CustomPaint(painter: _PremiumDotsPainter())),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _PremiumDotsPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFF2563EB).withValues(alpha: 0.05)
+      ..style = PaintingStyle.fill;
+    const step = 30.0;
+    for (double y = 12; y < size.height; y += step) {
+      for (double x = 12; x < size.width; x += step) {
+        canvas.drawCircle(Offset(x, y), 1.2, paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

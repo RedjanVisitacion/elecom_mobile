@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:intl/intl.dart';
 
 class ElectionTransparencyCard extends StatelessWidget {
@@ -7,11 +8,13 @@ class ElectionTransparencyCard extends StatelessWidget {
     required this.summary,
     required this.isLoading,
     required this.onTapViewLedger,
+    this.isPremiumMode = false,
   });
 
   final Map<String, dynamic>? summary;
   final bool isLoading;
   final VoidCallback onTapViewLedger;
+  final bool isPremiumMode;
 
   @override
   Widget build(BuildContext context) {
@@ -77,7 +80,15 @@ class ElectionTransparencyCard extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.verified_user_outlined, color: statusColor),
+                        isPremiumMode
+                            ? _premiumIcon(
+                                HugeIcons.strokeRoundedShieldBlockchain,
+                                size: 22,
+                              )
+                            : Icon(
+                                Icons.verified_user_outlined,
+                                color: statusColor,
+                              ),
                         const SizedBox(width: 8),
                         Text(
                           'Secured by Vote Ledger',
@@ -175,10 +186,15 @@ class ElectionTransparencyCard extends StatelessWidget {
                       alignment: Alignment.centerLeft,
                       child: TextButton.icon(
                         onPressed: onTapViewLedger,
-                        icon: Icon(
-                          Icons.visibility_outlined,
-                          color: isDark ? Colors.white70 : Colors.black54,
-                        ),
+                        icon: isPremiumMode
+                            ? _premiumIcon(
+                                HugeIcons.strokeRoundedBlockchain06,
+                                size: 20,
+                              )
+                            : Icon(
+                                Icons.visibility_outlined,
+                                color: isDark ? Colors.white70 : Colors.black54,
+                              ),
                         label: Text(
                           'View Public Ledger',
                           style: TextStyle(
@@ -192,6 +208,15 @@ class ElectionTransparencyCard extends StatelessWidget {
                 ),
         ),
       ],
+    );
+  }
+
+  Widget _premiumIcon(List<List<dynamic>> icon, {double size = 22}) {
+    return HugeIcon(
+      icon: icon,
+      color: const Color(0xFF2563EB),
+      size: size,
+      strokeWidth: 1.9,
     );
   }
 
