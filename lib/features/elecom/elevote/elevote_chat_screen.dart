@@ -21,6 +21,7 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
   bool _suggestionsOpen = false;
 
   static const List<String> _suggestions = [
+    'What is ELECOM?',
     'How do I vote?',
     'Can I change my vote after submitting?',
     'How can I view my receipt?',
@@ -141,7 +142,7 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
         elevation: 0,
         titleSpacing: 0,
         title: const Text(
-          'EleVote • Ease Helper',
+          'EleVote Ai Assistant',
           style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
         ),
         actions: [
@@ -265,7 +266,7 @@ class _AssistantIntro extends StatelessWidget {
               ],
             ),
             child: const Text(
-              "Hello! I'm EleVote (Ease Helper).\nTap a suggestion below or type your own message. Here's what I can help with:\n\n"
+              "Hello! I'm EleVote Ai Assistant.\nTap a suggestion below or type your own message. Here's what I can help with:\n\n"
               '• How to vote\n'
               '• Ballot and candidate questions\n'
               '• Receipt and results guidance\n'
