@@ -15,6 +15,7 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
   final ElecomMobileApi _api = ElecomMobileApi();
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final FocusNode _messageFocusNode = FocusNode();
   final List<_EleVoteMessage> _messages = <_EleVoteMessage>[];
   bool _loadingHistory = true;
   bool _sending = false;
@@ -33,12 +34,18 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
   @override
   void initState() {
     super.initState();
+    _messageFocusNode.addListener(() {
+      if (_messageFocusNode.hasFocus && _suggestionsOpen) {
+        setState(() => _suggestionsOpen = false);
+      }
+    });
     _loadHistory();
   }
 
   @override
   void dispose() {
     _messageController.dispose();
+    _messageFocusNode.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -133,6 +140,7 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
   @override
   Widget build(BuildContext context) {
     final bottom = MediaQuery.paddingOf(context).bottom;
+    final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -173,7 +181,7 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
                   ),
           ),
           _SuggestionPanel(
-            open: _suggestionsOpen,
+            open: _suggestionsOpen && !keyboardOpen,
             suggestions: _suggestions,
             onToggle: () =>
                 setState(() => _suggestionsOpen = !_suggestionsOpen),
@@ -186,6 +194,7 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
                 Expanded(
                   child: TextField(
                     controller: _messageController,
+                    focusNode: _messageFocusNode,
                     textInputAction: TextInputAction.send,
                     minLines: 1,
                     maxLines: 4,
@@ -301,6 +310,7 @@ class _SuggestionPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final maxOpenHeight = MediaQuery.sizeOf(context).height * 0.32;
     return Container(
       margin: const EdgeInsets.fromLTRB(14, 0, 14, 0),
       decoration: BoxDecoration(
@@ -352,32 +362,35 @@ class _SuggestionPanel extends StatelessWidget {
               heightFactor: open ? 1 : 0,
               duration: const Duration(milliseconds: 220),
               curve: Curves.easeOutCubic,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
-                child: Column(
-                  children: [
-                    for (final suggestion in suggestions)
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: ActionChip(
-                            label: Text(suggestion),
-                            labelStyle: const TextStyle(
-                              color: Color(0xFF1E293B),
-                              fontWeight: FontWeight.w700,
-                              fontSize: 12,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: maxOpenHeight),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+                  child: Column(
+                    children: [
+                      for (final suggestion in suggestions)
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: ActionChip(
+                              label: Text(suggestion),
+                              labelStyle: const TextStyle(
+                                color: Color(0xFF1E293B),
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                              ),
+                              backgroundColor: Colors.white,
+                              side: const BorderSide(color: Color(0xFFBFDBFE)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              onPressed: () => onSelect(suggestion),
                             ),
-                            backgroundColor: Colors.white,
-                            side: const BorderSide(color: Color(0xFFBFDBFE)),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            onPressed: () => onSelect(suggestion),
                           ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
