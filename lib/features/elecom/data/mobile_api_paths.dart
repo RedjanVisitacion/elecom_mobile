@@ -20,6 +20,7 @@ class MobileApiPaths {
   static String get accountProfileUpdate => '$base/account/profile/update/';
   static String get accountProfilePassword => '$base/account/profile/password/';
   static String get accountAppRating => '$base/account/app-rating/';
+  static String get elevoteChat => '$base/elevote/chat/';
   static String get tutorialState => '$base/tutorial/state/';
   static String get notifications => '$base/notifications/';
   static String get notificationsCreate => '$base/notifications/create/';
@@ -53,6 +54,7 @@ class MobileApiPaths {
       '$rootApi/cloudinary/signature/?type=face_enrollment';
   static String get faceEnrollmentStatus => '$base/face/enrollment/status/';
   static String get faceEnrollmentSave => '$base/face/enrollment/save/';
+
   /// Legacy alias; Face++ verification uses [faceVerificationVerify].
   static String get faceVerify => '$base/face/verify/';
   static String get faceVerificationVerify => '$base/face/verification/verify/';

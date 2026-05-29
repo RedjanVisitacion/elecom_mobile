@@ -29,6 +29,16 @@ class ElecomMobileApi {
     });
   }
 
+  Future<Map<String, dynamic>> getEleVoteHistory() async {
+    return _getJson(MobileApiPaths.elevoteChat);
+  }
+
+  Future<Map<String, dynamic>> sendEleVoteMessage(String message) async {
+    return _postJson(MobileApiPaths.elevoteChat, <String, dynamic>{
+      'message': message,
+    });
+  }
+
   Future<Map<String, dynamic>> getTutorialState() async {
     return _getJson(MobileApiPaths.tutorialState);
   }
@@ -163,9 +173,7 @@ class ElecomMobileApi {
     return _getJson(MobileApiPaths.voteLedger);
   }
 
-  Future<Map<String, dynamic>> checkNetworkAccess({
-    String? deviceIp,
-  }) async {
+  Future<Map<String, dynamic>> checkNetworkAccess({String? deviceIp}) async {
     final payload = <String, dynamic>{};
     final ip = (deviceIp ?? '').trim();
     if (ip.isNotEmpty) {
@@ -306,7 +314,8 @@ class ElecomMobileApi {
 
   Future<Map<String, dynamic>> uploadImageToCloudinaryDetailed({
     required File imageFile,
-    CloudinarySignatureType signatureType = CloudinarySignatureType.profilePhoto,
+    CloudinarySignatureType signatureType =
+        CloudinarySignatureType.profilePhoto,
   }) async {
     final sigRes = signatureType == CloudinarySignatureType.faceEnrollment
         ? await getFaceCloudinarySignature()
@@ -555,7 +564,9 @@ class ElecomMobileApi {
   }
 
   static String? _parseApiErrorCode(Map<String, dynamic> decoded) {
-    final direct = (decoded['code'] ?? decoded['error_code'] ?? '').toString().trim();
+    final direct = (decoded['code'] ?? decoded['error_code'] ?? '')
+        .toString()
+        .trim();
     if (direct.isNotEmpty) return direct;
     final detail = decoded['detail'];
     if (detail is Map<String, dynamic>) {

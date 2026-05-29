@@ -15,6 +15,7 @@ import '../../../core/utils/toast_service.dart';
 import '../../../services/tutorial_service.dart';
 import '../candidates/candidate_search_screen.dart';
 import '../data/elecom_mobile_api.dart';
+import '../elevote/elevote_chat_screen.dart';
 import '../election/election_screen.dart';
 import '../election/election_transparency_screen.dart';
 import '../election/receipt_screen.dart';
@@ -1124,7 +1125,11 @@ class _PremiumAssistantBubble extends StatelessWidget {
         button: true,
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: () => AppToast.info(context, 'EleVote is coming soon.'),
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const EleVoteChatScreen()),
+            );
+          },
           child: SizedBox(
             width: 84,
             child: Column(
