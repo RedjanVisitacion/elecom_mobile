@@ -63,6 +63,7 @@ class _ElectionScreenState extends State<ElectionScreen>
   bool _checkingReceipt = false;
   bool _votingTutorialRequested = false;
   bool _submitInFlight = false;
+  bool _straightPartyCollapsed = true;
   String? _loadError;
   Map<String, dynamic> _ballotPayload = const {};
   Map<String, dynamic> _electionWindow = const {};
@@ -2537,7 +2538,7 @@ class _ElectionScreenState extends State<ElectionScreen>
         ? const Color(0xFF2A2A35)
         : Colors.white;
     final border = isPremiumMode
-        ? _premiumGold.withValues(alpha: 0.45)
+        ? _premiumBlue.withValues(alpha: 0.16)
         : isDark
         ? Colors.white24
         : const Color(0xFFD7D7D7);
@@ -2567,75 +2568,119 @@ class _ElectionScreenState extends State<ElectionScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Row(
-                    children: [
-                      if (isPremiumMode) ...[
-                        HugeIcon(
-                          icon: HugeIcons.strokeRoundedCheckList,
-                          color: _premiumBlue,
-                          size: 18,
-                          strokeWidth: 1.9,
-                        ),
-                        const SizedBox(width: 7),
-                      ],
-                      Flexible(
-                        child: Text(
-                          'Straight party vote',
-                          style: TextStyle(
-                            color: titleColor,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 15,
+            InkWell(
+              borderRadius: BorderRadius.circular(10),
+              onTap: () => setState(
+                () => _straightPartyCollapsed = !_straightPartyCollapsed,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          if (isPremiumMode) ...[
+                            HugeIcon(
+                              icon: HugeIcons.strokeRoundedCheckList,
+                              color: _premiumBlue,
+                              size: 18,
+                              strokeWidth: 1.9,
+                            ),
+                            const SizedBox(width: 7),
+                          ],
+                          Flexible(
+                            child: Text(
+                              'Straight party vote',
+                              style: TextStyle(
+                                color: titleColor,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 15,
+                              ),
+                            ),
                           ),
+                        ],
+                      ),
+                    ),
+                    if (_straightPartyKeys.isNotEmpty)
+                      TextButton(
+                        style: TextButton.styleFrom(
+                          foregroundColor: isDark
+                              ? Colors.white70
+                              : palette.accent,
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                        ),
+                        onPressed: () => setState(() {
+                          _straightPartyKeys.clear();
+                          _selections.clear();
+                        }),
+                        child: const Text(
+                          'Clear all',
+                          style: TextStyle(fontWeight: FontWeight.w800),
                         ),
                       ),
-                    ],
-                  ),
+                    AnimatedRotation(
+                      turns: _straightPartyCollapsed ? 0 : 0.5,
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeOutCubic,
+                      child: Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        color: sub,
+                        size: 24,
+                      ),
+                    ),
+                  ],
                 ),
-                if (_straightPartyKeys.isNotEmpty)
-                  TextButton(
-                    style: TextButton.styleFrom(
-                      foregroundColor: isDark ? Colors.white70 : palette.accent,
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                    ),
-                    onPressed: () => setState(() {
-                      _straightPartyKeys.clear();
-                      _selections.clear();
-                    }),
-                    child: const Text(
-                      'Clear all',
-                      style: TextStyle(fontWeight: FontWeight.w800),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Tap a USG or organization party to auto-select that slate. You can still change any position manually.',
-              style: TextStyle(
-                color: sub,
-                fontWeight: FontWeight.w600,
-                fontSize: 12.5,
-                height: 1.35,
               ),
             ),
-            const SizedBox(height: 10),
-            ...options.map((option) {
-              final selected = _straightPartyKeys.contains(option.key);
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: _StraightPartyButton(
-                  option: option,
-                  selected: selected,
-                  isDark: isDark,
-                  isPremiumMode: isPremiumMode,
-                  palette: palette,
-                  onTap: () => _selectStraightParty(option),
+            ClipRect(
+              child: AnimatedAlign(
+                alignment: Alignment.topCenter,
+                heightFactor: _straightPartyCollapsed ? 0 : 1,
+                duration: const Duration(milliseconds: 240),
+                curve: Curves.easeOutCubic,
+                child: AnimatedOpacity(
+                  opacity: _straightPartyCollapsed ? 0 : 1,
+                  duration: const Duration(milliseconds: 160),
+                  curve: Curves.easeOut,
+                  child: IgnorePointer(
+                    ignoring: _straightPartyCollapsed,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 4),
+                        Text(
+                          'Tap a USG or organization party to auto-select that slate. You can still change any position manually.',
+                          style: TextStyle(
+                            color: sub,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12.5,
+                            height: 1.35,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        ...options.map((option) {
+                          final selected = _straightPartyKeys.contains(
+                            option.key,
+                          );
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: _StraightPartyButton(
+                              option: option,
+                              selected: selected,
+                              isDark: isDark,
+                              isPremiumMode: isPremiumMode,
+                              palette: palette,
+                              onTap: () => _selectStraightParty(option),
+                            ),
+                          );
+                        }),
+                      ],
+                    ),
+                  ),
                 ),
-              );
-            }),
+              ),
+            ),
           ],
         ),
       ),

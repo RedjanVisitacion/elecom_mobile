@@ -350,9 +350,7 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          widget.orgName.trim().isEmpty
-              ? 'ELECOM Election'
-              : '${widget.orgName.trim()} Election',
+          'ELECOM USTP Oroquieta Campus',
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
