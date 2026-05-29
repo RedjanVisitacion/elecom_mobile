@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 
+import '../../../core/session/elevote_preferences.dart';
 import '../../../core/utils/toast_service.dart';
 import '../data/elecom_mobile_api.dart';
 
@@ -19,6 +20,7 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
   final List<_EleVoteMessage> _messages = <_EleVoteMessage>[];
   bool _loadingHistory = true;
   bool _sending = false;
+  bool _clearingChat = false;
   bool _suggestionsOpen = false;
 
   static const List<String> _suggestions = [
@@ -137,6 +139,80 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
     });
   }
 
+  Future<void> _clearChat(BuildContext sheetContext) async {
+    if (_clearingChat) return;
+    Navigator.of(sheetContext).pop();
+    setState(() => _clearingChat = true);
+    try {
+      await _api.clearEleVoteHistory();
+      if (!mounted) return;
+      setState(() {
+        _messages.clear();
+        _suggestionsOpen = false;
+        _clearingChat = false;
+      });
+      AppToast.success(context, 'EleVote chat cleared.');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _clearingChat = false);
+      final message = e is ElecomApiException
+          ? e.message
+          : 'Could not clear chat from the database.';
+      AppToast.error(context, message);
+    }
+  }
+
+  Future<void> _showEleVoteMenu() async {
+    final safeBottom = MediaQuery.paddingOf(context).bottom;
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 10,
+            right: 10,
+            bottom: safeBottom + 10,
+          ),
+          child: Material(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            clipBehavior: Clip.antiAlias,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(10, 16, 10, 18),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _EleVoteMenuItem(
+                      icon: Icons.delete_outline_rounded,
+                      iconColor: Color(0xFFEF4444),
+                      label: 'Clear chat',
+                      onTap: () => _clearChat(ctx),
+                    ),
+                    _EleVoteMenuItem(
+                      icon: Icons.settings_outlined,
+                      iconColor: Color(0xFF64748B),
+                      label: 'Settings',
+                      onTap: () {
+                        Navigator.of(ctx).pop();
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const EleVoteSettingsScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final bottom = MediaQuery.paddingOf(context).bottom;
@@ -155,9 +231,8 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
         ),
         actions: [
           IconButton(
-            tooltip: 'Suggestions',
-            onPressed: () =>
-                setState(() => _suggestionsOpen = !_suggestionsOpen),
+            tooltip: 'EleVote options',
+            onPressed: _showEleVoteMenu,
             icon: const Icon(Icons.more_vert_rounded),
           ),
         ],
@@ -475,6 +550,177 @@ class _TypingBubble extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _EleVoteMenuItem extends StatelessWidget {
+  const _EleVoteMenuItem({
+    required this.icon,
+    required this.iconColor,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final Color iconColor;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      minLeadingWidth: 28,
+      leading: Icon(icon, color: iconColor, size: 24),
+      title: Text(
+        label,
+        style: const TextStyle(
+          color: Color(0xFF1E293B),
+          fontWeight: FontWeight.w900,
+          fontSize: 15,
+        ),
+      ),
+      onTap: onTap,
+    );
+  }
+}
+
+class EleVoteSettingsScreen extends StatefulWidget {
+  const EleVoteSettingsScreen({super.key});
+
+  @override
+  State<EleVoteSettingsScreen> createState() => _EleVoteSettingsScreenState();
+}
+
+class _EleVoteSettingsScreenState extends State<EleVoteSettingsScreen> {
+  bool _enabled = EleVotePreferences.enabledNotifier.value;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    await EleVotePreferences.load();
+    if (!mounted) return;
+    setState(() => _enabled = EleVotePreferences.enabledNotifier.value);
+  }
+
+  Future<void> _setEnabled(bool value) async {
+    setState(() => _enabled = value);
+    await EleVotePreferences.setEnabled(value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        foregroundColor: const Color(0xFF1E293B),
+        elevation: 0,
+        title: const Text(
+          'EleVote Ai Assistant',
+          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
+        ),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(18, 24, 18, 24),
+        children: [
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF6FF),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFBFDBFE)),
+            ),
+            child: const Row(
+              children: [
+                _EleVoteAvatar(size: 48),
+                SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    'EleVote helps you ask questions about the ELECOM app, voting steps, receipts, results, face verification, and ELECOM support.',
+                    style: TextStyle(
+                      color: Color(0xFF334155),
+                      fontWeight: FontWeight.w600,
+                      height: 1.25,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 22),
+          SizedBox(
+            height: 54,
+            child: FilledButton.icon(
+              onPressed: () {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (_) => const EleVoteChatScreen()),
+                );
+              },
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF2563EB),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              icon: const Icon(Icons.chat_bubble_outline_rounded),
+              label: const Text(
+                'Open EleVote',
+                style: TextStyle(fontWeight: FontWeight.w900),
+              ),
+            ),
+          ),
+          const SizedBox(height: 22),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.black12),
+            ),
+            child: SwitchListTile(
+              value: _enabled,
+              activeColor: const Color(0xFF2563EB),
+              contentPadding: EdgeInsets.zero,
+              secondary: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.smart_toy_outlined,
+                  color: Color(0xFF2563EB),
+                ),
+              ),
+              title: const Text(
+                'Enable EleVote',
+                style: TextStyle(
+                  color: Color(0xFF1E293B),
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              onChanged: _setEnabled,
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'When EleVote is disabled, the floating assistant button will be hidden from the Home screen.',
+            style: TextStyle(
+              color: Color(0xFF64748B),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              height: 1.3,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

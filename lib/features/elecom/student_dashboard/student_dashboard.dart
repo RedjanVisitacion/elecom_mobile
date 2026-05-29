@@ -10,6 +10,7 @@ import 'package:lottie/lottie.dart';
 
 import '../../../core/config/api_config.dart';
 import '../../../core/notifications/notification_center_store.dart';
+import '../../../core/session/elevote_preferences.dart';
 import '../../../core/session/user_session.dart';
 import '../../../core/utils/toast_service.dart';
 import '../../../services/tutorial_service.dart';
@@ -130,6 +131,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
     super.initState();
     TutorialReplayBus.register(_onReplayDashboardTutorial);
     _ensureProfileBasics();
+    EleVotePreferences.load();
     _loadHomeCandidates();
     _loadLedgerSummary();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -407,7 +409,15 @@ class _StudentDashboardState extends State<StudentDashboard> {
                     child: Stack(
                       children: [
                         _dashboardTabs(context),
-                        if (_currentIndex == 0) const _PremiumAssistantBubble(),
+                        if (_currentIndex == 0)
+                          ValueListenableBuilder<bool>(
+                            valueListenable: EleVotePreferences.enabledNotifier,
+                            builder: (context, enabled, child) {
+                              if (!enabled) return const SizedBox.shrink();
+                              return child!;
+                            },
+                            child: const _PremiumAssistantBubble(),
+                          ),
                       ],
                     ),
                   )

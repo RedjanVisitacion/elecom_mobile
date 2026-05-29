@@ -3,6 +3,7 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../services/tutorial_service.dart';
+import '../elevote/elevote_chat_screen.dart';
 import 'account_settings_screen.dart';
 import 'change_password_screen.dart';
 import 'notification_settings_screen.dart';
@@ -152,6 +153,19 @@ class SettingsScreen extends StatelessWidget {
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (_) => const ChangePasswordScreen(),
+                  ),
+                );
+              },
+            ),
+            _SettingsTile(
+              title: 'EleVote',
+              subtitle: 'AI assistant settings',
+              isPremiumMode: isPremiumMode,
+              premiumIcon: HugeIcons.strokeRoundedMessageQuestion,
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const EleVoteSettingsScreen(),
                   ),
                 );
               },

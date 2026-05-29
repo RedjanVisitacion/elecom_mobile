@@ -39,6 +39,10 @@ class ElecomMobileApi {
     });
   }
 
+  Future<Map<String, dynamic>> clearEleVoteHistory() async {
+    return _deleteJson(MobileApiPaths.elevoteChat);
+  }
+
   Future<Map<String, dynamic>> getTutorialState() async {
     return _getJson(MobileApiPaths.tutorialState);
   }
@@ -507,6 +511,20 @@ class ElecomMobileApi {
           'Accept': 'application/json',
         },
         body: jsonEncode(payload),
+      );
+    } catch (_) {
+      throw const ElecomApiException('Network error: cannot reach server');
+    }
+    return _decode(res);
+  }
+
+  Future<Map<String, dynamic>> _deleteJson(String url) async {
+    final uri = Uri.parse(url);
+    http.Response res;
+    try {
+      res = await ApiClient.httpClient.delete(
+        uri,
+        headers: const {'Accept': 'application/json'},
       );
     } catch (_) {
       throw const ElecomApiException('Network error: cannot reach server');
