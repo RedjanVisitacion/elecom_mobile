@@ -9,6 +9,9 @@ import '../features/auth/presentation/splash_screen.dart';
 import '../features/auth/state/login_view_model.dart';
 import '../features/elecom/student_dashboard/utils/theme_notifier.dart';
 
+final RouteObserver<PageRoute<dynamic>> elecomRouteObserver =
+    RouteObserver<PageRoute<dynamic>>();
+
 class ElecomApp extends StatelessWidget {
   const ElecomApp({super.key});
 
@@ -43,6 +46,7 @@ class ElecomApp extends StatelessWidget {
               darkTheme: darkTheme,
               themeMode: themeState.themeMode,
               home: const SplashScreen(),
+              navigatorObservers: [elecomRouteObserver],
               builder: (context, child) {
                 return _SoftKeyboardFocusGuard(child: child);
               },

@@ -197,8 +197,14 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
                       onTap: () {
                         Navigator.of(ctx).pop();
                         Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const EleVoteSettingsScreen(),
+                          PageRouteBuilder<void>(
+                            pageBuilder:
+                                (context, animation, secondaryAnimation) =>
+                                    const EleVoteSettingsScreen(
+                                      returnToPreviousChat: true,
+                                    ),
+                            transitionDuration: Duration.zero,
+                            reverseTransitionDuration: Duration.zero,
                           ),
                         );
                       },
@@ -586,7 +592,9 @@ class _EleVoteMenuItem extends StatelessWidget {
 }
 
 class EleVoteSettingsScreen extends StatefulWidget {
-  const EleVoteSettingsScreen({super.key});
+  const EleVoteSettingsScreen({super.key, this.returnToPreviousChat = false});
+
+  final bool returnToPreviousChat;
 
   @override
   State<EleVoteSettingsScreen> createState() => _EleVoteSettingsScreenState();
@@ -658,6 +666,10 @@ class _EleVoteSettingsScreenState extends State<EleVoteSettingsScreen> {
             height: 54,
             child: FilledButton.icon(
               onPressed: () {
+                if (widget.returnToPreviousChat) {
+                  Navigator.of(context).pop();
+                  return;
+                }
                 Navigator.of(context).pushReplacement(
                   MaterialPageRoute(builder: (_) => const EleVoteChatScreen()),
                 );
@@ -685,7 +697,7 @@ class _EleVoteSettingsScreenState extends State<EleVoteSettingsScreen> {
             ),
             child: SwitchListTile(
               value: _enabled,
-              activeColor: const Color(0xFF2563EB),
+              activeThumbColor: const Color(0xFF2563EB),
               contentPadding: EdgeInsets.zero,
               secondary: Container(
                 width: 40,

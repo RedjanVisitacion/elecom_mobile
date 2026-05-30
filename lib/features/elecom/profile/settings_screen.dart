@@ -424,28 +424,14 @@ class _SettingsTile extends StatelessWidget {
         : isDarkMode
         ? Colors.white70
         : Theme.of(context).colorScheme.onSurfaceVariant;
+    final chevronColor = isPremiumMode
+        ? _premiumBlue.withValues(alpha: 0.70)
+        : isDarkMode
+        ? Colors.white70
+        : Colors.black54;
 
     final tile = ListTile(
-      contentPadding: EdgeInsets.symmetric(
-        horizontal: isPremiumMode ? 12 : 2,
-        vertical: isPremiumMode ? 4 : 2,
-      ),
-      leading: isPremiumMode && premiumIcon != null
-          ? Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: _premiumBlue.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: HugeIcon(
-                icon: premiumIcon!,
-                color: _premiumBlue,
-                size: 21,
-                strokeWidth: 1.9,
-              ),
-            )
-          : null,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
       title: Text(
         title,
         style: TextStyle(fontWeight: FontWeight.w800, color: titleColor),
@@ -466,33 +452,11 @@ class _SettingsTile extends StatelessWidget {
                 color: subColor,
               ),
             )
-          : isPremiumMode
-          ? HugeIcon(
-              icon: HugeIcons.strokeRoundedArrowRight01,
-              color: _premiumBlue.withValues(alpha: 0.70),
-              size: 20,
-              strokeWidth: 1.9,
-            )
-          : Icon(
-              Icons.chevron_right,
-              color: isDarkMode ? Colors.white70 : Colors.black54,
-            ),
+          : Icon(Icons.chevron_right, color: chevronColor),
       onTap: onTap,
     );
 
-    if (!isPremiumMode) return tile;
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.black12),
-        ),
-        child: tile,
-      ),
-    );
+    return tile;
   }
 }
 

@@ -8,6 +8,7 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:iconsax_flutter/iconsax_flutter.dart';
 import 'package:lottie/lottie.dart';
 
+import '../../../app/app.dart';
 import '../../../core/config/api_config.dart';
 import '../../../core/notifications/notification_center_store.dart';
 import '../../../core/session/elevote_preferences.dart';
@@ -43,7 +44,7 @@ class StudentDashboard extends StatefulWidget {
   State<StudentDashboard> createState() => _StudentDashboardState();
 }
 
-class _StudentDashboardState extends State<StudentDashboard> {
+class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
   final ElecomMobileApi _api = ElecomMobileApi();
   final GlobalKey<RefreshIndicatorState> _homeRefreshKey =
       GlobalKey<RefreshIndicatorState>();
@@ -58,6 +59,10 @@ class _StudentDashboardState extends State<StudentDashboard> {
   Map<String, dynamic>? _ledgerSummary;
   bool _loadingLedger = false;
   bool _homeTutorialRequested = false;
+  bool _dashboardRouteVisible = true;
+  bool _assistantVisibleOnHome = EleVotePreferences.enabledNotifier.value;
+  int _assistantAnimationNonce = 0;
+  PageRoute<dynamic>? _dashboardRoute;
 
   void _onReplayDashboardTutorial() {
     if (!mounted) return;
@@ -65,6 +70,27 @@ class _StudentDashboardState extends State<StudentDashboard> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _tryScheduleHomeTutorial(force: true);
     });
+  }
+
+  void _handleAssistantPreferenceChanged() {
+    if (!_dashboardRouteVisible) return;
+    _syncAssistantBubbleVisibility();
+  }
+
+  void _syncAssistantBubbleVisibility({bool replayIfStillEnabled = false}) {
+    if (!mounted) return;
+    final enabled = EleVotePreferences.enabledNotifier.value;
+
+    if (_assistantVisibleOnHome != enabled) {
+      setState(() {
+        _assistantVisibleOnHome = enabled;
+        _assistantAnimationNonce++;
+      });
+      return;
+    }
+
+    if (!replayIfStillEnabled || !enabled || _currentIndex != 0) return;
+    setState(() => _assistantAnimationNonce++);
   }
 
   Future<void> _tryScheduleHomeTutorial({bool force = false}) async {
@@ -130,13 +156,48 @@ class _StudentDashboardState extends State<StudentDashboard> {
   void initState() {
     super.initState();
     TutorialReplayBus.register(_onReplayDashboardTutorial);
+    EleVotePreferences.enabledNotifier.addListener(
+      _handleAssistantPreferenceChanged,
+    );
     _ensureProfileBasics();
-    EleVotePreferences.load();
+    EleVotePreferences.load().then((_) {
+      if (!mounted) return;
+      _syncAssistantBubbleVisibility();
+    });
     _loadHomeCandidates();
     _loadLedgerSummary();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _tryScheduleHomeTutorial();
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute<dynamic> && route != _dashboardRoute) {
+      if (_dashboardRoute != null) {
+        elecomRouteObserver.unsubscribe(this);
+      }
+      _dashboardRoute = route;
+      elecomRouteObserver.subscribe(this, route);
+    }
+  }
+
+  @override
+  void didPush() {
+    _dashboardRouteVisible = true;
+  }
+
+  @override
+  void didPushNext() {
+    _dashboardRouteVisible = false;
+  }
+
+  @override
+  void didPopNext() {
+    _dashboardRouteVisible = true;
+    _syncAssistantBubbleVisibility(replayIfStillEnabled: true);
   }
 
   Future<void> _loadHomeCandidates() async {
@@ -410,13 +471,9 @@ class _StudentDashboardState extends State<StudentDashboard> {
                       children: [
                         _dashboardTabs(context),
                         if (_currentIndex == 0)
-                          ValueListenableBuilder<bool>(
-                            valueListenable: EleVotePreferences.enabledNotifier,
-                            builder: (context, enabled, child) {
-                              if (!enabled) return const SizedBox.shrink();
-                              return child!;
-                            },
-                            child: const _PremiumAssistantBubble(),
+                          _AnimatedPremiumAssistantBubble(
+                            visible: _assistantVisibleOnHome,
+                            animationNonce: _assistantAnimationNonce,
                           ),
                       ],
                     ),
@@ -973,6 +1030,10 @@ class _StudentDashboardState extends State<StudentDashboard> {
   @override
   void dispose() {
     TutorialReplayBus.unregister();
+    elecomRouteObserver.unsubscribe(this);
+    EleVotePreferences.enabledNotifier.removeListener(
+      _handleAssistantPreferenceChanged,
+    );
     _homeScrollController.dispose();
     super.dispose();
   }
@@ -1122,88 +1183,189 @@ class _PremiumDotPatternPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-class _PremiumAssistantBubble extends StatelessWidget {
-  const _PremiumAssistantBubble();
+class _AnimatedPremiumAssistantBubble extends StatefulWidget {
+  const _AnimatedPremiumAssistantBubble({
+    required this.visible,
+    required this.animationNonce,
+  });
+
+  final bool visible;
+  final int animationNonce;
+
+  @override
+  State<_AnimatedPremiumAssistantBubble> createState() =>
+      _AnimatedPremiumAssistantBubbleState();
+}
+
+class _AnimatedPremiumAssistantBubbleState
+    extends State<_AnimatedPremiumAssistantBubble>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _opacity;
+  late final Animation<double> _scale;
+  late final Animation<Offset> _offset;
+  bool _renderBubble = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _renderBubble = widget.visible;
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 520),
+      reverseDuration: const Duration(milliseconds: 260),
+    );
+    final curved = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutCubic,
+      reverseCurve: Curves.easeInCubic,
+    );
+    _opacity = curved;
+    _scale = Tween<double>(begin: 0.92, end: 1).animate(curved);
+    _offset = Tween<Offset>(
+      begin: const Offset(0, -0.35),
+      end: Offset.zero,
+    ).animate(curved);
+
+    if (widget.visible) {
+      _controller.value = 1;
+    }
+    _controller.addStatusListener((status) {
+      if (status != AnimationStatus.dismissed || !_renderBubble) return;
+      setState(() => _renderBubble = false);
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _AnimatedPremiumAssistantBubble oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (widget.visible != oldWidget.visible) {
+      if (widget.visible) {
+        setState(() => _renderBubble = true);
+        _controller.forward(from: 0);
+      } else {
+        _controller.reverse();
+      }
+      return;
+    }
+
+    if (widget.visible && widget.animationNonce != oldWidget.animationNonce) {
+      setState(() => _renderBubble = true);
+      _controller.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Positioned(
       right: 10,
       bottom: 46,
-      child: Semantics(
-        label: 'AI assistant',
-        button: true,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const EleVoteChatScreen()),
-            );
-          },
-          child: SizedBox(
-            width: 84,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 68,
-                  height: 68,
-                  padding: EdgeInsets.zero,
-                  decoration: BoxDecoration(shape: BoxShape.circle),
-                  child: Lottie.asset(
-                    'assets/Robot-Bot 3D.json',
-                    fit: BoxFit.contain,
-                    repeat: true,
-                    animate: true,
-                    errorBuilder: (context, error, stackTrace) {
-                      return const Icon(
-                        Icons.smart_toy_outlined,
-                        color: Color(0xFF2563EB),
-                        size: 34,
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 7,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.70),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Need question?',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Color(0xFF475569),
-                          fontSize: 8,
-                          fontWeight: FontWeight.w700,
-                          height: 1.05,
-                        ),
-                      ),
-                      Text(
-                        'EleVote',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Color(0xFF0F172A),
-                          fontSize: 9,
-                          fontWeight: FontWeight.w900,
-                          height: 1.05,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+      child: IgnorePointer(
+        ignoring: !_renderBubble,
+        child: FadeTransition(
+          opacity: _opacity,
+          child: SlideTransition(
+            position: _offset,
+            child: ScaleTransition(
+              scale: _scale,
+              child: _renderBubble
+                  ? const _PremiumAssistantBubble()
+                  : const SizedBox.shrink(),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PremiumAssistantBubble extends StatelessWidget {
+  const _PremiumAssistantBubble();
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: 'AI assistant',
+      button: true,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          Navigator.of(context).push(
+            PageRouteBuilder<void>(
+              pageBuilder: (context, animation, secondaryAnimation) =>
+                  const EleVoteChatScreen(),
+              transitionDuration: Duration.zero,
+              reverseTransitionDuration: Duration.zero,
+            ),
+          );
+        },
+        child: SizedBox(
+          width: 84,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 68,
+                height: 68,
+                padding: EdgeInsets.zero,
+                decoration: BoxDecoration(shape: BoxShape.circle),
+                child: Lottie.asset(
+                  'assets/Robot-Bot 3D.json',
+                  fit: BoxFit.contain,
+                  repeat: true,
+                  animate: true,
+                  errorBuilder: (context, error, stackTrace) {
+                    return const Icon(
+                      Icons.smart_toy_outlined,
+                      color: Color(0xFF2563EB),
+                      size: 34,
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 2),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.70),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Need question?',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Color(0xFF475569),
+                        fontSize: 8,
+                        fontWeight: FontWeight.w700,
+                        height: 1.05,
+                      ),
+                    ),
+                    Text(
+                      'EleVote',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Color(0xFF0F172A),
+                        fontSize: 9,
+                        fontWeight: FontWeight.w900,
+                        height: 1.05,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),
