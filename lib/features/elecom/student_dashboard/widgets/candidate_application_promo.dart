@@ -204,7 +204,7 @@ class _CandidateApplicationSlide extends StatelessWidget {
                   child: FilledButton.icon(
                     onPressed: onApplyNow,
                     icon: const Icon(Icons.how_to_reg_rounded, size: 17),
-                    label: const Text('Apply now'),
+                    label: const Text('File now'),
                     style: FilledButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: const Color(0xFF0C2C66),

@@ -22,7 +22,7 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
     'AFPROTECHS',
   ];
 
-  static const List<String> _positions = [
+  static const List<String> _generalPositions = [
     'President',
     'Vice President',
     'General Secretary',
@@ -30,6 +30,9 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
     'Treasurer',
     'Auditor',
     'Public Information Officer',
+  ];
+
+  static const List<String> _representativePositions = [
     'BSIT Representative',
     'BTLED Representative',
     'BFPT Representative',
@@ -54,22 +57,20 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
     'BSIT-4B',
     'BSIT-4C',
     'BSIT-4D',
-    'BTLED-1A',
-    'BTLED-1B',
-    'BTLED-1C',
-    'BTLED-1D',
-    'BTLED-2A',
-    'BTLED-2B',
-    'BTLED-2C',
-    'BTLED-2D',
-    'BTLED-3A',
-    'BTLED-3B',
-    'BTLED-3C',
-    'BTLED-3D',
-    'BTLED-4A',
-    'BTLED-4B',
-    'BTLED-4C',
-    'BTLED-4D',
+    'BSIT-4E',
+    'BSIT-4F',
+    'BTLED-ICT-1A',
+    'BTLED-ICT-2A',
+    'BTLED-ICT-3A',
+    'BTLED-ICT-4A',
+    'BTLED-IA-1A',
+    'BTLED-IA-2A',
+    'BTLED-IA-3A',
+    'BTLED-IA-4A',
+    'BTLED-HE-1A',
+    'BTLED-HE-2A',
+    'BTLED-HE-3A',
+    'BTLED-HE-4A',
     'BFPT-1A',
     'BFPT-1B',
     'BFPT-1C',
@@ -77,15 +78,11 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
     'BFPT-2A',
     'BFPT-2B',
     'BFPT-2C',
-    'BFPT-2D',
     'BFPT-3A',
     'BFPT-3B',
     'BFPT-3C',
-    'BFPT-3D',
     'BFPT-4A',
     'BFPT-4B',
-    'BFPT-4C',
-    'BFPT-4D',
   ];
 
   final ElecomMobileApi _api = ElecomMobileApi();
@@ -98,7 +95,8 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
   final TextEditingController _platformController = TextEditingController();
   final TextEditingController _partyNameController = TextEditingController();
 
-  String _candidateType = 'Independent';
+  String _candidateType = 'Political Party';
+  String? _accountProgram;
   String? _organization;
   String? _position;
   String? _program;
@@ -126,6 +124,8 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
 
   void _hydrateFromSession() {
     _studentIdController.text = (UserSession.studentId ?? '').trim();
+    _accountProgram = _programFromDepartment(UserSession.department);
+    _setProgram(_accountProgram);
     final parts = (UserSession.fullName ?? '')
         .trim()
         .split(RegExp(r'\s+'))
@@ -138,6 +138,77 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
     } else if (parts.length > 2) {
       _middleNameController.text = parts.sublist(1, parts.length - 1).join(' ');
       _lastNameController.text = parts.last;
+    }
+  }
+
+  String? _programFromDepartment(String? department) {
+    final value = (department ?? '').trim().toUpperCase();
+    if (value.isEmpty) return null;
+    if (value.contains('BFPT')) return 'BFPT';
+    if (value.contains('BTLED')) return 'BTLED';
+    if (value.contains('BSIT') ||
+        value.contains('INFORMATION TECHNOLOGY') ||
+        value == 'IT' ||
+        value.contains(' IT')) {
+      return 'BSIT';
+    }
+    return null;
+  }
+
+  List<String> get _availableOrganizations {
+    switch (_program) {
+      case 'BSIT':
+        return const ['USG', 'SITE'];
+      case 'BTLED':
+        return const ['USG', 'PAFE'];
+      case 'BFPT':
+        return const ['USG', 'AFPROTECHS'];
+      default:
+        return _organizations;
+    }
+  }
+
+  List<String> get _availablePositions {
+    if (_organization != 'USG') return _generalPositions;
+    final ownRepresentative = switch (_program) {
+      'BSIT' => 'BSIT Representative',
+      'BTLED' => 'BTLED Representative',
+      'BFPT' => 'BFPT Representative',
+      _ => null,
+    };
+    return [
+      ..._generalPositions,
+      if (ownRepresentative != null)
+        ownRepresentative
+      else
+        ..._representativePositions,
+    ];
+  }
+
+  bool _sectionBelongsToProgram(String section, String? program) {
+    if (program == null) return true;
+    return section.startsWith('$program-');
+  }
+
+  void _setProgram(String? value) {
+    _program = value;
+    if (_organization != null &&
+        !_availableOrganizations.contains(_organization)) {
+      _organization = null;
+    }
+    if (_position != null && !_availablePositions.contains(_position)) {
+      _position = null;
+    }
+    if (_yearSection != null &&
+        !_sectionBelongsToProgram(_yearSection!, value)) {
+      _yearSection = null;
+    }
+  }
+
+  void _setOrganization(String? value) {
+    _organization = value;
+    if (_position != null && !_availablePositions.contains(_position)) {
+      _position = null;
     }
   }
 
@@ -276,7 +347,7 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
                     TextFormField(
                       controller: _studentIdController,
                       validator: _required,
-                      textInputAction: TextInputAction.next,
+                      readOnly: true,
                       decoration: const InputDecoration(
                         labelText: 'Candidate student ID',
                         prefixIcon: Icon(Icons.badge_outlined),
@@ -289,7 +360,7 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
                           child: TextFormField(
                             controller: _firstNameController,
                             validator: _required,
-                            textInputAction: TextInputAction.next,
+                            readOnly: true,
                             decoration: const InputDecoration(
                               labelText: 'First name',
                             ),
@@ -300,7 +371,7 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
                           child: TextFormField(
                             controller: _lastNameController,
                             validator: _required,
-                            textInputAction: TextInputAction.next,
+                            readOnly: true,
                             decoration: const InputDecoration(
                               labelText: 'Last name',
                             ),
@@ -311,7 +382,7 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: _middleNameController,
-                      textInputAction: TextInputAction.next,
+                      readOnly: true,
                       decoration: const InputDecoration(
                         labelText: 'Middle name',
                         hintText: 'Optional',
@@ -328,14 +399,15 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
                     DropdownButtonFormField<String>(
                       initialValue: _organization,
                       validator: _required,
-                      items: _organizations
+                      items: _availableOrganizations
                           .map(
                             (org) =>
                                 DropdownMenuItem(value: org, child: Text(org)),
                           )
                           .toList(),
-                      onChanged: (value) =>
-                          setState(() => _organization = value),
+                      onChanged: (value) => setState(() {
+                        _setOrganization(value);
+                      }),
                       decoration: const InputDecoration(
                         labelText: 'Organization',
                         prefixIcon: Icon(Icons.account_balance_outlined),
@@ -345,7 +417,7 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
                     DropdownButtonFormField<String>(
                       initialValue: _position,
                       validator: _required,
-                      items: _positions
+                      items: _availablePositions
                           .map(
                             (position) => DropdownMenuItem(
                               value: position,
@@ -374,13 +446,11 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
                                   ),
                                 )
                                 .toList(),
-                            onChanged: (value) => setState(() {
-                              _program = value;
-                              if (_yearSection != null &&
-                                  !_yearSection!.startsWith('$value-')) {
-                                _yearSection = null;
-                              }
-                            }),
+                            onChanged: _accountProgram == null
+                                ? (value) => setState(() {
+                                    _setProgram(value);
+                                  })
+                                : null,
                             decoration: const InputDecoration(
                               labelText: 'Program',
                             ),
@@ -393,9 +463,10 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
                             validator: _required,
                             items: _yearSections
                                 .where(
-                                  (section) =>
-                                      _program == null ||
-                                      section.startsWith('$_program-'),
+                                  (section) => _sectionBelongsToProgram(
+                                    section,
+                                    _program,
+                                  ),
                                 )
                                 .map(
                                   (section) => DropdownMenuItem(
