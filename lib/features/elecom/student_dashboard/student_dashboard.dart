@@ -15,6 +15,7 @@ import '../../../core/session/elevote_preferences.dart';
 import '../../../core/session/user_session.dart';
 import '../../../core/utils/toast_service.dart';
 import '../../../services/tutorial_service.dart';
+import '../candidates/candidate_filing_screen.dart';
 import '../candidates/candidate_search_screen.dart';
 import '../data/elecom_mobile_api.dart';
 import '../elevote/elevote_chat_screen.dart';
@@ -306,9 +307,8 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
   }
 
   void _openCandidateApplicationInfo() {
-    AppToast.info(
-      context,
-      'Coming soon: candidate filing will open when ELECOM starts registration.',
+    Navigator.of(context).push(
+      MaterialPageRoute<bool>(builder: (_) => const CandidateFilingScreen()),
     );
   }
 

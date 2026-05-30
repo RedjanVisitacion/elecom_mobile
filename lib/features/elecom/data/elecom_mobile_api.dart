@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
@@ -151,6 +152,43 @@ class ElecomMobileApi {
         .whereType<Map>()
         .map((e) => Map<String, dynamic>.from(e))
         .toList();
+  }
+
+  Future<Map<String, dynamic>> submitCandidateApplication({
+    required Map<String, String> fields,
+    required File candidatePhoto,
+    File? partyLogo,
+  }) async {
+    final uri = Uri.parse(MobileApiPaths.candidateApplicationSubmit);
+    final request = http.MultipartRequest('POST', uri)
+      ..headers['Accept'] = 'application/json'
+      ..fields.addAll(fields)
+      ..files.add(
+        await http.MultipartFile.fromPath(
+          'candidate_photo',
+          candidatePhoto.path,
+        ),
+      );
+
+    if (partyLogo != null) {
+      request.files.add(
+        await http.MultipartFile.fromPath('party_logo', partyLogo.path),
+      );
+    }
+
+    http.StreamedResponse streamed;
+    try {
+      streamed = await ApiClient.httpClient.send(request);
+    } catch (e, stackTrace) {
+      developer.log(
+        'Candidate application submit failed to reach $uri',
+        name: 'ElecomMobileApi',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      throw const ElecomApiException('Network error: cannot reach server');
+    }
+    return _decodeStreamed(streamed);
   }
 
   Future<Map<String, dynamic>> getVoteStatus() async {
