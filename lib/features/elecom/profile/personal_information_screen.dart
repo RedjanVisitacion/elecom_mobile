@@ -309,6 +309,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                             radius: 52,
                             backgroundColor: isDarkMode ? const Color(0xFF393948) : const Color(0xFFEAF1FF),
                             backgroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
+                            onBackgroundImageError: photoUrl.isNotEmpty ? (exception, stackTrace) {} : null,
                             child: photoUrl.isNotEmpty
                                 ? null
                                 : Icon(

@@ -93,6 +93,9 @@ class CandidateProfileScreen extends StatelessWidget {
           radius: avatarRadius,
           backgroundColor: isDark ? Colors.white12 : const Color(0xFFEAF1FF),
           backgroundImage: photo != null ? NetworkImage(photo) : null,
+          onBackgroundImageError: photo != null
+              ? (exception, stackTrace) {}
+              : null,
           child: photo == null
               ? isPremiumMode
                     ? const HugeIcon(

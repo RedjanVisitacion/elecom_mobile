@@ -973,6 +973,9 @@ class _AccountBodyState extends State<AccountBody> {
                         backgroundImage: photoUrl.isNotEmpty
                             ? NetworkImage(photoUrl)
                             : null,
+                        onBackgroundImageError: photoUrl.isNotEmpty
+                            ? (exception, stackTrace) {}
+                            : null,
                         child: photoUrl.isNotEmpty
                             ? null
                             : Icon(
@@ -1237,6 +1240,9 @@ class _ProfileBodyState extends State<ProfileBody> {
                       backgroundColor: Colors.white,
                       backgroundImage: photoUrl.isNotEmpty
                           ? NetworkImage(photoUrl)
+                          : null,
+                      onBackgroundImageError: photoUrl.isNotEmpty
+                          ? (exception, stackTrace) {}
                           : null,
                       child: photoUrl.isNotEmpty
                           ? null

@@ -362,6 +362,9 @@ class _CandidateSearchScreenState extends State<CandidateSearchScreen> {
                                   backgroundImage: resolvedPhoto != null
                                       ? NetworkImage(resolvedPhoto)
                                       : null,
+                                  onBackgroundImageError: resolvedPhoto != null
+                                      ? (exception, stackTrace) {}
+                                      : null,
                                   child: resolvedPhoto != null
                                       ? null
                                       : isPremiumMode

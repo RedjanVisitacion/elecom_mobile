@@ -269,7 +269,7 @@ class _OmnibusCodeCarouselState extends State<OmnibusCodeCarousel> {
                     height: widget.height,
                     viewportFraction: 1.0,
                     enlargeCenterPage: false,
-                    autoPlay: true,
+                    autoPlay: groupedIndices.length > 1,
                     autoPlayInterval: const Duration(seconds: 4),
                     autoPlayAnimationDuration: const Duration(
                       milliseconds: 650,
@@ -296,12 +296,8 @@ class _OmnibusCodeCarouselState extends State<OmnibusCodeCarousel> {
                 dotHeight: 5.5,
                 spacing: 4.5,
                 expansionFactor: 2.1,
-                dotColor: isDark
-                    ? Colors.white24
-                    : const Color(0xFFCCCCCC),
-                activeDotColor: isDark
-                    ? Colors.white
-                    : const Color(0xFF4A4A4A),
+                dotColor: isDark ? Colors.white24 : const Color(0xFFCCCCCC),
+                activeDotColor: isDark ? Colors.white : const Color(0xFF4A4A4A),
               ),
             ),
           ),

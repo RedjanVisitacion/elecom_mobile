@@ -266,6 +266,9 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
           radius: 20,
           backgroundColor: isDark ? Colors.white12 : const Color(0xFFEAF1FF),
           backgroundImage: photo != null ? NetworkImage(photo) : null,
+          onBackgroundImageError: photo != null
+              ? (exception, stackTrace) {}
+              : null,
           child: photo == null
               ? Icon(
                   Icons.person,

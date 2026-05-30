@@ -115,6 +115,9 @@ class HomeCandidatesStrip extends StatelessWidget {
                             backgroundImage: photo != null
                                 ? NetworkImage(photo)
                                 : null,
+                            onBackgroundImageError: photo != null
+                                ? (exception, stackTrace) {}
+                                : null,
                             child: photo == null
                                 ? Icon(
                                     Icons.person,

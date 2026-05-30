@@ -20,7 +20,7 @@ enum AppAppearance {
 class ThemeNotifier extends ChangeNotifier {
   static const _prefsKey = 'elecom.appearance.mode.v1';
 
-  AppAppearance _appearance = AppAppearance.system;
+  AppAppearance _appearance = AppAppearance.premium;
   AppAppearance get appearance => _appearance;
 
   ThemeMode get themeMode {

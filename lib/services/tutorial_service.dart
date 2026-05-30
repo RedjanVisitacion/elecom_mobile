@@ -1,5 +1,6 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
@@ -222,6 +223,44 @@ class TutorialService {
     }
   }
 
+  static Future<void> _waitForSettledLayout() async {
+    await WidgetsBinding.instance.endOfFrame;
+    await Future<void>.delayed(const Duration(milliseconds: 120));
+    await WidgetsBinding.instance.endOfFrame;
+  }
+
+  static Future<bool> _bringKeyOnScreen(
+    BuildContext context,
+    GlobalKey key,
+  ) async {
+    final targetContext = key.currentContext;
+    if (targetContext == null) return false;
+
+    try {
+      await Scrollable.ensureVisible(
+        targetContext,
+        alignment: 0.45,
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOutCubic,
+      );
+    } catch (_) {
+      // Non-scrollable targets, such as the bottom navigation bar, can still
+      // be valid as long as their final rect is visible.
+    }
+
+    await _waitForSettledLayout();
+    if (!context.mounted) return false;
+    return _isKeyVisible(context, key);
+  }
+
+  static Rect? _targetRect(GlobalKey key) {
+    final targetContext = key.currentContext;
+    if (targetContext == null) return null;
+    final render = targetContext.findRenderObject();
+    if (render is! RenderBox || !render.hasSize) return null;
+    return render.localToGlobal(Offset.zero) & render.size;
+  }
+
   static Future<void> _waitForAnyKey(
     List<GlobalKey> keys, {
     int maxFrames = 12,
@@ -234,59 +273,112 @@ class TutorialService {
   }
 
   static bool _isKeyVisible(BuildContext context, GlobalKey key) {
-    final targetContext = key.currentContext;
-    if (targetContext == null) return false;
-    final render = targetContext.findRenderObject();
-    if (render is! RenderBox || !render.hasSize) return false;
-
-    final topLeft = render.localToGlobal(Offset.zero);
-    final rect = topLeft & render.size;
+    final rect = _targetRect(key);
+    if (rect == null || rect.width <= 0 || rect.height <= 0) return false;
     final screen = Offset.zero & MediaQuery.sizeOf(context);
     final safeScreen = screen.deflate(4);
-    return rect.overlaps(safeScreen) && rect.width > 0 && rect.height > 0;
+    final visible = rect.intersect(safeScreen);
+    if (visible.isEmpty) return false;
+    final visibleRatio =
+        visible.size.width *
+        visible.size.height /
+        (rect.size.width * rect.size.height);
+    return safeScreen.contains(rect.center) && visibleRatio >= 0.75;
   }
 
-  static List<_TutorialStep> _visibleSteps(
-    BuildContext context,
-    List<_TutorialStep> steps,
-  ) {
-    return steps
-        .where(
-          (s) => s.key.currentContext != null && _isKeyVisible(context, s.key),
-        )
-        .toList(growable: false);
+  static Future<void> _showSteppedTutorial({
+    required BuildContext context,
+    required List<_TutorialStep> steps,
+    required VoidCallback onSkipped,
+    required VoidCallback onCompleted,
+    bool Function()? canShow,
+  }) async {
+    var shownAny = false;
+
+    for (var i = 0; i < steps.length; i++) {
+      if (!context.mounted) return;
+      if (canShow != null && !canShow()) return;
+
+      final step = steps[i];
+      if (step.key.currentContext == null) continue;
+      final visible = await _bringKeyOnScreen(context, step.key);
+      if (!context.mounted) return;
+      if (canShow != null && !canShow()) return;
+      if (!visible) continue;
+
+      shownAny = true;
+      final skipped = await _showSingleStep(
+        context: context,
+        step: step,
+        isLast: i == steps.length - 1,
+        onSkipped: onSkipped,
+      );
+      if (skipped || !context.mounted) return;
+    }
+
+    if (shownAny) {
+      onCompleted();
+    }
   }
 
-  static Widget _arrowTowardTarget(ContentAlign align) {
-    final icon = switch (align) {
-      ContentAlign.bottom => Icons.keyboard_arrow_up_rounded,
-      ContentAlign.top => Icons.keyboard_arrow_down_rounded,
-      ContentAlign.left => Icons.keyboard_arrow_right_rounded,
-      ContentAlign.right => Icons.keyboard_arrow_left_rounded,
-      ContentAlign.custom => Icons.touch_app_rounded,
-    };
-    return Icon(icon, color: Colors.white, size: 36)
-        .animate(onPlay: (c) => c.repeat(reverse: true))
-        .moveY(
-          begin: align == ContentAlign.left || align == ContentAlign.right
-              ? 0
-              : -4,
-          end: align == ContentAlign.left || align == ContentAlign.right
-              ? 0
-              : 6,
-          duration: 650.ms,
-          curve: Curves.easeInOut,
-        )
-        .moveX(
-          begin: align == ContentAlign.top || align == ContentAlign.bottom
-              ? 0
-              : -3,
-          end: align == ContentAlign.top || align == ContentAlign.bottom
-              ? 0
-              : 3,
-          duration: 650.ms,
-          curve: Curves.easeInOut,
-        );
+  static Future<bool> _showSingleStep({
+    required BuildContext context,
+    required _TutorialStep step,
+    required bool isLast,
+    required VoidCallback onSkipped,
+  }) async {
+    final done = Completer<bool>();
+    late TutorialCoachMark coach;
+
+    void complete(bool skipped) {
+      if (!done.isCompleted) done.complete(skipped);
+    }
+
+    void skipAll() {
+      onSkipped();
+      complete(true);
+      coach.skip();
+    }
+
+    dismissActiveTutorial();
+    coach = TutorialCoachMark(
+      targets: [
+        _target(
+          identify: step.identify,
+          key: step.key,
+          align: step.align,
+          message: step.message,
+          isLast: isLast,
+          onSkipAll: skipAll,
+        ),
+      ],
+      colorShadow: _overlay,
+      opacityShadow: _overlayOpacity,
+      paddingFocus: 8,
+      alignSkip: Alignment.topRight,
+      textSkip: 'Skip',
+      textStyleSkip: const TextStyle(
+        color: Colors.white,
+        fontWeight: FontWeight.w800,
+        fontSize: 14,
+      ),
+      hideSkip: true,
+      pulseEnable: true,
+      onSkip: () {
+        _activeCoach = null;
+        onSkipped();
+        complete(true);
+        return true;
+      },
+      onFinish: () {
+        _activeCoach = null;
+        complete(false);
+      },
+    );
+
+    _activeCoach = coach;
+    coach.show(context: context);
+    return done.future;
   }
 
   static TargetFocus _target({
@@ -302,8 +394,8 @@ class TutorialService {
       keyTarget: key,
       shape: ShapeLightFocus.RRect,
       radius: 14,
-      enableOverlayTab: false,
-      enableTargetTab: false,
+      enableOverlayTab: true,
+      enableTargetTab: true,
       contents: [
         TargetContent(
           align: align,
@@ -317,8 +409,6 @@ class TutorialService {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Center(child: _arrowTowardTarget(align)),
-                    const SizedBox(height: 8),
                     DecoratedBox(
                       decoration: BoxDecoration(
                         color: const Color(0xFF1E1E24).withValues(alpha: 0.94),
@@ -390,84 +480,48 @@ class TutorialService {
     if (!context.mounted) return;
     if (!await TutorialPrefs.shouldShowLoginTutorial()) return;
 
-    final keys = <GlobalKey>[
-      ElecomTutorialKeys.loginStudentId,
-      ElecomTutorialKeys.loginPassword,
-      ElecomTutorialKeys.loginForgot,
-      ElecomTutorialKeys.loginSubmit,
+    final steps = <_TutorialStep>[
+      _TutorialStep(
+        identify: 'login_sid',
+        key: ElecomTutorialKeys.loginStudentId,
+        align: ContentAlign.bottom,
+        message: 'Enter your Student ID here.',
+      ),
+      _TutorialStep(
+        identify: 'login_pw',
+        key: ElecomTutorialKeys.loginPassword,
+        align: ContentAlign.bottom,
+        message: 'Enter your password here.',
+      ),
+      _TutorialStep(
+        identify: 'login_forgot',
+        key: ElecomTutorialKeys.loginForgot,
+        align: ContentAlign.top,
+        message: 'Tap here if you forgot your password.',
+      ),
+      _TutorialStep(
+        identify: 'login_go',
+        key: ElecomTutorialKeys.loginSubmit,
+        align: ContentAlign.top,
+        message: 'Tap here to login to your account.',
+      ),
     ];
+    final keys = steps.map((s) => s.key).toList(growable: false);
     await _waitForKeys(keys);
+    await _waitForSettledLayout();
     if (!context.mounted) return;
     if (keys.any((k) => k.currentContext == null)) return;
 
-    late TutorialCoachMark coach;
-
-    void skipAll() {
-      TutorialPrefs.skipEntireOnboarding();
-      coach.skip();
-    }
-
-    dismissActiveTutorial();
-    coach = TutorialCoachMark(
-      targets: [
-        _target(
-          identify: 'login_sid',
-          key: ElecomTutorialKeys.loginStudentId,
-          align: ContentAlign.bottom,
-          message: 'Enter your Student ID here.',
-          isLast: false,
-          onSkipAll: skipAll,
-        ),
-        _target(
-          identify: 'login_pw',
-          key: ElecomTutorialKeys.loginPassword,
-          align: ContentAlign.bottom,
-          message: 'Enter your password here.',
-          isLast: false,
-          onSkipAll: skipAll,
-        ),
-        _target(
-          identify: 'login_forgot',
-          key: ElecomTutorialKeys.loginForgot,
-          align: ContentAlign.top,
-          message: 'Tap here if you forgot your password.',
-          isLast: false,
-          onSkipAll: skipAll,
-        ),
-        _target(
-          identify: 'login_go',
-          key: ElecomTutorialKeys.loginSubmit,
-          align: ContentAlign.top,
-          message: 'Tap here to login to your account.',
-          isLast: true,
-          onSkipAll: skipAll,
-        ),
-      ],
-      colorShadow: _overlay,
-      opacityShadow: _overlayOpacity,
-      paddingFocus: 8,
-      alignSkip: Alignment.topRight,
-      textSkip: 'Skip',
-      textStyleSkip: const TextStyle(
-        color: Colors.white,
-        fontWeight: FontWeight.w800,
-        fontSize: 14,
-      ),
-      hideSkip: true,
-      pulseEnable: true,
-      onSkip: () {
-        _activeCoach = null;
+    await _showSteppedTutorial(
+      context: context,
+      steps: steps,
+      onSkipped: () {
         TutorialPrefs.skipEntireOnboarding();
-        return true;
       },
-      onFinish: () {
-        _activeCoach = null;
+      onCompleted: () {
         TutorialPrefs.markLoginTutorialDone();
       },
     );
-
-    _activeCoach = coach;
-    coach.show(context: context);
   }
 
   /// Home tab coach marks (after login phase is done).
@@ -510,55 +564,19 @@ class TutorialService {
     ];
 
     await _waitForAnyKey(allSteps.map((s) => s.key).toList());
+    await _waitForSettledLayout();
     if (!context.mounted) return;
-    final steps = _visibleSteps(context, allSteps);
-    if (steps.isEmpty) return;
 
-    late TutorialCoachMark coach;
-
-    void skipHome() {
-      TutorialPrefs.markHomeTutorialDone();
-      coach.skip();
-    }
-
-    dismissActiveTutorial();
-    coach = TutorialCoachMark(
-      targets: [
-        for (var i = 0; i < steps.length; i++)
-          _target(
-            identify: steps[i].identify,
-            key: steps[i].key,
-            align: steps[i].align,
-            message: steps[i].message,
-            isLast: i == steps.length - 1,
-            onSkipAll: skipHome,
-          ),
-      ],
-      colorShadow: _overlay,
-      opacityShadow: _overlayOpacity,
-      paddingFocus: 8,
-      alignSkip: Alignment.topRight,
-      textSkip: 'Skip',
-      textStyleSkip: const TextStyle(
-        color: Colors.white,
-        fontWeight: FontWeight.w800,
-        fontSize: 14,
-      ),
-      hideSkip: true,
-      pulseEnable: true,
-      onSkip: () {
-        _activeCoach = null;
+    await _showSteppedTutorial(
+      context: context,
+      steps: allSteps,
+      onSkipped: () {
         TutorialPrefs.markHomeTutorialDone();
-        return true;
       },
-      onFinish: () {
-        _activeCoach = null;
+      onCompleted: () {
         TutorialPrefs.markHomeTutorialDone();
       },
     );
-
-    _activeCoach = coach;
-    coach.show(context: context);
   }
 
   /// First-time voting walkthrough. Runs only once after a real ballot is visible.
@@ -595,56 +613,21 @@ class TutorialService {
     ];
 
     await _waitForAnyKey(allSteps.map((s) => s.key).toList());
+    await _waitForSettledLayout();
     if (!context.mounted) return;
     if (ModalRoute.of(context)?.isCurrent != true) return;
-    final steps = _visibleSteps(context, allSteps);
-    if (steps.isEmpty) return;
 
-    late TutorialCoachMark coach;
-
-    void skipVoting() {
-      TutorialPrefs.markVotingTutorialDone();
-      coach.skip();
-    }
-
-    dismissActiveTutorial();
-    coach = TutorialCoachMark(
-      targets: [
-        for (var i = 0; i < steps.length; i++)
-          _target(
-            identify: steps[i].identify,
-            key: steps[i].key,
-            align: steps[i].align,
-            message: steps[i].message,
-            isLast: i == steps.length - 1,
-            onSkipAll: skipVoting,
-          ),
-      ],
-      colorShadow: _overlay,
-      opacityShadow: _overlayOpacity,
-      paddingFocus: 8,
-      alignSkip: Alignment.topRight,
-      textSkip: 'Skip',
-      textStyleSkip: const TextStyle(
-        color: Colors.white,
-        fontWeight: FontWeight.w800,
-        fontSize: 14,
-      ),
-      hideSkip: true,
-      pulseEnable: true,
-      onSkip: () {
-        _activeCoach = null;
+    await _showSteppedTutorial(
+      context: context,
+      steps: allSteps,
+      canShow: () => ModalRoute.of(context)?.isCurrent == true,
+      onSkipped: () {
         TutorialPrefs.markVotingTutorialDone();
-        return true;
       },
-      onFinish: () {
-        _activeCoach = null;
+      onCompleted: () {
         TutorialPrefs.markVotingTutorialDone();
       },
     );
-
-    _activeCoach = coach;
-    coach.show(context: context);
   }
 
   /// Face enrollment walkthrough shown before opening the live camera.
@@ -683,56 +666,21 @@ class TutorialService {
     ];
 
     await _waitForAnyKey(allSteps.map((s) => s.key).toList());
+    await _waitForSettledLayout();
     if (!context.mounted) return;
     if (ModalRoute.of(context)?.isCurrent != true) return;
-    final steps = _visibleSteps(context, allSteps);
-    if (steps.isEmpty) return;
 
-    late TutorialCoachMark coach;
-
-    void skipFaceEnrollment() {
-      TutorialPrefs.markFaceEnrollmentTutorialDone();
-      coach.skip();
-    }
-
-    dismissActiveTutorial();
-    coach = TutorialCoachMark(
-      targets: [
-        for (var i = 0; i < steps.length; i++)
-          _target(
-            identify: steps[i].identify,
-            key: steps[i].key,
-            align: steps[i].align,
-            message: steps[i].message,
-            isLast: i == steps.length - 1,
-            onSkipAll: skipFaceEnrollment,
-          ),
-      ],
-      colorShadow: _overlay,
-      opacityShadow: _overlayOpacity,
-      paddingFocus: 8,
-      alignSkip: Alignment.topRight,
-      textSkip: 'Skip',
-      textStyleSkip: const TextStyle(
-        color: Colors.white,
-        fontWeight: FontWeight.w800,
-        fontSize: 14,
-      ),
-      hideSkip: true,
-      pulseEnable: true,
-      onSkip: () {
-        _activeCoach = null;
+    await _showSteppedTutorial(
+      context: context,
+      steps: allSteps,
+      canShow: () => ModalRoute.of(context)?.isCurrent == true,
+      onSkipped: () {
         TutorialPrefs.markFaceEnrollmentTutorialDone();
-        return true;
       },
-      onFinish: () {
-        _activeCoach = null;
+      onCompleted: () {
         TutorialPrefs.markFaceEnrollmentTutorialDone();
       },
     );
-
-    _activeCoach = coach;
-    coach.show(context: context);
   }
 }
 

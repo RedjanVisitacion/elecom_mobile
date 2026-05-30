@@ -24,6 +24,7 @@ import '../election/receipt_screen.dart';
 import '../profile/profile_screen.dart';
 import '../results/results_screen.dart';
 import 'utils/theme_notifier.dart';
+import 'widgets/candidate_application_promo.dart';
 import 'widgets/election_home_countdown.dart';
 import 'widgets/election_transparency_card.dart';
 import 'widgets/home_candidates_strip.dart';
@@ -302,6 +303,13 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
       _voteIntentNonce++;
       _currentIndex = 1;
     });
+  }
+
+  void _openCandidateApplicationInfo() {
+    AppToast.info(
+      context,
+      'Coming soon: candidate filing will open when ELECOM starts registration.',
+    );
   }
 
   Future<void> _loadLedgerSummary() async {
@@ -863,6 +871,10 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
                                       backgroundImage: photoUrl.isNotEmpty
                                           ? NetworkImage(photoUrl)
                                           : null,
+                                      onBackgroundImageError:
+                                          photoUrl.isNotEmpty
+                                          ? (exception, stackTrace) {}
+                                          : null,
                                       child: photoUrl.isNotEmpty
                                           ? null
                                           : Icon(
@@ -997,6 +1009,12 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
                       candidates: _homeCandidates,
                       isDarkMode: isDarkMode && !isPremiumMode,
                       isPremiumMode: isPremiumMode,
+                    ),
+                    const SizedBox(height: 12),
+                    CandidateApplicationPromo(
+                      isDarkMode: isDarkMode && !isPremiumMode,
+                      isPremiumMode: isPremiumMode,
+                      onApplyNow: _openCandidateApplicationInfo,
                     ),
                     const SizedBox(height: 18),
                     const OmnibusCodeCarousel(),
@@ -1203,6 +1221,7 @@ class _AnimatedPremiumAssistantBubbleState
   late final AnimationController _controller;
   late final Animation<double> _opacity;
   late final Animation<double> _scale;
+  late final Animation<double> _turns;
   late final Animation<Offset> _offset;
   bool _renderBubble = false;
 
@@ -1212,18 +1231,19 @@ class _AnimatedPremiumAssistantBubbleState
     _renderBubble = widget.visible;
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 520),
-      reverseDuration: const Duration(milliseconds: 260),
+      duration: const Duration(milliseconds: 820),
+      reverseDuration: const Duration(milliseconds: 520),
     );
     final curved = CurvedAnimation(
       parent: _controller,
-      curve: Curves.easeOutCubic,
-      reverseCurve: Curves.easeInCubic,
+      curve: Curves.easeOutBack,
+      reverseCurve: Curves.easeInBack,
     );
     _opacity = curved;
-    _scale = Tween<double>(begin: 0.92, end: 1).animate(curved);
+    _scale = Tween<double>(begin: 0.55, end: 1).animate(curved);
+    _turns = Tween<double>(begin: -0.08, end: 0).animate(curved);
     _offset = Tween<Offset>(
-      begin: const Offset(0, -0.35),
+      begin: const Offset(0, -1.25),
       end: Offset.zero,
     ).animate(curved);
 
@@ -1245,6 +1265,9 @@ class _AnimatedPremiumAssistantBubbleState
         setState(() => _renderBubble = true);
         _controller.forward(from: 0);
       } else {
+        if (_controller.value == 0) {
+          _controller.value = 1;
+        }
         _controller.reverse();
       }
       return;
@@ -1252,7 +1275,7 @@ class _AnimatedPremiumAssistantBubbleState
 
     if (widget.visible && widget.animationNonce != oldWidget.animationNonce) {
       setState(() => _renderBubble = true);
-      _controller.forward(from: 0);
+      _controller.forward();
     }
   }
 
@@ -1273,11 +1296,14 @@ class _AnimatedPremiumAssistantBubbleState
           opacity: _opacity,
           child: SlideTransition(
             position: _offset,
-            child: ScaleTransition(
-              scale: _scale,
-              child: _renderBubble
-                  ? const _PremiumAssistantBubble()
-                  : const SizedBox.shrink(),
+            child: RotationTransition(
+              turns: _turns,
+              child: ScaleTransition(
+                scale: _scale,
+                child: _renderBubble
+                    ? const _PremiumAssistantBubble()
+                    : const SizedBox.shrink(),
+              ),
             ),
           ),
         ),

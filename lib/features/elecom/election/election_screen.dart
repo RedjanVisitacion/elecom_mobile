@@ -629,6 +629,9 @@ class _ElectionScreenState extends State<ElectionScreen>
           radius: 20, // ~40px photo (same feel as Election)
           backgroundColor: isDark ? Colors.white12 : const Color(0xFFEAF1FF),
           backgroundImage: photo != null ? NetworkImage(photo) : null,
+          onBackgroundImageError: photo != null
+              ? (exception, stackTrace) {}
+              : null,
           child: photo == null
               ? Icon(
                   Icons.person,
@@ -1008,6 +1011,9 @@ class _ElectionScreenState extends State<ElectionScreen>
                   ? Colors.white12
                   : const Color(0xFFEAF1FF),
               backgroundImage: photo != null ? NetworkImage(photo) : null,
+              onBackgroundImageError: photo != null
+                  ? (exception, stackTrace) {}
+                  : null,
               child: photo == null
                   ? Icon(
                       Icons.person,
@@ -2360,6 +2366,9 @@ class _ElectionScreenState extends State<ElectionScreen>
                           : const Color(0xFFEAF1FF),
                       backgroundImage: photo != null
                           ? NetworkImage(photo)
+                          : null,
+                      onBackgroundImageError: photo != null
+                          ? (exception, stackTrace) {}
                           : null,
                       child: photo == null
                           ? Icon(
