@@ -308,7 +308,14 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
 
   void _openCandidateApplicationInfo() {
     Navigator.of(context).push(
-      MaterialPageRoute<bool>(builder: (_) => const CandidateFilingScreen()),
+      PageRouteBuilder<bool>(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            const CandidateFilingScreen(),
+        transitionDuration: Duration.zero,
+        reverseTransitionDuration: Duration.zero,
+        transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+            child,
+      ),
     );
   }
 

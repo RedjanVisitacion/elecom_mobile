@@ -20,12 +20,32 @@ class CandidateApplicationPromo extends StatefulWidget {
 }
 
 class _CandidateApplicationPromoState extends State<CandidateApplicationPromo> {
-  static const List<String> _slides = [
-    'assets/candidates_model/00. The Team.png',
-    'assets/candidates_model/01. Redjan.png',
-    'assets/candidates_model/02. Lollaine.png',
-    'assets/candidates_model/03. Von.png',
-    'assets/candidates_model/04. Kurt.png',
+  static const List<_CandidatePromoSlide> _slides = [
+    _CandidatePromoSlide(
+      assetPath: 'assets/candidates_model/00. The Team.png',
+      title: 'Lead the Change',
+      subtitle: 'File your candidacy and let ELECOM check your eligibility.',
+    ),
+    _CandidatePromoSlide(
+      assetPath: 'assets/candidates_model/01. Redjan.png',
+      title: 'Your Voice, Your Run',
+      subtitle: 'Step forward for your organization and start your filing.',
+    ),
+    _CandidatePromoSlide(
+      assetPath: 'assets/candidates_model/02. Lollaine.png',
+      title: 'Ready to Serve?',
+      subtitle: 'Submit your details and campaign platform for review.',
+    ),
+    _CandidatePromoSlide(
+      assetPath: 'assets/candidates_model/03. Von.png',
+      title: 'Be on the Ballot',
+      subtitle: 'ELECOM will verify your requirements before publishing.',
+    ),
+    _CandidatePromoSlide(
+      assetPath: 'assets/candidates_model/04. Kurt.png',
+      title: 'Make It Official',
+      subtitle: 'Complete your filing and wait for ELECOM approval.',
+    ),
   ];
 
   final PageController _controller = PageController();
@@ -84,7 +104,7 @@ class _CandidateApplicationPromoState extends State<CandidateApplicationPromo> {
                 onPageChanged: (value) => setState(() => _index = value),
                 itemBuilder: (context, index) {
                   return _CandidateApplicationSlide(
-                    assetPath: _slides[index],
+                    slide: _slides[index],
                     onApplyNow: widget.onApplyNow,
                   );
                 },
@@ -118,11 +138,11 @@ class _CandidateApplicationPromoState extends State<CandidateApplicationPromo> {
 
 class _CandidateApplicationSlide extends StatelessWidget {
   const _CandidateApplicationSlide({
-    required this.assetPath,
+    required this.slide,
     required this.onApplyNow,
   });
 
-  final String assetPath;
+  final _CandidatePromoSlide slide;
   final VoidCallback onApplyNow;
 
   @override
@@ -131,7 +151,7 @@ class _CandidateApplicationSlide extends StatelessWidget {
       fit: StackFit.expand,
       children: [
         Image.asset(
-          assetPath,
+          slide.assetPath,
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) {
             return const DecoratedBox(
@@ -168,8 +188,8 @@ class _CandidateApplicationSlide extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Ready to Lead?',
+                Text(
+                  slide.title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -187,8 +207,8 @@ class _CandidateApplicationSlide extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 5),
-                const Text(
-                  'Register as a candidate. ELECOM will verify eligibility.',
+                Text(
+                  slide.subtitle,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -226,4 +246,16 @@ class _CandidateApplicationSlide extends StatelessWidget {
       ],
     );
   }
+}
+
+class _CandidatePromoSlide {
+  const _CandidatePromoSlide({
+    required this.assetPath,
+    required this.title,
+    required this.subtitle,
+  });
+
+  final String assetPath;
+  final String title;
+  final String subtitle;
 }

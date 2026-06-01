@@ -22,10 +22,14 @@ class SessionPersistence {
     final user = <String, dynamic>{
       'studentId': UserSession.studentId,
       'fullName': UserSession.fullName,
+      'firstName': UserSession.firstName,
+      'middleName': UserSession.middleName,
+      'lastName': UserSession.lastName,
       'profilePhotoUrl': UserSession.profilePhotoUrl,
       'role': UserSession.role,
       'department': UserSession.department,
       'position': UserSession.position,
+      'yearSection': UserSession.yearSection,
     };
     await prefs.setString(_kUser, jsonEncode(user));
   }

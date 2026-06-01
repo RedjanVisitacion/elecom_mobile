@@ -191,6 +191,23 @@ class ElecomMobileApi {
     return _decodeStreamed(streamed);
   }
 
+  Future<Map<String, dynamic>> getCandidateApplicationStatus() async {
+    return _getJson(MobileApiPaths.candidateApplicationStatus);
+  }
+
+  Future<List<String>> getCandidateApplicationParties() async {
+    final decoded = await _getJson(MobileApiPaths.candidateApplicationParties);
+    final raw = decoded['parties'];
+    if (raw is! List) return <String>[];
+    final names = raw
+        .map((item) => item.toString().trim())
+        .where((item) => item.isNotEmpty)
+        .toSet()
+        .toList();
+    names.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+    return names;
+  }
+
   Future<Map<String, dynamic>> getVoteStatus() async {
     return _getJson(MobileApiPaths.voteStatus);
   }
