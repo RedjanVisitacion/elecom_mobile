@@ -12,7 +12,7 @@ import '../data/elecom_mobile_api.dart';
 import '../student_dashboard/utils/theme_notifier.dart';
 
 const _premiumBlue = Color(0xFF2563EB);
-const _premiumGold = Color(0xFFFACC15);
+const _premiumAccentBlue = Color(0xFF60A5FA);
 const _premiumInk = Color(0xFF0F172A);
 const _premiumSub = Color(0xFF475569);
 const _premiumBg = LinearGradient(
@@ -212,6 +212,14 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
       // Keep the locally persisted session values if profile refresh fails.
     }
     await _loadApplicationStatus();
+  }
+
+  Future<void> _refreshFiling() async {
+    if (mounted) {
+      setState(() => _loadingStatus = true);
+    }
+    await _hydrateProfileAndStatus();
+    await _loadPartyNames();
   }
 
   String? _programFromDepartment(String? department) {
@@ -588,6 +596,7 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
         : null;
     return DropdownButtonFormField<String>(
       initialValue: dropdownValue,
+      dropdownColor: Colors.white,
       validator: (_) => _partyNameValidator(null),
       items: [
         ..._existingPartyNames.map(
@@ -673,6 +682,11 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
         final baseTheme = Theme.of(context);
         final formTheme = isPremiumMode
             ? baseTheme.copyWith(
+                canvasColor: Colors.white,
+                highlightColor: _premiumBlue.withValues(alpha: 0.12),
+                focusColor: _premiumBlue.withValues(alpha: 0.10),
+                hoverColor: _premiumBlue.withValues(alpha: 0.08),
+                splashColor: _premiumBlue.withValues(alpha: 0.10),
                 inputDecorationTheme: baseTheme.inputDecorationTheme.copyWith(
                   filled: true,
                   fillColor: Colors.white.withValues(alpha: 0.72),
@@ -693,7 +707,7 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
                   ),
                   disabledBorder: UnderlineInputBorder(
                     borderSide: BorderSide(
-                      color: _premiumGold.withValues(alpha: 0.54),
+                      color: _premiumAccentBlue.withValues(alpha: 0.54),
                       width: 1.2,
                     ),
                   ),
@@ -721,13 +735,13 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
                     ),
                     backgroundColor: WidgetStateProperty.resolveWith(
                       (states) => states.contains(WidgetState.selected)
-                          ? _premiumGold.withValues(alpha: 0.24)
+                          ? _premiumBlue.withValues(alpha: 0.14)
                           : Colors.white.withValues(alpha: 0.52),
                     ),
                     side: WidgetStateProperty.resolveWith(
                       (states) => BorderSide(
                         color: states.contains(WidgetState.selected)
-                            ? _premiumGold
+                            ? _premiumBlue
                             : _premiumBlue.withValues(alpha: 0.20),
                       ),
                     ),
@@ -761,343 +775,352 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
                   ? const BoxDecoration(gradient: _premiumBg)
                   : null,
               child: SafeArea(
-                child: Form(
-                  key: _formKey,
-                  child: ListView(
-                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
-                    children: [
-                      Row(
-                        children: [
-                          if (isPremiumMode) ...[
-                            Container(
-                              width: 42,
-                              height: 42,
-                              decoration: BoxDecoration(
-                                color: _premiumBlue.withValues(alpha: 0.10),
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.75),
+                child: RefreshIndicator(
+                  color: _premiumBlue,
+                  onRefresh: _refreshFiling,
+                  child: Form(
+                    key: _formKey,
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
+                      children: [
+                        Row(
+                          children: [
+                            if (isPremiumMode) ...[
+                              Container(
+                                width: 42,
+                                height: 42,
+                                decoration: BoxDecoration(
+                                  color: _premiumBlue.withValues(alpha: 0.10),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.75),
+                                  ),
+                                ),
+                                child: const Center(
+                                  child: HugeIcon(
+                                    icon: HugeIcons.strokeRoundedUserCheck01,
+                                    color: _premiumBlue,
+                                    size: 23,
+                                    strokeWidth: 1.8,
+                                  ),
                                 ),
                               ),
-                              child: const Center(
-                                child: HugeIcon(
-                                  icon: HugeIcons.strokeRoundedUserCheck01,
-                                  color: _premiumBlue,
-                                  size: 23,
-                                  strokeWidth: 1.8,
-                                ),
+                              const SizedBox(width: 12),
+                            ],
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Request to Run',
+                                    style: TextStyle(
+                                      color: titleColor,
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 24,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Submit your information and photo. ELECOM will review your eligibility before you appear as an official candidate.',
+                                    style: TextStyle(
+                                      color: mutedColor,
+                                      fontWeight: FontWeight.w600,
+                                      height: 1.35,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            const SizedBox(width: 12),
                           ],
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Request to Run',
-                                  style: TextStyle(
-                                    color: titleColor,
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 24,
-                                  ),
+                        ),
+                        const SizedBox(height: 18),
+                        if (_loadingStatus)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 28),
+                            child: Center(child: CircularProgressIndicator()),
+                          )
+                        else if (existingApplication != null)
+                          _ApplicationStatusCard(
+                            application: existingApplication,
+                            isPremiumMode: isPremiumMode,
+                            onFileAgain: () {
+                              setState(() {
+                                _existingApplication = null;
+                                _candidatePhoto = null;
+                                _partyLogo = null;
+                              });
+                            },
+                          )
+                        else ...[
+                          _Section(
+                            title: 'Candidate Type',
+                            premiumIcon: HugeIcons.strokeRoundedUserMultiple,
+                            isPremiumMode: isPremiumMode,
+                            child: SegmentedButton<String>(
+                              segments: const [
+                                ButtonSegment(
+                                  value: 'Independent',
+                                  label: Text('Independent'),
+                                  icon: Icon(Icons.person_outline_rounded),
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Submit your information and photo. ELECOM will review your eligibility before you appear as an official candidate.',
-                                  style: TextStyle(
-                                    color: mutedColor,
-                                    fontWeight: FontWeight.w600,
-                                    height: 1.35,
-                                  ),
+                                ButtonSegment(
+                                  value: 'Political Party',
+                                  label: Text('Political Party'),
+                                  icon: Icon(Icons.groups_2_outlined),
                                 ),
                               ],
+                              selected: {_candidateType},
+                              onSelectionChanged: (selected) {
+                                setState(() => _candidateType = selected.first);
+                              },
                             ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 18),
-                      if (_loadingStatus)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 28),
-                          child: Center(child: CircularProgressIndicator()),
-                        )
-                      else if (existingApplication != null)
-                        _ApplicationStatusCard(
-                          application: existingApplication,
-                          isPremiumMode: isPremiumMode,
-                          onFileAgain: () {
-                            setState(() {
-                              _existingApplication = null;
-                              _candidatePhoto = null;
-                              _partyLogo = null;
-                            });
-                          },
-                        )
-                      else ...[
-                        _Section(
-                          title: 'Candidate Type',
-                          premiumIcon: HugeIcons.strokeRoundedUserMultiple,
-                          isPremiumMode: isPremiumMode,
-                          child: SegmentedButton<String>(
-                            segments: const [
-                              ButtonSegment(
-                                value: 'Independent',
-                                label: Text('Independent'),
-                                icon: Icon(Icons.person_outline_rounded),
-                              ),
-                              ButtonSegment(
-                                value: 'Political Party',
-                                label: Text('Party'),
-                                icon: Icon(Icons.groups_2_outlined),
-                              ),
-                            ],
-                            selected: {_candidateType},
-                            onSelectionChanged: (selected) {
-                              setState(() => _candidateType = selected.first);
-                            },
+                          const SizedBox(height: 14),
+                          _PhotoPickerCard(
+                            title: 'Candidate Photo',
+                            subtitle:
+                                'Required. Upload an actual candidate photo.',
+                            imageFile: _candidatePhoto,
+                            isPremiumMode: isPremiumMode,
+                            onGallery: () =>
+                                _pickCandidatePhoto(ImageSource.gallery),
+                            onCamera: () =>
+                                _pickCandidatePhoto(ImageSource.camera),
                           ),
-                        ),
-                        const SizedBox(height: 14),
-                        _PhotoPickerCard(
-                          title: 'Candidate Photo',
-                          subtitle:
-                              'Required. Upload an actual candidate photo.',
-                          imageFile: _candidatePhoto,
-                          isPremiumMode: isPremiumMode,
-                          onGallery: () =>
-                              _pickCandidatePhoto(ImageSource.gallery),
-                          onCamera: () =>
-                              _pickCandidatePhoto(ImageSource.camera),
-                        ),
-                        const SizedBox(height: 14),
-                        _Section(
-                          title: 'Student Information',
-                          premiumIcon: HugeIcons.strokeRoundedId,
-                          isPremiumMode: isPremiumMode,
-                          child: Column(
-                            children: [
-                              TextFormField(
-                                controller: _studentIdController,
-                                validator: _required,
-                                readOnly: true,
-                                decoration: const InputDecoration(
-                                  labelText: 'Candidate student ID',
-                                  prefixIcon: Icon(Icons.badge_outlined),
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: TextFormField(
-                                      controller: _firstNameController,
-                                      validator: _required,
-                                      readOnly: true,
-                                      decoration: const InputDecoration(
-                                        labelText: 'First name',
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: TextFormField(
-                                      controller: _lastNameController,
-                                      validator: _required,
-                                      readOnly: true,
-                                      decoration: const InputDecoration(
-                                        labelText: 'Last name',
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              TextFormField(
-                                controller: _middleNameController,
-                                readOnly: true,
-                                decoration: const InputDecoration(
-                                  labelText: 'Middle name',
-                                  hintText: 'Optional',
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        _Section(
-                          title: 'Candidacy Details',
-                          premiumIcon: HugeIcons.strokeRoundedUniversity,
-                          isPremiumMode: isPremiumMode,
-                          child: Column(
-                            children: [
-                              DropdownButtonFormField<String>(
-                                initialValue: _organization,
-                                validator: _required,
-                                items: _availableOrganizations
-                                    .map(
-                                      (org) => DropdownMenuItem(
-                                        value: org,
-                                        child: Text(org),
-                                      ),
-                                    )
-                                    .toList(),
-                                onChanged: (value) => setState(() {
-                                  _setOrganization(value);
-                                }),
-                                decoration: const InputDecoration(
-                                  labelText: 'Organization',
-                                  prefixIcon: Icon(
-                                    Icons.account_balance_outlined,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              DropdownButtonFormField<String>(
-                                initialValue: _position,
-                                validator: _required,
-                                items: _availablePositions
-                                    .map(
-                                      (position) => DropdownMenuItem(
-                                        value: position,
-                                        child: Text(position),
-                                      ),
-                                    )
-                                    .toList(),
-                                onChanged: (value) =>
-                                    setState(() => _position = value),
-                                decoration: const InputDecoration(
-                                  labelText: 'Position',
-                                  prefixIcon: Icon(
-                                    Icons.workspace_premium_outlined,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: DropdownButtonFormField<String>(
-                                      initialValue: _program,
-                                      validator: _required,
-                                      items: _programs
-                                          .map(
-                                            (program) => DropdownMenuItem(
-                                              value: program,
-                                              child: Text(program),
-                                            ),
-                                          )
-                                          .toList(),
-                                      onChanged: _accountProgram == null
-                                          ? (value) => setState(() {
-                                              _setProgram(value);
-                                            })
-                                          : null,
-                                      decoration: const InputDecoration(
-                                        labelText: 'Program',
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: DropdownButtonFormField<String>(
-                                      initialValue: _yearSection,
-                                      validator: _required,
-                                      items: _yearSections
-                                          .where(
-                                            (section) =>
-                                                _sectionBelongsToProgram(
-                                                  section,
-                                                  _program,
-                                                ),
-                                          )
-                                          .map(
-                                            (section) => DropdownMenuItem(
-                                              value: section,
-                                              child: Text(section),
-                                            ),
-                                          )
-                                          .toList(),
-                                      onChanged: _accountYearSection == null
-                                          ? (value) => setState(
-                                              () => _yearSection = value,
-                                            )
-                                          : null,
-                                      decoration: const InputDecoration(
-                                        labelText: 'Year/Section',
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              TextFormField(
-                                controller: _platformController,
-                                validator: _required,
-                                minLines: 4,
-                                maxLines: 7,
-                                decoration: const InputDecoration(
-                                  labelText: 'Platform',
-                                  alignLabelWithHint: true,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (_candidateType == 'Political Party') ...[
                           const SizedBox(height: 14),
                           _Section(
-                            title: 'Political Party',
+                            title: 'Student Information',
+                            premiumIcon: HugeIcons.strokeRoundedId,
                             isPremiumMode: isPremiumMode,
                             child: Column(
                               children: [
-                                _buildPartyNameField(isPremiumMode),
+                                TextFormField(
+                                  controller: _studentIdController,
+                                  validator: _required,
+                                  readOnly: true,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Candidate student ID',
+                                    prefixIcon: Icon(Icons.badge_outlined),
+                                  ),
+                                ),
                                 const SizedBox(height: 12),
-                                _buildPartyCodeField(),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: TextFormField(
+                                        controller: _firstNameController,
+                                        validator: _required,
+                                        readOnly: true,
+                                        decoration: const InputDecoration(
+                                          labelText: 'First name',
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: TextFormField(
+                                        controller: _lastNameController,
+                                        validator: _required,
+                                        readOnly: true,
+                                        decoration: const InputDecoration(
+                                          labelText: 'Last name',
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                                 const SizedBox(height: 12),
-                                _MiniImagePicker(
-                                  title: 'Party logo',
-                                  imageFile: _partyLogo,
-                                  isPremiumMode: isPremiumMode,
-                                  onPick: _pickPartyLogo,
-                                  onClear: () =>
-                                      setState(() => _partyLogo = null),
+                                TextFormField(
+                                  controller: _middleNameController,
+                                  readOnly: true,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Middle name',
+                                    hintText: 'Optional',
+                                  ),
                                 ),
                               ],
                             ),
                           ),
-                        ],
-                        const SizedBox(height: 20),
-                        SizedBox(
-                          height: 52,
-                          child: FilledButton.icon(
-                            onPressed: _submitting ? null : _submit,
-                            icon: _submitting
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
+                          const SizedBox(height: 14),
+                          _Section(
+                            title: 'Candidacy Details',
+                            premiumIcon: HugeIcons.strokeRoundedUniversity,
+                            isPremiumMode: isPremiumMode,
+                            child: Column(
+                              children: [
+                                DropdownButtonFormField<String>(
+                                  initialValue: _organization,
+                                  dropdownColor: Colors.white,
+                                  validator: _required,
+                                  items: _availableOrganizations
+                                      .map(
+                                        (org) => DropdownMenuItem(
+                                          value: org,
+                                          child: Text(org),
+                                        ),
+                                      )
+                                      .toList(),
+                                  onChanged: (value) => setState(() {
+                                    _setOrganization(value);
+                                  }),
+                                  decoration: const InputDecoration(
+                                    labelText: 'Organization',
+                                    prefixIcon: Icon(
+                                      Icons.account_balance_outlined,
                                     ),
-                                  )
-                                : const Icon(Icons.send_rounded),
-                            label: Text(
-                              _submitting ? 'Submitting...' : 'Submit Filing',
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                DropdownButtonFormField<String>(
+                                  initialValue: _position,
+                                  dropdownColor: Colors.white,
+                                  validator: _required,
+                                  items: _availablePositions
+                                      .map(
+                                        (position) => DropdownMenuItem(
+                                          value: position,
+                                          child: Text(position),
+                                        ),
+                                      )
+                                      .toList(),
+                                  onChanged: (value) =>
+                                      setState(() => _position = value),
+                                  decoration: const InputDecoration(
+                                    labelText: 'Position',
+                                    prefixIcon: Icon(
+                                      Icons.workspace_premium_outlined,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: DropdownButtonFormField<String>(
+                                        initialValue: _program,
+                                        dropdownColor: Colors.white,
+                                        validator: _required,
+                                        items: _programs
+                                            .map(
+                                              (program) => DropdownMenuItem(
+                                                value: program,
+                                                child: Text(program),
+                                              ),
+                                            )
+                                            .toList(),
+                                        onChanged: _accountProgram == null
+                                            ? (value) => setState(() {
+                                                _setProgram(value);
+                                              })
+                                            : null,
+                                        decoration: const InputDecoration(
+                                          labelText: 'Program',
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: DropdownButtonFormField<String>(
+                                        initialValue: _yearSection,
+                                        dropdownColor: Colors.white,
+                                        validator: _required,
+                                        items: _yearSections
+                                            .where(
+                                              (section) =>
+                                                  _sectionBelongsToProgram(
+                                                    section,
+                                                    _program,
+                                                  ),
+                                            )
+                                            .map(
+                                              (section) => DropdownMenuItem(
+                                                value: section,
+                                                child: Text(section),
+                                              ),
+                                            )
+                                            .toList(),
+                                        onChanged: _accountYearSection == null
+                                            ? (value) => setState(
+                                                () => _yearSection = value,
+                                              )
+                                            : null,
+                                        decoration: const InputDecoration(
+                                          labelText: 'Year/Section',
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                TextFormField(
+                                  controller: _platformController,
+                                  validator: _required,
+                                  minLines: 4,
+                                  maxLines: 7,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Platform',
+                                    alignLabelWithHint: true,
+                                  ),
+                                ),
+                              ],
                             ),
-                            style: FilledButton.styleFrom(
-                              backgroundColor: const Color(0xFF2563EB),
-                              foregroundColor: Colors.white,
-                              textStyle: const TextStyle(
-                                fontWeight: FontWeight.w900,
+                          ),
+                          if (_candidateType == 'Political Party') ...[
+                            const SizedBox(height: 14),
+                            _Section(
+                              title: 'Political Party',
+                              isPremiumMode: isPremiumMode,
+                              child: Column(
+                                children: [
+                                  _buildPartyNameField(isPremiumMode),
+                                  const SizedBox(height: 12),
+                                  _buildPartyCodeField(),
+                                  const SizedBox(height: 12),
+                                  _MiniImagePicker(
+                                    title: 'Party logo',
+                                    imageFile: _partyLogo,
+                                    isPremiumMode: isPremiumMode,
+                                    onPick: _pickPartyLogo,
+                                    onClear: () =>
+                                        setState(() => _partyLogo = null),
+                                  ),
+                                ],
                               ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
+                            ),
+                          ],
+                          const SizedBox(height: 20),
+                          SizedBox(
+                            height: 52,
+                            child: FilledButton.icon(
+                              onPressed: _submitting ? null : _submit,
+                              icon: _submitting
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Icon(Icons.send_rounded),
+                              label: Text(
+                                _submitting ? 'Submitting...' : 'Submit Filing',
+                              ),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: const Color(0xFF2563EB),
+                                foregroundColor: Colors.white,
+                                textStyle: const TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
                               ),
                             ),
                           ),
-                        ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -1155,8 +1178,8 @@ class _ApplicationStatusCard extends StatelessWidget {
             'ELECOM reviewed your filing and marked it rejected. Please check the reason below or contact ELECOM for clarification.',
       ),
       _ => (
-        bg: const Color(0xFFFFF7ED),
-        fg: const Color(0xFFC2410C),
+        bg: const Color(0xFFEFF6FF),
+        fg: const Color(0xFF2563EB),
         icon: Icons.hourglass_top_rounded,
         title: 'Filing Under Review',
         body:
