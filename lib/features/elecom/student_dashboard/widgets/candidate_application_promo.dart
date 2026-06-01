@@ -184,19 +184,19 @@ class _CandidateApplicationSlide extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 13, 14, 12),
           child: FractionallySizedBox(
             alignment: Alignment.centerLeft,
-            widthFactor: 0.58,
+            widthFactor: 0.50,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   slide.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  maxLines: 2,
+                  overflow: TextOverflow.visible,
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w900,
-                    fontSize: 23,
-                    height: 1.02,
+                    fontSize: 18,
+                    height: 1.04,
                     shadows: [
                       Shadow(
                         color: Color(0x99000000),
@@ -209,13 +209,13 @@ class _CandidateApplicationSlide extends StatelessWidget {
                 const SizedBox(height: 5),
                 Text(
                   slide.subtitle,
-                  maxLines: 2,
+                  maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w800,
-                    fontSize: 12.5,
-                    height: 1.18,
+                    fontSize: 10.5,
+                    height: 1.12,
                   ),
                 ),
                 const Spacer(),
