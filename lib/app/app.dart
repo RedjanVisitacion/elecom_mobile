@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:toastification/toastification.dart';
 
+import '../core/update/app_update_service.dart';
 import '../features/auth/presentation/splash_screen.dart';
 import '../features/auth/state/login_view_model.dart';
 import '../features/elecom/student_dashboard/utils/theme_notifier.dart';
@@ -48,7 +49,9 @@ class ElecomApp extends StatelessWidget {
               home: const SplashScreen(),
               navigatorObservers: [elecomRouteObserver],
               builder: (context, child) {
-                return _SoftKeyboardFocusGuard(child: child);
+                return _AppUpdateGate(
+                  child: _SoftKeyboardFocusGuard(child: child),
+                );
               },
             ),
           );
@@ -174,6 +177,28 @@ ThemeData _premiumTheme() {
     textSelectionTheme: const TextSelectionThemeData(cursorColor: gold),
     dividerTheme: DividerThemeData(color: Colors.white.withValues(alpha: 0.10)),
   );
+}
+
+class _AppUpdateGate extends StatefulWidget {
+  const _AppUpdateGate({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_AppUpdateGate> createState() => _AppUpdateGateState();
+}
+
+class _AppUpdateGateState extends State<_AppUpdateGate> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      AppUpdateService.checkOnce(context);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 class _SoftKeyboardFocusGuard extends StatefulWidget {

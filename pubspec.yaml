@@ -60,6 +60,7 @@ dependencies:
   flutter_animate: ^4.5.2
   hugeicons: ^1.1.7
   iconsax_flutter: ^1.0.1
+  package_info_plus: ^10.1.0
 
 dev_dependencies:
   flutter_test:

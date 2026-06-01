@@ -5,6 +5,7 @@ class MobileApiPaths {
   static String get rootApi => '${ApiConfig.baseUrl}/api';
 
   static String get electionWindow => '$base/election/window/';
+  static String get appUpdate => '$base/app/update/';
   static String get ballot => '$base/ballot/';
   static String get candidatesSearch => '$base/candidates/search/';
   static String get candidatesList => '$base/candidates/';

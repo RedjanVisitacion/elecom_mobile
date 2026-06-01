@@ -16,6 +16,10 @@ class ElecomMobileApi {
     return _getJson(MobileApiPaths.electionWindow);
   }
 
+  Future<Map<String, dynamic>> getAppUpdateInfo() async {
+    return _getJson(MobileApiPaths.appUpdate);
+  }
+
   Future<Map<String, dynamic>> getProfile() async {
     return _getJson(MobileApiPaths.accountProfile);
   }

@@ -6,7 +6,7 @@ import '../student_dashboard/utils/theme_notifier.dart';
 
 // ── Category definitions ──────────────────────────────────────────────────────
 
-enum _NotifCategory { all, voting, results, schedule, receipt }
+enum _NotifCategory { all, voting, results, schedule, candidate }
 
 extension _NotifCategoryLabel on _NotifCategory {
   String get label {
@@ -19,8 +19,8 @@ extension _NotifCategoryLabel on _NotifCategory {
         return 'Results';
       case _NotifCategory.schedule:
         return 'Schedule';
-      case _NotifCategory.receipt:
-        return 'Receipt';
+      case _NotifCategory.candidate:
+        return 'Candidate';
     }
   }
 }
@@ -34,13 +34,18 @@ _NotifCategory _categorise(Map<String, dynamic> item) {
   final text = '$title $body';
 
   if (type == 'receipt' || type == 'vote_receipt') {
-    return _NotifCategory.receipt;
+    return _NotifCategory.voting;
   }
   if (type == 'results' || type == 'result') {
     return _NotifCategory.results;
   }
   if (type == 'schedule' || type == 'election_schedule') {
     return _NotifCategory.schedule;
+  }
+  if (type == 'candidate' ||
+      type == 'candidate_filing' ||
+      type == 'candidate_application') {
+    return _NotifCategory.candidate;
   }
   if (type == 'voting' || type == 'vote' || type == 'election') {
     if (text.contains('schedule') ||
@@ -58,7 +63,15 @@ _NotifCategory _categorise(Map<String, dynamic> item) {
       text.contains('vote submitted') ||
       text.contains('successfully recorded') ||
       text.contains('reference')) {
-    return _NotifCategory.receipt;
+    return _NotifCategory.voting;
+  }
+
+  if (text.contains('candidate') ||
+      text.contains('filing') ||
+      text.contains('candidacy') ||
+      text.contains('approved') ||
+      text.contains('rejected')) {
+    return _NotifCategory.candidate;
   }
 
   if (text.contains('result') ||
@@ -863,7 +876,7 @@ List<List<dynamic>> _premiumCategoryIcon(_NotifCategory category) {
     _NotifCategory.voting => HugeIcons.strokeRoundedCheckList,
     _NotifCategory.results => HugeIcons.strokeRoundedChartBarLine,
     _NotifCategory.schedule => HugeIcons.strokeRoundedCalendar03,
-    _NotifCategory.receipt => HugeIcons.strokeRoundedInvoice03,
+    _NotifCategory.candidate => HugeIcons.strokeRoundedUserStar01,
     _NotifCategory.all => HugeIcons.strokeRoundedNotification03,
   };
 }
