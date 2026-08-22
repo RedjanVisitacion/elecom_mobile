@@ -1,0 +1,2 @@
+INSERT INTO users (id, student_id, password_hash, created_at, role, department, year_level, section, position, phone, email, otp_code, otp_expires_at, terms_accepted_at, first_name, middle_name, last_name) VALUES
+(1, '2023304637', 'Redjan09', '2025-10-27 10:57:30', 'admin', 'BSIT', 4, 'A', 'BSIT REPRESINTATIVE', '09534181760', 'visitacionredjanphils@gmail.com', NULL, NULL, '2025-11-25 11:38:55', 'Redjan Phil', 'S.', 'Visitacion');
