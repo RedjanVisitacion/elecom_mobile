@@ -31,6 +31,11 @@ class LoginViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  void toggleAcceptedTerms() {
+    _acceptedTerms = !_acceptedTerms;
+    notifyListeners();
+  }
+
   void clearError() {
     if (_error == null) return;
     _error = null;

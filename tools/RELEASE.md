@@ -1,16 +1,22 @@
 # Release Commands
 
-Before building a new APK, bump the build number:
+Build a new release APK with an auto-increased build number:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File tools\bump_build.ps1
+powershell -ExecutionPolicy Bypass -File tools\build_release_apk.ps1
 ```
 
-To also change the visible version name:
+The upload file will be:
+
+```text
+build\app\outputs\flutter-apk\elecom.apk
+```
+
+To also change the visible version name while building:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File tools\bump_build.ps1 -VersionName 1.0.1
+powershell -ExecutionPolicy Bypass -File tools\build_release_apk.ps1 -VersionName 1.0.1
 ```
 
-Then build the APK and upload it to MediaFire. Use the printed build number as
+Upload `elecom.apk` to MediaFire. Use the printed build number as
 `APP_UPDATE_LATEST_BUILD` in the backend `.env`.

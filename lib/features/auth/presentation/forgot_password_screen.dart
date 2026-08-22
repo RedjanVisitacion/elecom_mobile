@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:math' as math;
-import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -11,14 +10,18 @@ import '../../../core/utils/toast_service.dart';
 import '../data/forgot_password_api.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Shared design tokens (match login screen)
+// Design tokens — light palette matching login screen
 // ─────────────────────────────────────────────────────────────────────────────
 
-const Color _blue = Color(0xFF2563EB);
-const Color _gold = Color(0xFFFACC15);
-const Color _dark = Color(0xFF0F172A);
-const Color _muted = Color(0xFF94A3B8);
-const Color _ink = Color(0xFF111827);
+const Color _fpBgLight   = Color(0xFFF8FAFC);
+const Color _fpNavy      = Color(0xFF0F1F3D);
+const Color _fpNavyLight = Color(0xFF1A2F55);
+const Color _fpGold      = Color(0xFFF59E0B);
+const Color _fpGoldLight = Color(0xFFFACC15);
+const Color _fpWhite     = Colors.white;
+const Color _fpMuted     = Color(0xFF64748B);
+const Color _fpBorder    = Color(0xFFCBD5E1);
+const Color _fpError     = Color(0xFFDC2626);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Step 1 — Find Your Account
@@ -83,30 +86,27 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           children: [
             const _FpHeaderIcon(icon: Icons.manage_accounts_outlined),
             const SizedBox(height: 16),
-
             Text(
               'Find Your Account',
               textAlign: TextAlign.center,
               style: GoogleFonts.poppins(
                 fontSize: 21,
                 fontWeight: FontWeight.w800,
-                color: Colors.white,
+                color: _fpNavy,
               ),
             ),
             const SizedBox(height: 8),
-
             Text(
               'Enter your Student ID or registered email to receive a verification code.',
               textAlign: TextAlign.center,
               style: GoogleFonts.poppins(
                 fontSize: 12.5,
-                color: _muted,
+                color: _fpMuted,
                 fontWeight: FontWeight.w500,
                 height: 1.45,
               ),
             ),
             const SizedBox(height: 22),
-
             _FpField(
               controller: _identifierCtrl,
               hintText: 'Student ID or Email',
@@ -120,14 +120,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               },
             ),
             const SizedBox(height: 17),
-
             _FpButton(
               label: 'Continue',
               loading: _loading,
               onPressed: _continue,
             ),
             const SizedBox(height: 12),
-
             _BackToLoginButton(),
           ],
         ),
@@ -159,7 +157,6 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
   final _otpCtrl = TextEditingController();
   bool _loading = false;
 
-  // Resend cooldown — 60 seconds
   static const int _cooldownSeconds = 60;
   int _secondsLeft = 0;
   Timer? _timer;
@@ -181,10 +178,7 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
     _timer?.cancel();
     setState(() => _secondsLeft = _cooldownSeconds);
     _timer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (!mounted) {
-        t.cancel();
-        return;
-      }
+      if (!mounted) { t.cancel(); return; }
       setState(() {
         _secondsLeft--;
         if (_secondsLeft <= 0) t.cancel();
@@ -198,11 +192,7 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
     try {
       await _api.requestOtp(identifier: widget.identifier);
       if (!mounted) return;
-      AppToast.success(
-        context,
-        'OTP resent successfully.',
-        isLoginScreen: true,
-      );
+      AppToast.success(context, 'OTP resent successfully.', isLoginScreen: true);
       _startCooldown();
     } on ForgotPasswordException catch (e) {
       if (!mounted) return;
@@ -261,19 +251,16 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
         children: [
           const _FpHeaderIcon(icon: Icons.lock_outline_rounded),
           const SizedBox(height: 16),
-
           Text(
             'Enter OTP',
             textAlign: TextAlign.center,
             style: GoogleFonts.poppins(
               fontSize: 21,
               fontWeight: FontWeight.w800,
-              color: Colors.white,
+              color: _fpNavy,
             ),
           ),
           const SizedBox(height: 8),
-
-          // Subtitle
           Text(
             widget.maskedEmail.isNotEmpty
                 ? 'A 6-digit code was sent to ${widget.maskedEmail}.'
@@ -281,22 +268,16 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
             textAlign: TextAlign.center,
             style: GoogleFonts.poppins(
               fontSize: 12.5,
-              color: _muted,
+              color: _fpMuted,
               fontWeight: FontWeight.w500,
               height: 1.45,
             ),
           ),
           const SizedBox(height: 22),
-
-          // OTP input — large centered digits
           _OtpField(controller: _otpCtrl),
           const SizedBox(height: 17),
-
-          // Verify button
           _FpButton(label: 'Verify', loading: _loading, onPressed: _verify),
           const SizedBox(height: 14),
-
-          // Resend row
           Center(
             child: GestureDetector(
               onTap: canResend ? _resend : null,
@@ -305,7 +286,7 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
                   style: GoogleFonts.poppins(
                     fontSize: 12.2,
                     fontWeight: FontWeight.w500,
-                    color: Colors.white.withValues(alpha: 0.66),
+                    color: _fpMuted,
                   ),
                   children: [
                     const TextSpan(text: "Didn't receive it? "),
@@ -314,7 +295,7 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
                           ? 'Resend OTP'
                           : 'Resend in ${_secondsLeft}s',
                       style: TextStyle(
-                        color: canResend ? _gold : _muted,
+                        color: canResend ? _fpGold : _fpMuted,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -324,7 +305,6 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
             ),
           ),
           const SizedBox(height: 12),
-
           _BackToLoginButton(),
         ],
       ),
@@ -372,7 +352,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       );
       if (!mounted) return;
       AppToast.success(context, 'Password reset successfully.');
-      // Pop all the forgot-password screens back to login
       Navigator.of(context).popUntil((route) => route.isFirst);
     } on ForgotPasswordException catch (e) {
       if (!mounted) return;
@@ -396,30 +375,27 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           children: [
             const _FpHeaderIcon(icon: Icons.lock_reset_rounded),
             const SizedBox(height: 16),
-
             Text(
               'Reset Password',
               textAlign: TextAlign.center,
               style: GoogleFonts.poppins(
                 fontSize: 21,
                 fontWeight: FontWeight.w800,
-                color: Colors.white,
+                color: _fpNavy,
               ),
             ),
             const SizedBox(height: 8),
-
             Text(
               'Create a new password for your account. Use at least 8 characters.',
               textAlign: TextAlign.center,
               style: GoogleFonts.poppins(
                 fontSize: 12.5,
-                color: _muted,
+                color: _fpMuted,
                 fontWeight: FontWeight.w500,
                 height: 1.45,
               ),
             ),
             const SizedBox(height: 22),
-
             _FpField(
               controller: _newPassCtrl,
               hintText: 'New Password',
@@ -431,21 +407,16 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                   _obscureNew
                       ? Icons.visibility_off_outlined
                       : Icons.visibility_outlined,
-                  color: Colors.white.withValues(alpha: 0.58),
+                  color: _fpMuted,
                 ),
               ),
               validator: (v) {
-                if (v == null || v.isEmpty) {
-                  return 'Please enter a new password.';
-                }
-                if (v.length < 8) {
-                  return 'Password must be at least 8 characters.';
-                }
+                if (v == null || v.isEmpty) return 'Please enter a new password.';
+                if (v.length < 8) return 'Password must be at least 8 characters.';
                 return null;
               },
             ),
             const SizedBox(height: 12),
-
             _FpField(
               controller: _confirmPassCtrl,
               hintText: 'Confirm Password',
@@ -458,21 +429,16 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                   _obscureConfirm
                       ? Icons.visibility_off_outlined
                       : Icons.visibility_outlined,
-                  color: Colors.white.withValues(alpha: 0.58),
+                  color: _fpMuted,
                 ),
               ),
               validator: (v) {
-                if (v == null || v.isEmpty) {
-                  return 'Please confirm your password.';
-                }
-                if (v != _newPassCtrl.text) {
-                  return 'Passwords do not match.';
-                }
+                if (v == null || v.isEmpty) return 'Please confirm your password.';
+                if (v != _newPassCtrl.text) return 'Passwords do not match.';
                 return null;
               },
             ),
             const SizedBox(height: 17),
-
             _FpButton(
               label: 'Reset Password',
               loading: _loading,
@@ -497,244 +463,66 @@ class _FpScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = ThemeData(
-      useMaterial3: true,
-      brightness: Brightness.dark,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: _blue,
-        brightness: Brightness.dark,
-      ),
-      scaffoldBackgroundColor: const Color(0xFF050607),
-    );
-
     return Theme(
-      data: theme,
+      data: ThemeData(
+        useMaterial3: true,
+        brightness: Brightness.light,
+        scaffoldBackgroundColor: _fpBgLight,
+      ),
       child: Scaffold(
-        extendBodyBehindAppBar: true,
-        backgroundColor: const Color(0xFF050607),
+        backgroundColor: _fpBgLight,
         appBar: AppBar(
-          backgroundColor: Colors.transparent,
+          backgroundColor: _fpWhite,
           elevation: 0,
           scrolledUnderElevation: 0,
           leading: IconButton(
             onPressed: () => Navigator.of(context).maybePop(),
-            icon: const Icon(Icons.arrow_back_rounded, color: _ink),
+            icon: const Icon(Icons.arrow_back_rounded, color: _fpNavy),
           ),
           title: Text(
             title,
             style: GoogleFonts.poppins(
               fontWeight: FontWeight.w800,
-              color: _ink,
+              color: _fpNavy,
               fontSize: 16,
             ),
           ),
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(1),
+            child: Divider(height: 1, thickness: 1, color: _fpBorder),
+          ),
         ),
-        body: Stack(
-          fit: StackFit.expand,
-          children: [
-            const _FpBackdrop(),
-            SafeArea(
-              child: Center(
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(24, 58, 24, 26),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 420),
-                    child:
-                        ClipRRect(
-                              borderRadius: BorderRadius.circular(30),
-                              child: BackdropFilter(
-                                filter: ui.ImageFilter.blur(
-                                  sigmaX: 20,
-                                  sigmaY: 20,
-                                ),
-                                child: Container(
-                                  padding: const EdgeInsets.fromLTRB(
-                                    20,
-                                    24,
-                                    20,
-                                    18,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(30),
-                                    color: _dark.withValues(alpha: 0.70),
-                                    border: Border.all(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.16,
-                                      ),
-                                    ),
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                      colors: [
-                                        Colors.white.withValues(alpha: 0.15),
-                                        _dark.withValues(alpha: 0.68),
-                                        Colors.black.withValues(alpha: 0.78),
-                                      ],
-                                      stops: const [0, 0.42, 1],
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(
-                                          alpha: 0.42,
-                                        ),
-                                        blurRadius: 34,
-                                        offset: const Offset(0, 20),
-                                      ),
-                                      BoxShadow(
-                                        color: _blue.withValues(alpha: 0.18),
-                                        blurRadius: 40,
-                                        offset: const Offset(-14, -12),
-                                      ),
-                                      BoxShadow(
-                                        color: _gold.withValues(alpha: 0.08),
-                                        blurRadius: 34,
-                                        offset: const Offset(18, 12),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Stack(
-                                    children: [
-                                      const Positioned.fill(
-                                        child: IgnorePointer(
-                                          child: CustomPaint(
-                                            painter: _FpCardPatternPainter(),
-                                          ),
-                                        ),
-                                      ),
-                                      child,
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            )
-                            .animate()
-                            .fadeIn(duration: 520.ms, delay: 80.ms)
-                            .slideY(
-                              begin: 0.045,
-                              end: 0,
-                              duration: 620.ms,
-                              curve: Curves.easeOutCubic,
-                            ),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 28,
                   ),
+                  child: child,
+                )
+                .animate()
+                .fadeIn(duration: 520.ms, delay: 80.ms)
+                .slideY(
+                  begin: 0.045,
+                  end: 0,
+                  duration: 620.ms,
+                  curve: Curves.easeOutCubic,
                 ),
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Rounded pill text field — matches the login screen's `_RoundedField`.
-class _FpBackdrop extends StatelessWidget {
-  const _FpBackdrop();
-
-  @override
-  Widget build(BuildContext context) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 5200),
-      curve: Curves.easeInOut,
-      builder: (context, value, _) {
-        final drift = math.sin(value * math.pi * 2);
-        return Stack(
-          fit: StackFit.expand,
-          children: [
-            const DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0xFFFFFFFF),
-                    Color(0xFFF7FAFF),
-                    Color(0xFFE8EEF7),
-                    Color(0xFF172033),
-                    Color(0xFF05070B),
-                  ],
-                  stops: [0, 0.35, 0.49, 0.63, 1],
-                ),
-              ),
-            ),
-            Transform.translate(
-              offset: Offset(14 * drift, -6 * drift),
-              child: const _FpGlow(
-                alignment: Alignment(0.82, -0.82),
-                color: _blue,
-                size: 250,
-                alpha: 0.22,
-              ),
-            ),
-            Transform.translate(
-              offset: Offset(-12 * drift, 8 * drift),
-              child: const _FpGlow(
-                alignment: Alignment(-0.92, -0.38),
-                color: _gold,
-                size: 210,
-                alpha: 0.16,
-              ),
-            ),
-            Positioned.fill(
-              child: IgnorePointer(
-                child: CustomPaint(painter: _FpBackdropPainter(value)),
-              ),
-            ),
-            Positioned(
-              top: 50,
-              left: 0,
-              right: 0,
-              child: ImageFiltered(
-                imageFilter: ui.ImageFilter.blur(sigmaX: 2.8, sigmaY: 2.8),
-                child: Opacity(
-                  opacity: 0.024,
-                  child: Image.asset(
-                    'assets/img_text/elecom_black.png',
-                    height: 150,
-                    fit: BoxFit.contain,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _FpGlow extends StatelessWidget {
-  const _FpGlow({
-    required this.alignment,
-    required this.color,
-    required this.size,
-    required this.alpha,
-  });
-
-  final Alignment alignment;
-  final Color color;
-  final double size;
-  final double alpha;
-
-  @override
-  Widget build(BuildContext context) {
-    return Align(
-      alignment: alignment,
-      child: ImageFiltered(
-        imageFilter: ui.ImageFilter.blur(sigmaX: 36, sigmaY: 36),
-        child: Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: color.withValues(alpha: alpha),
           ),
         ),
       ),
     );
   }
 }
+
+// ── Header icon ───────────────────────────────────────────────────────────────
 
 class _FpHeaderIcon extends StatelessWidget {
   const _FpHeaderIcon({required this.icon});
@@ -749,21 +537,16 @@ class _FpHeaderIcon extends StatelessWidget {
         height: 58,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: Colors.white.withValues(alpha: 0.08),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
-          boxShadow: [
-            BoxShadow(
-              color: _blue.withValues(alpha: 0.18),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-          ],
+          color: _fpGold.withValues(alpha: 0.12),
+          border: Border.all(color: _fpGold.withValues(alpha: 0.3)),
         ),
-        child: Icon(icon, color: _gold, size: 30),
+        child: Icon(icon, color: _fpGold, size: 30),
       ),
     );
   }
 }
+
+// ── Underline text field (matches login _WebInputField) ───────────────────────
 
 class _FpField extends StatelessWidget {
   const _FpField({
@@ -786,58 +569,57 @@ class _FpField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 50,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(999),
-        color: Colors.white.withValues(alpha: 0.052),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.13)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.18),
-            blurRadius: 10,
-            offset: const Offset(0, 8),
-          ),
-        ],
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      obscureText: obscureText,
+      validator: validator,
+      cursorColor: _fpGold,
+      style: GoogleFonts.poppins(
+        color: _fpNavy,
+        fontWeight: FontWeight.w500,
+        fontSize: 13.4,
       ),
-      child: TextFormField(
-        controller: controller,
-        keyboardType: keyboardType,
-        obscureText: obscureText,
-        validator: validator,
-        cursorColor: _gold,
-        style: GoogleFonts.poppins(
-          color: Colors.white.withValues(alpha: 0.94),
-          fontWeight: FontWeight.w600,
-          fontSize: 13.4,
+      decoration: InputDecoration(
+        prefixIcon: icon == null
+            ? null
+            : Icon(icon, color: _fpGold, size: 18),
+        prefixIconConstraints:
+            const BoxConstraints(minWidth: 40, minHeight: 40),
+        hintText: hintText,
+        filled: false,
+        hintStyle: GoogleFonts.poppins(
+          color: _fpMuted.withValues(alpha: 0.65),
+          fontWeight: FontWeight.w400,
+          fontSize: 12.5,
         ),
-        decoration: InputDecoration(
-          prefixIcon: icon == null
-              ? null
-              : Icon(icon, color: const Color(0xFF60A5FA), size: 18),
-          prefixIconConstraints: const BoxConstraints(minWidth: 46),
-          hintText: hintText,
-          hintStyle: GoogleFonts.poppins(
-            color: _muted.withValues(alpha: 0.72),
-            fontWeight: FontWeight.w500,
-            fontSize: 12.5,
-          ),
-          contentPadding: const EdgeInsets.fromLTRB(0, 12, 14, 11),
-          suffixIcon: suffix,
-          border: InputBorder.none,
-          errorStyle: GoogleFonts.poppins(
-            color: _gold,
-            fontWeight: FontWeight.w700,
-            fontSize: 10,
-            height: 0.7,
-          ),
+        contentPadding: const EdgeInsets.fromLTRB(0, 10, 8, 10),
+        suffixIcon: suffix,
+        enabledBorder: const UnderlineInputBorder(
+          borderSide: BorderSide(color: _fpBorder, width: 1.2),
+        ),
+        focusedBorder: const UnderlineInputBorder(
+          borderSide: BorderSide(color: _fpGold, width: 1.8),
+        ),
+        errorBorder: const UnderlineInputBorder(
+          borderSide: BorderSide(color: _fpError, width: 1.2),
+        ),
+        focusedErrorBorder: const UnderlineInputBorder(
+          borderSide: BorderSide(color: _fpError, width: 1.8),
+        ),
+        errorStyle: GoogleFonts.poppins(
+          color: _fpError,
+          fontWeight: FontWeight.w600,
+          fontSize: 10,
+          height: 1.2,
         ),
       ),
     );
   }
 }
 
-/// Large centered OTP input — single field, digits only, max 6 chars.
+// ── OTP field ────────────────────────────────────────────────────────────────
+
 class _OtpField extends StatefulWidget {
   const _OtpField({required this.controller});
 
@@ -902,19 +684,19 @@ class _OtpFieldState extends State<_OtpField> {
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(14),
-                  color: Colors.white.withValues(alpha: active ? 0.075 : 0.052),
+                  color: active
+                      ? _fpGold.withValues(alpha: 0.06)
+                      : _fpWhite,
                   border: Border.all(
-                    color: active
-                        ? _gold.withValues(alpha: 0.78)
-                        : Colors.white.withValues(alpha: 0.14),
+                    color: active ? _fpGold : _fpBorder,
                     width: active ? 1.35 : 1,
                   ),
                   boxShadow: active
                       ? [
                           BoxShadow(
-                            color: _gold.withValues(alpha: 0.18),
+                            color: _fpGold.withValues(alpha: 0.22),
                             blurRadius: 16,
-                            offset: const Offset(0, 7),
+                            offset: const Offset(0, 4),
                           ),
                         ]
                       : null,
@@ -925,7 +707,7 @@ class _OtpFieldState extends State<_OtpField> {
                     filled ? text[index] : '',
                     key: ValueKey('$index-${filled ? text[index] : ''}'),
                     style: GoogleFonts.poppins(
-                      color: Colors.white,
+                      color: _fpNavy,
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
                     ),
@@ -940,7 +722,8 @@ class _OtpFieldState extends State<_OtpField> {
   }
 }
 
-/// Black pill primary button — matches the login screen's LOGIN button.
+// ── Gold gradient primary button (matches login Sign In button) ───────────────
+
 class _FpButton extends StatefulWidget {
   const _FpButton({
     required this.label,
@@ -969,72 +752,52 @@ class _FpButtonState extends State<_FpButton> {
         onTapDown: (_) => setState(() => _pressed = true),
         onTapCancel: () => setState(() => _pressed = false),
         onTapUp: (_) => setState(() => _pressed = false),
-        child: DecoratedBox(
+        child: Container(
+          height: 52,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(999),
+            borderRadius: BorderRadius.circular(10),
+            gradient: const LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: [_fpGold, _fpGoldLight, _fpGold],
+              stops: [0, 0.5, 1],
+            ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.50),
-                blurRadius: 22,
-                offset: const Offset(-8, 10),
-              ),
-              BoxShadow(
-                color: _gold.withValues(alpha: 0.24),
-                blurRadius: 26,
-                offset: const Offset(18, 8),
+                color: _fpGold.withValues(alpha: 0.38),
+                blurRadius: 14,
+                offset: const Offset(0, 5),
               ),
             ],
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: Stack(
-              children: [
-                const Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Color(0xFF020617), Color(0xFF111827), _gold],
-                        stops: [0, 0.58, 1],
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: widget.loading ? null : widget.onPressed,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      disabledBackgroundColor: Colors.transparent,
-                      foregroundColor: Colors.white,
-                      shadowColor: Colors.transparent,
-                      shape: const StadiumBorder(),
-                      elevation: 0,
-                    ),
-                    child: widget.loading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Colors.white,
-                              ),
-                            ),
-                          )
-                        : Text(
-                            widget.label,
-                            style: GoogleFonts.poppins(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 15,
-                            ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(10),
+              onTap: widget.loading ? null : widget.onPressed,
+              child: SizedBox(
+                height: 52,
+                child: Center(
+                  child: widget.loading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.2,
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(_fpNavy),
                           ),
-                  ),
+                        )
+                      : Text(
+                          widget.label,
+                          style: GoogleFonts.poppins(
+                            color: _fpNavy,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15,
+                          ),
+                        ),
                 ),
-              ],
+              ),
             ),
           ),
         ),
@@ -1043,7 +806,8 @@ class _FpButtonState extends State<_FpButton> {
   }
 }
 
-/// "Back to Login" text button — pops all forgot-password screens.
+// ── Back to Login button (matches "Forgot Password?" link in login) ───────────
+
 class _BackToLoginButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -1052,83 +816,20 @@ class _BackToLoginButton extends StatelessWidget {
         onPressed: () =>
             Navigator.of(context).popUntil((route) => route.isFirst),
         style: TextButton.styleFrom(
-          foregroundColor: const Color(0xFF60A5FA).withValues(alpha: 0.92),
           visualDensity: VisualDensity.compact,
+          minimumSize: const Size(0, 36),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
         child: Text(
           'Back to Login',
           style: GoogleFonts.poppins(
-            color: const Color(0xFF60A5FA).withValues(alpha: 0.92),
+            color: _fpNavyLight,
             fontWeight: FontWeight.w700,
             fontSize: 12.4,
+            letterSpacing: 0.2,
           ),
         ),
       ),
     );
   }
-}
-
-class _FpBackdropPainter extends CustomPainter {
-  const _FpBackdropPainter(this.progress);
-
-  final double progress;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final dotPaint = Paint();
-    for (var x = 0.0; x <= size.width; x += 10) {
-      for (var y = 30.0; y <= size.height; y += 10) {
-        final top = y < size.height * 0.45;
-        if ((x + y) % 30 == 0) {
-          dotPaint.color = (top ? _ink : Colors.white).withValues(
-            alpha: top ? 0.08 : 0.055,
-          );
-          canvas.drawCircle(Offset(x, y), 0.7, dotPaint);
-        }
-      }
-    }
-
-    final streakPaint = Paint()
-      ..shader = ui.Gradient.linear(
-        Offset(size.width * 0.05, size.height * 0.20),
-        Offset(size.width * 0.86, size.height * 0.34),
-        [
-          Colors.white.withValues(alpha: 0),
-          _blue.withValues(alpha: 0.08),
-          Colors.white.withValues(alpha: 0),
-        ],
-        [0, 0.5, 1],
-      )
-      ..strokeWidth = 1.1
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 7);
-    final drift = math.sin(progress * math.pi * 2);
-    canvas.drawLine(
-      Offset(-20 + drift * 8, size.height * 0.31),
-      Offset(size.width + 20, size.height * 0.18 + drift * 6),
-      streakPaint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _FpBackdropPainter oldDelegate) {
-    return oldDelegate.progress != progress;
-  }
-}
-
-class _FpCardPatternPainter extends CustomPainter {
-  const _FpCardPatternPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint();
-    for (var x = 8.0; x <= size.width; x += 14) {
-      for (var y = size.height * 0.58; y <= size.height - 4; y += 14) {
-        paint.color = Colors.white.withValues(alpha: 0.055);
-        canvas.drawCircle(Offset(x, y), 0.85, paint);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
