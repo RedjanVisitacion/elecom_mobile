@@ -364,6 +364,7 @@ class TutorialService {
       ),
       hideSkip: true,
       pulseEnable: true,
+      pulseAnimationDuration: const Duration(milliseconds: 900),
       onSkip: () {
         _activeCoach = null;
         onSkipped();
