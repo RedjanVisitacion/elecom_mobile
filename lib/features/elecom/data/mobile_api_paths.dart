@@ -8,6 +8,7 @@ class MobileApiPaths {
   static String get appUpdate => '$base/app/update/';
   static String get ballot => '$base/ballot/';
   static String get candidatesSearch => '$base/candidates/search/';
+  static String get candidatesAll => '$base/candidates/all/';
   static String get candidatesList => '$base/candidates/';
   static String get candidateApplicationSubmit =>
       '$base/candidate-applications/submit/';

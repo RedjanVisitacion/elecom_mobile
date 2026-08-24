@@ -134,6 +134,29 @@ class ElecomMobileApi {
         .toList();
   }
 
+  /// Returns ALL approved candidates for the current election regardless of
+  /// the viewer's program/eligibility.  Used by the transparency Candidates
+  /// screen only – the ballot remains eligibility-gated on a separate endpoint.
+  Future<List<Map<String, dynamic>>> listAllCandidatesTransparency() async {
+    final uri = Uri.parse(MobileApiPaths.candidatesAll);
+    http.Response res;
+    try {
+      res = await ApiClient.httpClient.get(
+        uri,
+        headers: const {'Accept': 'application/json'},
+      );
+    } catch (_) {
+      throw const ElecomApiException('Network error: cannot reach server');
+    }
+    final decoded = _decode(res);
+    final raw = decoded['candidates'];
+    if (raw is! List) return <Map<String, dynamic>>[];
+    return raw
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
+  }
+
   Future<List<Map<String, dynamic>>> searchCandidates(String query) async {
     final q = query.trim();
     if (q.isEmpty) return <Map<String, dynamic>>[];
