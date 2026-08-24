@@ -19,11 +19,14 @@ class HomeCandidatesStrip extends StatelessWidget {
     required this.candidates,
     required this.isDarkMode,
     this.isPremiumMode = false,
+    this.onViewAll,
   });
 
   final List<Map<String, dynamic>> candidates;
   final bool isDarkMode;
   final bool isPremiumMode;
+  /// Called when the user taps "View all" next to the section heading.
+  final VoidCallback? onViewAll;
 
   @override
   Widget build(BuildContext context) {
@@ -41,17 +44,38 @@ class HomeCandidatesStrip extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          'Candidates',
-          style: TextStyle(
-            color: isPremiumMode
-                ? const Color(0xFF0F172A)
-                : isDarkMode
-                ? Colors.white
-                : Colors.black,
-            fontWeight: FontWeight.w900,
-            fontSize: 16,
-          ),
+        Row(
+          children: [
+            Text(
+              'Candidates',
+              style: TextStyle(
+                color: isPremiumMode
+                    ? const Color(0xFF0F172A)
+                    : isDarkMode
+                    ? Colors.white
+                    : Colors.black,
+                fontWeight: FontWeight.w900,
+                fontSize: 16,
+              ),
+            ),
+            const Spacer(),
+            if (onViewAll != null)
+              GestureDetector(
+                onTap: onViewAll,
+                child: Text(
+                  'View all',
+                  style: TextStyle(
+                    color: isPremiumMode
+                        ? const Color(0xFF2563EB)
+                        : isDarkMode
+                        ? const Color(0xFFFEA501)
+                        : const Color(0xFF0C1E70),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+          ],
         ),
         const SizedBox(height: 8),
         SizedBox(

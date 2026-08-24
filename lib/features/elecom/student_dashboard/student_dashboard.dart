@@ -15,6 +15,7 @@ import '../../../core/session/elevote_preferences.dart';
 import '../../../core/session/user_session.dart';
 import '../../../core/utils/toast_service.dart';
 import '../../../services/tutorial_service.dart';
+import '../candidates/all_candidates_screen.dart';
 import '../candidates/candidate_filing_screen.dart';
 import '../candidates/candidate_search_screen.dart';
 import '../data/elecom_mobile_api.dart';
@@ -1016,12 +1017,25 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
                       candidates: _homeCandidates,
                       isDarkMode: isDarkMode && !isPremiumMode,
                       isPremiumMode: isPremiumMode,
+                      onViewAll: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => AllCandidatesScreen(
+                            preloaded: _homeCandidates,
+                          ),
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 12),
                     CandidateApplicationPromo(
                       isDarkMode: isDarkMode && !isPremiumMode,
                       isPremiumMode: isPremiumMode,
-                      onApplyNow: _openCandidateApplicationInfo,
+                      onApplyNow: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => AllCandidatesScreen(
+                            preloaded: _homeCandidates,
+                          ),
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 18),
                     const OmnibusCodeCarousel(),
