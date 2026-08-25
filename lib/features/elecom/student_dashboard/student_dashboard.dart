@@ -207,6 +207,9 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
     try {
       final list = await _api.listAllCandidates();
       if (!mounted) return;
+      // Sort: USG first, then SITE → PAFE → AFPROTECHS.
+      // Within each org, order by position (President → VP → … → Reps).
+      list.sort(_compareCandidatesHome);
       setState(() {
         _homeCandidates = list;
       });
@@ -216,6 +219,42 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
         _homeCandidates = <Map<String, dynamic>>[];
       });
     }
+  }
+
+  static int _orgOrderHome(String org) {
+    final o = org.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
+    if (o == 'USG') return 0;
+    if (o.startsWith('SITE')) return 1;
+    if (o.startsWith('PAFE')) return 2;
+    if (o.startsWith('AFPRO')) return 3;
+    return 4;
+  }
+
+  static int _positionOrderHome(String position) {
+    final p = position.toLowerCase();
+    if (p.contains('president') && !p.contains('vice')) return 0;
+    if (p.contains('vice') && p.contains('president')) return 1;
+    if (p.contains('general') && p.contains('secret')) return 2;
+    if (p.contains('associate') && p.contains('secret')) return 3;
+    if (p.contains('treasurer') || p.contains('treas')) return 4;
+    if (p.contains('auditor') || p.contains('audit')) return 5;
+    if (p.contains('public information') ||
+        p.contains('p.i.o') ||
+        p.contains('pio')) return 6;
+    if (p.contains('representative') || p.contains('rep')) return 7;
+    return 8;
+  }
+
+  static int _compareCandidatesHome(
+    Map<String, dynamic> a,
+    Map<String, dynamic> b,
+  ) {
+    final orgA = _orgOrderHome((a['organization'] ?? '').toString());
+    final orgB = _orgOrderHome((b['organization'] ?? '').toString());
+    if (orgA != orgB) return orgA.compareTo(orgB);
+    final posA = _positionOrderHome((a['position'] ?? '').toString());
+    final posB = _positionOrderHome((b['position'] ?? '').toString());
+    return posA.compareTo(posB);
   }
 
   Future<void> _refreshHome() async {
