@@ -69,7 +69,7 @@ class _AllCandidatesScreenState extends State<AllCandidatesScreen> {
       final list = await _api.listAllCandidatesTransparency();
       if (!mounted) return;
       setState(() {
-        _all = list;
+        _all = list..sort(_compareCandidates);
         _orgs = _distinctSorted(list, 'organization');
         _positions = _distinctSorted(list, 'position');
         _parties = _distinctSorted(list, 'party_name');
@@ -95,6 +95,67 @@ class _AllCandidatesScreenState extends State<AllCandidatesScreen> {
       if (v.isNotEmpty) seen.add(v);
     }
     return seen.toList()..sort();
+  }
+
+  // ── sorting helpers (mirrors the election / results screen order) ──────────
+
+  static int _orgOrder(String org) {
+    final o = org.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
+    if (o == 'USG') return 0;
+    if (o.startsWith('SITE')) return 1;
+    if (o.startsWith('PAFE')) return 2;
+    if (o.startsWith('AFPRO')) return 3;
+    return 4;
+  }
+
+  static int _positionOrder(String position) {
+    final p = position.toLowerCase();
+    if (p.contains('president') && !p.contains('vice')) return 0;
+    if (p.contains('vice') && p.contains('president')) return 1;
+    if (p.contains('general') && p.contains('secret')) return 2;
+    if (p.contains('associate') && p.contains('secret')) return 3;
+    if (p.contains('treasurer') || p.contains('treas')) return 4;
+    if (p.contains('auditor') || p.contains('audit')) return 5;
+    if (p.contains('public information') || p.contains('p.i.o') || p.contains('pio')) return 6;
+    if (p.contains('representative') || p.contains('rep')) return 7;
+    return 8;
+  }
+
+  /// Sub-order for representative positions: BSIT → BTLED → BFPT.
+  static int _repOrder(String position) {
+    final p = position.toLowerCase();
+    if (p.contains('bsit')) return 0;
+    if (p.contains('btled')) return 1;
+    if (p.contains('bfpt') || p.contains('fpt')) return 2;
+    return 3;
+  }
+
+  static int _compareCandidates(
+    Map<String, dynamic> a,
+    Map<String, dynamic> b,
+  ) {
+    final orgA = _orgOrder((a['organization'] ?? '').toString());
+    final orgB = _orgOrder((b['organization'] ?? '').toString());
+    if (orgA != orgB) return orgA.compareTo(orgB);
+
+    final posA = _positionOrder((a['position'] ?? '').toString());
+    final posB = _positionOrder((b['position'] ?? '').toString());
+    if (posA != posB) return posA.compareTo(posB);
+
+    // For representatives, sort by BSIT → BTLED → BFPT
+    if (posA == 7) {
+      final repA = _repOrder((a['position'] ?? '').toString());
+      final repB = _repOrder((b['position'] ?? '').toString());
+      if (repA != repB) return repA.compareTo(repB);
+    }
+
+    // Within same org+position, sort by last name then first name
+    final lastA = (a['last_name'] ?? '').toString().toLowerCase();
+    final lastB = (b['last_name'] ?? '').toString().toLowerCase();
+    if (lastA != lastB) return lastA.compareTo(lastB);
+    final firstA = (a['first_name'] ?? '').toString().toLowerCase();
+    final firstB = (b['first_name'] ?? '').toString().toLowerCase();
+    return firstA.compareTo(firstB);
   }
 
   void _applyFilters() {
@@ -129,7 +190,7 @@ class _AllCandidatesScreenState extends State<AllCandidatesScreen> {
           return false;
         }
         return true;
-      }).toList();
+      }).toList()..sort(_compareCandidates);
     });
   }
 
