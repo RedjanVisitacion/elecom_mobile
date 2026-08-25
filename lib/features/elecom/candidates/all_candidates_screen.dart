@@ -317,6 +317,11 @@ class _AllCandidatesScreenState extends State<AllCandidatesScreen> {
     }
 
     if (_error != null) {
+      // Strip the internal class prefix for a cleaner message.
+      final displayError = _error!
+          .replaceFirst('ElecomApiException(message: ', '')
+          .replaceFirst(RegExp(r', code: .*\)$'), '')
+          .trim();
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -331,6 +336,16 @@ class _AllCandidatesScreenState extends State<AllCandidatesScreen> {
                   color: primaryText,
                   fontWeight: FontWeight.w700,
                   fontSize: 15,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                displayError,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: hintText,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
               const SizedBox(height: 16),

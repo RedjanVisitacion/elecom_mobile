@@ -137,18 +137,44 @@ class ElecomMobileApi {
   /// Returns ALL approved candidates for the current election regardless of
   /// the viewer's program/eligibility.  Used by the transparency Candidates
   /// screen only – the ballot remains eligibility-gated on a separate endpoint.
+  ///
+  /// Falls back to [candidatesList] (the same endpoint the home dashboard uses)
+  /// if [candidatesAll] returns a 404, so the screen works even when the
+  /// dedicated all-candidates route has not been added to the backend yet.
   Future<List<Map<String, dynamic>>> listAllCandidatesTransparency() async {
-    final uri = Uri.parse(MobileApiPaths.candidatesAll);
+    // Try the dedicated /candidates/all/ endpoint first.
+    final allUri = Uri.parse(MobileApiPaths.candidatesAll);
     http.Response res;
     try {
       res = await ApiClient.httpClient.get(
-        uri,
+        allUri,
         headers: const {'Accept': 'application/json'},
       );
     } catch (_) {
       throw const ElecomApiException('Network error: cannot reach server');
     }
-    final decoded = _decode(res);
+
+    // If the dedicated endpoint is missing (404) fall back to the standard
+    // candidates list that the home dashboard already uses successfully.
+    if (res.statusCode == 404) {
+      return listAllCandidates();
+    }
+
+    Map<String, dynamic> decoded;
+    try {
+      decoded = jsonDecode(res.body) as Map<String, dynamic>;
+    } catch (_) {
+      throw ElecomApiException(
+        'Server error (${res.statusCode}): Invalid JSON response from candidates/all/',
+      );
+    }
+
+    if (res.statusCode >= 400 && decoded['ok'] != true) {
+      final msg = (decoded['error'] ?? decoded['message'] ?? decoded['detail'] ?? 'Request failed')
+          .toString();
+      throw ElecomApiException('Request failed (${res.statusCode}): $msg');
+    }
+
     final raw = decoded['candidates'];
     if (raw is! List) return <Map<String, dynamic>>[];
     return raw
