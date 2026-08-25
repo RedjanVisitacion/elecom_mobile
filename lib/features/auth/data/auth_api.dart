@@ -30,9 +30,8 @@ class AuthApi {
     try {
       body = jsonDecode(res.body) as Map<String, dynamic>;
     } catch (_) {
-      throw AuthException(
-        'Server error (${res.statusCode}): ${res.body.isEmpty ? 'Empty response' : 'Invalid JSON'}',
-        statusCode: res.statusCode,
+      throw const AuthException(
+        'The server returned an unexpected response. Please try again.',
       );
     }
 
@@ -54,7 +53,54 @@ class AuthApi {
     }
 
     final error = (body['error'] ?? 'Login failed').toString();
-    throw AuthException('Login failed (${res.statusCode}): $error', statusCode: res.statusCode);
+    final friendlyMessage = _friendlyLoginError(res.statusCode, error);
+    throw AuthException(friendlyMessage, statusCode: res.statusCode);
+  }
+
+  /// Returns a clean, user-friendly error message without exposing HTTP codes.
+  static String _friendlyLoginError(int statusCode, String serverMessage) {
+    // Strip any existing "Login failed (XXX):" prefix the server might return.
+    final clean = serverMessage
+        .replaceFirst(RegExp(r'^Login failed \(\d+\):\s*'), '')
+        .trim();
+
+    switch (statusCode) {
+      case 401:
+      case 403:
+        // Wrong credentials or account not authorised.
+        if (clean.toLowerCase().contains('not found') ||
+            clean.toLowerCase().contains('no account') ||
+            clean.toLowerCase().contains('does not exist')) {
+          return 'No account found with that Student ID.';
+        }
+        if (clean.toLowerCase().contains('password') ||
+            clean.toLowerCase().contains('credentials') ||
+            clean.toLowerCase().contains('invalid')) {
+          return 'Incorrect Student ID or password. Please try again.';
+        }
+        if (clean.toLowerCase().contains('deactivated') ||
+            clean.toLowerCase().contains('disabled') ||
+            clean.toLowerCase().contains('suspended')) {
+          return 'Your account has been deactivated. Contact ELECOM.';
+        }
+        return 'Incorrect Student ID or password. Please try again.';
+      case 404:
+        return 'No account found with that Student ID.';
+      case 429:
+        return 'Too many login attempts. Please wait a moment and try again.';
+      case 500:
+      case 502:
+      case 503:
+        return 'The server is temporarily unavailable. Please try again shortly.';
+      default:
+        // Use server message if it looks human-readable, otherwise generic.
+        if (clean.isNotEmpty &&
+            !clean.toLowerCase().startsWith('request failed') &&
+            !clean.toLowerCase().startsWith('server error')) {
+          return clean;
+        }
+        return 'Unable to sign in. Please check your connection and try again.';
+    }
   }
 }
 

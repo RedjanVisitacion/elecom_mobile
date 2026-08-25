@@ -1029,13 +1029,7 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
                     CandidateApplicationPromo(
                       isDarkMode: isDarkMode && !isPremiumMode,
                       isPremiumMode: isPremiumMode,
-                      onApplyNow: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => AllCandidatesScreen(
-                            preloaded: _homeCandidates,
-                          ),
-                        ),
-                      ),
+                      onApplyNow: _openCandidateApplicationInfo,
                     ),
                     const SizedBox(height: 18),
                     const OmnibusCodeCarousel(),

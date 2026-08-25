@@ -432,7 +432,12 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
   }
 
   Future<void> _pickCandidatePhoto(ImageSource source) async {
-    final picked = await _picker.pickImage(source: source, imageQuality: 88);
+    final picked = await _picker.pickImage(
+      source: source,
+      imageQuality: 60,
+      maxWidth: 800,
+      maxHeight: 800,
+    );
     if (picked == null) return;
     setState(() => _candidatePhoto = File(picked.path));
   }
@@ -440,7 +445,9 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
   Future<void> _pickPartyLogo() async {
     final picked = await _picker.pickImage(
       source: ImageSource.gallery,
-      imageQuality: 88,
+      imageQuality: 60,
+      maxWidth: 600,
+      maxHeight: 600,
     );
     if (picked == null) return;
     setState(() => _partyLogo = File(picked.path));
@@ -487,9 +494,29 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      final message = e is ElecomApiException
-          ? e.message.replaceFirst(RegExp(r'^Request failed \(\d+\):\s*'), '')
-          : 'Failed to submit candidate filing.';
+      final raw = e is ElecomApiException
+          ? e.message
+          : e.toString();
+      // Strip raw HTTP codes from the user-facing message.
+      final cleaned = raw
+          .replaceFirst(RegExp(r'^Request failed \(\d+\):\s*'), '')
+          .replaceFirst(RegExp(r'^Server error \(\d+\):\s*'), '')
+          .trim();
+
+      // Give a friendly message for known server-side issues.
+      final message = () {
+        if (raw.contains('413') || cleaned.toLowerCase().contains('too large') || cleaned.toLowerCase().contains('invalid json')) {
+          return 'Your photo is too large. Please choose a smaller image and try again.';
+        }
+        if (cleaned.toLowerCase().contains('already submitted') ||
+            cleaned.toLowerCase().contains('pending filing') ||
+            cleaned.toLowerCase().contains('already registered')) {
+          return cleaned;
+        }
+        if (cleaned.isEmpty) return 'Failed to submit candidate filing.';
+        return cleaned;
+      }();
+
       final lowerMessage = message.toLowerCase();
       if (lowerMessage.contains('already submitted') ||
           lowerMessage.contains('pending filing') ||
