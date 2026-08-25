@@ -36,6 +36,9 @@ class _OmnibusFullscreenReader extends StatefulWidget {
 class _OmnibusFullscreenReaderState extends State<_OmnibusFullscreenReader> {
   final ScrollController _scrollController = ScrollController();
   late final List<GlobalKey> _pageKeys;
+  // One TransformationController per page for independent zoom state.
+  late final List<TransformationController> _transformControllers;
+  bool _zoomHintShown = false;
 
   @override
   void initState() {
@@ -43,6 +46,10 @@ class _OmnibusFullscreenReaderState extends State<_OmnibusFullscreenReader> {
     _pageKeys = List<GlobalKey>.generate(
       widget.assetPaths.length,
       (_) => GlobalKey(),
+    );
+    _transformControllers = List<TransformationController>.generate(
+      widget.assetPaths.length,
+      (_) => TransformationController(),
     );
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted || widget.assetPaths.isEmpty) return;
@@ -55,13 +62,27 @@ class _OmnibusFullscreenReaderState extends State<_OmnibusFullscreenReader> {
         duration: const Duration(milliseconds: 250),
         curve: Curves.easeOut,
       );
+      // Show zoom hint briefly after navigating to the page.
+      if (mounted) {
+        setState(() => _zoomHintShown = true);
+        await Future<void>.delayed(const Duration(seconds: 3));
+        if (mounted) setState(() => _zoomHintShown = false);
+      }
     });
   }
 
   @override
   void dispose() {
     _scrollController.dispose();
+    for (final c in _transformControllers) {
+      c.dispose();
+    }
     super.dispose();
+  }
+
+  /// Double-tap resets zoom on the tapped page.
+  void _resetZoom(int index) {
+    _transformControllers[index].value = Matrix4.identity();
   }
 
   @override
@@ -81,68 +102,140 @@ class _OmnibusFullscreenReaderState extends State<_OmnibusFullscreenReader> {
           'Omnibus Code',
           style: TextStyle(color: fg, fontWeight: FontWeight.w700),
         ),
+        actions: [
+          // Reset zoom button
+          IconButton(
+            tooltip: 'Reset zoom',
+            icon: Icon(Icons.zoom_out_map_rounded, color: fg),
+            onPressed: () {
+              for (final c in _transformControllers) {
+                c.value = Matrix4.identity();
+              }
+            },
+          ),
+        ],
       ),
       body: SafeArea(
-        child: Scrollbar(
-          controller: _scrollController,
-          thumbVisibility: true,
-          interactive: true,
-          child: SingleChildScrollView(
-            controller: _scrollController,
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 32),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final maxW = constraints.maxWidth;
-                final pageW = maxW.clamp(320, 560).toDouble();
+        child: Stack(
+          children: [
+            Scrollbar(
+              controller: _scrollController,
+              thumbVisibility: true,
+              interactive: true,
+              child: SingleChildScrollView(
+                controller: _scrollController,
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 32),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final maxW = constraints.maxWidth;
+                    final pageW = maxW.clamp(320, 560).toDouble();
 
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    for (var i = 0; i < widget.assetPaths.length; i++) ...[
-                      Center(
-                        key: _pageKeys[i],
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(maxWidth: pageW),
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? Colors.white10
-                                  : Colors.black.withValues(alpha: 0.04),
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: isDark ? Colors.white12 : Colors.black12,
-                              ),
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(13),
-                              child: Image.asset(
-                                widget.assetPaths[i],
-                                fit: BoxFit.fitWidth,
-                                alignment: Alignment.topCenter,
-                                filterQuality: FilterQuality.medium,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Padding(
-                                    padding: const EdgeInsets.all(32),
-                                    child: Icon(
-                                      Icons.broken_image_outlined,
-                                      size: 72,
-                                      color: fg.withValues(alpha: 0.45),
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (var i = 0; i < widget.assetPaths.length; i++) ...[
+                          Center(
+                            key: _pageKeys[i],
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(maxWidth: pageW),
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? Colors.white10
+                                      : Colors.black.withValues(alpha: 0.04),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: isDark
+                                        ? Colors.white12
+                                        : Colors.black12,
+                                  ),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(13),
+                                  child: GestureDetector(
+                                    onDoubleTap: () => _resetZoom(i),
+                                    child: InteractiveViewer(
+                                      transformationController:
+                                          _transformControllers[i],
+                                      // Allow up to 5× zoom.
+                                      maxScale: 5.0,
+                                      minScale: 0.8,
+                                      // Clip so the zoomed image stays within
+                                      // the card boundary.
+                                      clipBehavior: Clip.hardEdge,
+                                      child: Image.asset(
+                                        widget.assetPaths[i],
+                                        fit: BoxFit.fitWidth,
+                                        alignment: Alignment.topCenter,
+                                        filterQuality: FilterQuality.high,
+                                        errorBuilder:
+                                            (context, error, stackTrace) {
+                                          return Padding(
+                                            padding: const EdgeInsets.all(32),
+                                            child: Icon(
+                                              Icons.broken_image_outlined,
+                                              size: 72,
+                                              color: fg.withValues(alpha: 0.45),
+                                            ),
+                                          );
+                                        },
+                                      ),
                                     ),
-                                  );
-                                },
+                                  ),
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                    ],
-                  ],
-                );
-              },
+                          const SizedBox(height: 14),
+                        ],
+                      ],
+                    );
+                  },
+                ),
+              ),
             ),
-          ),
+            // Zoom hint overlay — fades in then out automatically.
+            AnimatedOpacity(
+              opacity: _zoomHintShown ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 400),
+              child: Align(
+                alignment: Alignment.bottomCenter,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 24),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.70),
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.pinch_rounded,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'Pinch to zoom · Double-tap to reset',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
