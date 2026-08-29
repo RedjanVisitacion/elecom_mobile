@@ -911,9 +911,7 @@ class _ChannelOption extends StatelessWidget {
         curve: Curves.easeOutCubic,
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: selected
-              ? _fpGold.withValues(alpha: 0.10)
-              : _fpWhite,
+          color: selected ? _fpGold.withValues(alpha: 0.10) : _fpWhite,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: selected ? _fpGold : _fpBorder,
@@ -940,10 +938,12 @@ class _ChannelOption extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               label,
+              textAlign: TextAlign.center,
               style: GoogleFonts.poppins(
                 fontSize: 13,
                 fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
                 color: selected ? _fpNavy : _fpMuted,
+                height: 1.3,
               ),
             ),
           ],
