@@ -46,17 +46,22 @@ class ForgotPasswordApi {
   /// Step 1 — request an OTP.
   ///
   /// [identifier] is either a Student ID or a registered email address.
-  /// Throws [ForgotPasswordException] if no account exists (or email is missing on file).
-  /// On success, returns the masked email for display (e.g. "r***@gmail.com").
+  /// [channel] is either `"email"` (default) or `"sms"`.
+  /// Throws [ForgotPasswordException] if no account exists (or contact info is missing).
+  /// On success, returns masked contact info for display.
   Future<ForgotPasswordResponse> requestOtp({
     required String identifier,
+    String channel = 'email',
   }) async {
     http.Response res;
     try {
       res = await ApiClient.httpClient.post(
         Uri.parse(_forgotUrl),
         headers: _headers,
-        body: jsonEncode({'identifier': identifier.trim()}),
+        body: jsonEncode({
+          'identifier': identifier.trim(),
+          'method': channel,  // backend uses 'method', not 'channel'
+        }),
       );
     } catch (_) {
       throw const ForgotPasswordException(
@@ -64,8 +69,13 @@ class ForgotPasswordApi {
     }
     final body = _decode(res);
     _assertOk(body, res.statusCode);
+    // Backend returns masked_email for email channel, masked_phone for sms.
+    final maskedEmail = (body['masked_email'] ?? '').toString();
+    final maskedPhone = (body['masked_phone'] ?? '').toString();
     return ForgotPasswordResponse(
-      maskedEmail: (body['masked_email'] ?? '').toString(),
+      maskedEmail: maskedEmail,
+      maskedPhone: maskedPhone,
+      channel: (body['method'] ?? channel).toString(),
     );
   }
 
@@ -124,8 +134,15 @@ class ForgotPasswordApi {
 // ── Response models ───────────────────────────────────────────────────────────
 
 class ForgotPasswordResponse {
-  const ForgotPasswordResponse({required this.maskedEmail});
+  const ForgotPasswordResponse({
+    required this.maskedEmail,
+    this.maskedPhone = '',
+    this.channel = 'email',
+  });
   final String maskedEmail;
+  final String maskedPhone;
+  /// 'email' or 'sms'
+  final String channel;
 }
 
 class VerifyOtpResponse {

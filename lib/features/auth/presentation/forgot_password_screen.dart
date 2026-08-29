@@ -39,6 +39,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _formKey = GlobalKey<FormState>();
   final _identifierCtrl = TextEditingController();
   bool _loading = false;
+  String _channel = 'email'; // 'email' or 'sms'
 
   @override
   void dispose() {
@@ -53,14 +54,27 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     try {
       final res = await _api.requestOtp(
         identifier: _identifierCtrl.text.trim(),
+        channel: _channel,
       );
       if (!mounted) return;
-      AppToast.success(context, 'OTP sent successfully.', isLoginScreen: true);
+      final sentTo = _channel == 'sms'
+          ? res.maskedPhone.isNotEmpty
+              ? res.maskedPhone
+              : 'your phone'
+          : res.maskedEmail.isNotEmpty
+              ? res.maskedEmail
+              : 'your email';
+      AppToast.success(
+        context,
+        'OTP sent to $sentTo.',
+        isLoginScreen: true,
+      );
       await Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => VerifyOtpScreen(
             identifier: _identifierCtrl.text.trim(),
-            maskedEmail: res.maskedEmail,
+            maskedContact: sentTo,
+            channel: _channel,
           ),
         ),
       );
@@ -97,7 +111,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Enter your Student ID or registered email to receive a verification code.',
+              'Enter your Student ID or registered email, then choose how to receive your verification code.',
               textAlign: TextAlign.center,
               style: GoogleFonts.poppins(
                 fontSize: 12.5,
@@ -118,6 +132,38 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 }
                 return null;
               },
+            ),
+            const SizedBox(height: 20),
+            // ── Channel selector ──────────────────────────────────────────
+            Text(
+              'Send OTP via',
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: _fpMuted,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: _ChannelOption(
+                    icon: Icons.email_outlined,
+                    label: 'Email',
+                    selected: _channel == 'email',
+                    onTap: () => setState(() => _channel = 'email'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _ChannelOption(
+                    icon: Icons.sms_outlined,
+                    label: 'SMS',
+                    selected: _channel == 'sms',
+                    onTap: () => setState(() => _channel = 'sms'),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 17),
             _FpButton(
@@ -142,11 +188,13 @@ class VerifyOtpScreen extends StatefulWidget {
   const VerifyOtpScreen({
     super.key,
     required this.identifier,
-    required this.maskedEmail,
+    required this.maskedContact,
+    this.channel = 'email',
   });
 
   final String identifier;
-  final String maskedEmail;
+  final String maskedContact;
+  final String channel;
 
   @override
   State<VerifyOtpScreen> createState() => _VerifyOtpScreenState();
@@ -190,7 +238,10 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
     if (_secondsLeft > 0 || _loading) return;
     setState(() => _loading = true);
     try {
-      await _api.requestOtp(identifier: widget.identifier);
+      await _api.requestOtp(
+        identifier: widget.identifier,
+        channel: widget.channel,
+      );
       if (!mounted) return;
       AppToast.success(context, 'OTP resent successfully.', isLoginScreen: true);
       _startCooldown();
@@ -262,9 +313,11 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            widget.maskedEmail.isNotEmpty
-                ? 'A 6-digit code was sent to ${widget.maskedEmail}.'
-                : 'A 6-digit code was sent to your registered email.',
+            widget.maskedContact.isNotEmpty
+                ? 'A 6-digit code was sent to ${widget.maskedContact}.'
+                : widget.channel == 'sms'
+                    ? 'A 6-digit code was sent to your phone.'
+                    : 'A 6-digit code was sent to your registered email.',
             textAlign: TextAlign.center,
             style: GoogleFonts.poppins(
               fontSize: 12.5,
@@ -828,6 +881,72 @@ class _BackToLoginButton extends StatelessWidget {
             fontSize: 12.4,
             letterSpacing: 0.2,
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Channel selector option card ──────────────────────────────────────────────
+
+class _ChannelOption extends StatelessWidget {
+  const _ChannelOption({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: selected
+              ? _fpGold.withValues(alpha: 0.10)
+              : _fpWhite,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: selected ? _fpGold : _fpBorder,
+            width: selected ? 1.6 : 1.0,
+          ),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: _fpGold.withValues(alpha: 0.18),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : null,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              color: selected ? _fpGold : _fpMuted,
+              size: 24,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: GoogleFonts.poppins(
+                fontSize: 13,
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
+                color: selected ? _fpNavy : _fpMuted,
+              ),
+            ),
+          ],
         ),
       ),
     );
