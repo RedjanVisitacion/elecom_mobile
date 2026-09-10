@@ -1,4 +1,4 @@
-package com.example.elecom_mobile
+package com.elecom.mobile
 
 import io.flutter.embedding.android.FlutterActivity
 
