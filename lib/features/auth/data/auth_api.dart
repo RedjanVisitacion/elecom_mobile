@@ -44,11 +44,22 @@ class AuthApi {
       final resolvedFullName = (body['full_name'] ?? body['fullName'] ?? body['name'] ?? body['username'] ?? user['full_name'] ?? user['fullName'] ?? user['name'] ?? user['username'] ?? '')
           .toString();
 
+      // If no combined name field, build it from first/middle/last name parts.
+      final String effectiveFullName;
+      if (resolvedFullName.trim().isNotEmpty) {
+        effectiveFullName = resolvedFullName.trim();
+      } else {
+        final first = (body['first_name'] ?? body['firstName'] ?? user['first_name'] ?? user['firstName'] ?? '').toString().trim();
+        final middle = (body['middle_name'] ?? body['middleName'] ?? user['middle_name'] ?? user['middleName'] ?? '').toString().trim();
+        final last = (body['last_name'] ?? body['lastName'] ?? user['last_name'] ?? user['lastName'] ?? '').toString().trim();
+        effectiveFullName = [first, middle, last].where((p) => p.isNotEmpty).join(' ');
+      }
+
       return LoginResponse(
         ok: true,
         studentId: resolvedStudentId,
         role: resolvedRole,
-        fullName: resolvedFullName,
+        fullName: effectiveFullName,
       );
     }
 

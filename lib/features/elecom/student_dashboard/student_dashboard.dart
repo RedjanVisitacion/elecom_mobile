@@ -109,7 +109,11 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
 
   String _displayFirstName() {
     final raw = (UserSession.fullName ?? '').trim();
-    if (raw.isEmpty) return 'Student';
+    if (raw.isEmpty) {
+      final role = (UserSession.role ?? '').trim().toLowerCase();
+      if (role == 'admin' || role == 'superadmin') return 'Admin';
+      return 'Student';
+    }
     final parts = raw
         .split(RegExp(r'\s+'))
         .where((p) => p.trim().isNotEmpty)
