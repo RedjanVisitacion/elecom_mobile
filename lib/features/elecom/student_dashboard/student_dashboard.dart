@@ -63,7 +63,7 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
   Map<String, dynamic>? _ledgerSummary;
   bool _loadingLedger = false;
   int _totalVoters = 0;
-  int _totalVoted = 0;
+  int _totalCandidates = 0;
   bool _homeTutorialRequested = false;
   bool _dashboardRouteVisible = true;
   bool _assistantVisibleOnHome = EleVotePreferences.enabledNotifier.value;
@@ -384,7 +384,7 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
       if (!mounted) return;
       setState(() {
         _totalVoters = (metrics['total_voters'] as num?)?.toInt() ?? 0;
-        _totalVoted = (metrics['total_cast_votes'] as num?)?.toInt() ?? 0;
+        _totalCandidates = (metrics['total_candidates'] as num?)?.toInt() ?? 0;
       });
     } catch (_) {
       // silently ignore; stats stay at 0
@@ -709,12 +709,12 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
                   Expanded(
                     child: _statTile(
                       context: context,
-                      icon: Icons.check_circle_outline_rounded,
-                      iconColor: const Color(0xFF16A34A),
-                      value: _totalVoted > 0
-                          ? _totalVoted.toString()
+                      icon: Icons.person_outline_rounded,
+                      iconColor: const Color(0xFF7C3AED),
+                      value: _totalCandidates > 0
+                          ? _totalCandidates.toString()
                           : '—',
-                      label: 'Already Voted',
+                      label: 'Total Candidates',
                       nameColor: nameColor,
                       subColor: subColor,
                     ),
