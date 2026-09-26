@@ -63,11 +63,12 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
   }
 
   // ── Theme tokens ─────────────────────────────────────────────────────────
-  static const Color _charcoal = Color(0xFF1C1C1E);
-  static const Color _gold = Color(0xFFFEA501);
-  static const Color _bg = Color(0xFFF4F4F6);
+  static const Color _blue = Color(0xFF2563EB);
+  static const Color _darkBlue = Color(0xFF0C1E70);
+  static const Color _gold = Color(0xFFFACC15);
+  static const Color _bg = Color(0xFFF8FAFC);
   static const Color _cardBg = Colors.white;
-  static const Color _subtleGrey = Color(0xFF8E8E93);
+  static const Color _subtleGrey = Color(0xFF64748B);
   // ─────────────────────────────────────────────────────────────────────────
 
   Future<void> _captureFace() async {
@@ -117,7 +118,7 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
             FilledButton(
               onPressed: () => Navigator.of(ctx).pop(),
               style: FilledButton.styleFrom(
-                  backgroundColor: _charcoal, foregroundColor: Colors.white),
+                  backgroundColor: _blue, foregroundColor: Colors.white),
               child: const Text('Continue',
                   style: TextStyle(fontWeight: FontWeight.w800)),
             ),
@@ -177,7 +178,7 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            style: FilledButton.styleFrom(backgroundColor: _charcoal),
+            style: FilledButton.styleFrom(backgroundColor: _blue),
             child: const Text('Logout'),
           ),
         ],
@@ -301,7 +302,7 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
 
     final statusColor = _uploadFailed
         ? const Color(0xFFDC2626)
-        : (_busy ? _charcoal : const Color(0xFF374151));
+        : (_busy ? _blue : const Color(0xFF374151));
 
     return PopScope(
       canPop: !widget.isMandatory,
@@ -375,17 +376,21 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
 
-                    // ── Info card: charcoal + gold ─────────────────────
+                    // ── Info card: blue gradient ───────────────────────
                     Container(
                       key: ElecomTutorialKeys.faceEnrollInfo,
                       decoration: BoxDecoration(
-                        color: _charcoal,
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [Color(0xFF0C1E70), Color(0xFF2563EB)],
+                        ),
                         borderRadius: BorderRadius.circular(20),
-                        boxShadow: const [
+                        boxShadow: [
                           BoxShadow(
-                            color: Color(0x26000000),
-                            blurRadius: 14,
-                            offset: Offset(0, 5),
+                            color: _blue.withValues(alpha: 0.28),
+                            blurRadius: 18,
+                            offset: const Offset(0, 6),
                           ),
                         ],
                       ),
@@ -403,8 +408,9 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   color: Colors.white,
-                                  border:
-                                      Border.all(color: _gold, width: 2.5),
+                                  border: Border.all(
+                                      color: _gold.withValues(alpha: 0.70),
+                                      width: 2),
                                 ),
                                 padding: const EdgeInsets.all(4),
                                 child: ClipOval(
@@ -415,7 +421,7 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
                                 ),
                               ),
                               const SizedBox(width: 12),
-                              const Expanded(
+                              Expanded(
                                 child: Column(
                                   crossAxisAlignment:
                                       CrossAxisAlignment.start,
@@ -423,18 +429,19 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
                                     Text(
                                       'FACE VERIFICATION',
                                       style: TextStyle(
-                                        color: _gold,
-                                        fontWeight: FontWeight.w800,
+                                        color: Colors.white
+                                            .withValues(alpha: 0.65),
+                                        fontWeight: FontWeight.w700,
                                         fontSize: 10,
-                                        letterSpacing: 1.1,
+                                        letterSpacing: 1.0,
                                       ),
                                     ),
-                                    SizedBox(height: 2),
-                                    Text(
+                                    const SizedBox(height: 2),
+                                    const Text(
                                       'Enroll your voting face reference',
                                       style: TextStyle(
                                         color: Colors.white,
-                                        fontWeight: FontWeight.w800,
+                                        fontWeight: FontWeight.w700,
                                         fontSize: 15,
                                         height: 1.3,
                                       ),
@@ -446,23 +453,27 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
                           ),
 
                           const SizedBox(height: 12),
-                          const Divider(color: Colors.white12, height: 1),
+                          Divider(
+                              color: Colors.white.withValues(alpha: 0.18),
+                              height: 1),
                           const SizedBox(height: 12),
 
                           // Privacy note
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Icon(Icons.shield_outlined,
-                                  color: _gold, size: 16),
+                              Icon(Icons.shield_outlined,
+                                  color:
+                                      Colors.white.withValues(alpha: 0.70),
+                                  size: 16),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
                                   'Your face reference will be used only to verify your identity during voting. It will not be shown publicly.',
                                   style: TextStyle(
-                                    color: Colors.white
-                                        .withValues(alpha: 0.72),
-                                    fontWeight: FontWeight.w600,
+                                    color:
+                                        Colors.white.withValues(alpha: 0.72),
+                                    fontWeight: FontWeight.w400,
                                     fontSize: 12.5,
                                     height: 1.5,
                                   ),
@@ -482,89 +493,114 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
                       decoration: BoxDecoration(
                         color: _cardBg,
                         borderRadius: BorderRadius.circular(20),
-                        border:
-                            Border.all(color: const Color(0xFFE5E5EA)),
-                        boxShadow: const [
+                        border: Border.all(
+                            color: _blue.withValues(alpha: 0.12)),
+                        boxShadow: [
                           BoxShadow(
-                            color: Color(0x0E000000),
-                            blurRadius: 10,
-                            offset: Offset(0, 3),
+                            color: _blue.withValues(alpha: 0.08),
+                            blurRadius: 18,
+                            offset: const Offset(0, 6),
                           ),
                         ],
                       ),
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 24, horizontal: 24),
-                      child: Column(
-                        children: [
-                          // Oval face frame
-                          Container(
-                            width: 148,
-                            height: 182,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(100),
-                              color: const Color(0xFFF0F0F5),
-                              border: Border.all(
-                                  color: const Color(0xFFD1D1D6),
-                                  width: 1.5),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: Column(
+                          children: [
+                            // Blue accent bar at top
+                            Container(
+                              height: 4,
+                              decoration: const BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Color(0xFF0C1E70),
+                                    Color(0xFF2563EB),
+                                  ],
+                                ),
+                              ),
                             ),
-                            child: Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                Positioned(
-                                  top: 12,
-                                  left: 18,
-                                  child: _bracket(
-                                      topLeft: true, color: _charcoal),
-                                ),
-                                Positioned(
-                                  top: 12,
-                                  right: 18,
-                                  child: _bracket(
-                                      topRight: true, color: _charcoal),
-                                ),
-                                Positioned(
-                                  bottom: 12,
-                                  left: 18,
-                                  child: _bracket(
-                                      bottomLeft: true, color: _charcoal),
-                                ),
-                                Positioned(
-                                  bottom: 12,
-                                  right: 18,
-                                  child: _bracket(
-                                      bottomRight: true, color: _charcoal),
-                                ),
-                                const Icon(
-                                  Icons.face_outlined,
-                                  size: 64,
-                                  color: Color(0xFFC7C7CC),
-                                ),
-                              ],
-                            ),
-                          ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 24, horizontal: 24),
+                              child: Column(
+                                children: [
+                                  // Oval face frame
+                                  Container(
+                                    width: 148,
+                                    height: 182,
+                                    decoration: BoxDecoration(
+                                      borderRadius:
+                                          BorderRadius.circular(100),
+                                      color: const Color(0xFFEAF1FF),
+                                      border: Border.all(
+                                          color: _blue.withValues(alpha: 0.20),
+                                          width: 1.5),
+                                    ),
+                                    child: Stack(
+                                      alignment: Alignment.center,
+                                      children: [
+                                        Positioned(
+                                          top: 12,
+                                          left: 18,
+                                          child: _bracket(
+                                              topLeft: true, color: _blue),
+                                        ),
+                                        Positioned(
+                                          top: 12,
+                                          right: 18,
+                                          child: _bracket(
+                                              topRight: true, color: _blue),
+                                        ),
+                                        Positioned(
+                                          bottom: 12,
+                                          left: 18,
+                                          child: _bracket(
+                                              bottomLeft: true, color: _blue),
+                                        ),
+                                        Positioned(
+                                          bottom: 12,
+                                          right: 18,
+                                          child: _bracket(
+                                              bottomRight: true,
+                                              color: _blue),
+                                        ),
+                                        Icon(
+                                          Icons.face_outlined,
+                                          size: 64,
+                                          color:
+                                              _blue.withValues(alpha: 0.25),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
 
-                          const SizedBox(height: 16),
+                                  const SizedBox(height: 16),
 
-                          const Text(
-                            'Face Capture Area',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 15,
-                              color: Colors.black,
+                                  Text(
+                                    'Face Capture Area',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 14.5,
+                                      color: const Color(0xFF0F172A),
+                                      letterSpacing: -0.1,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Center your face within the frame\nwhen the camera opens',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: _subtleGrey,
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w400,
+                                      height: 1.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 4),
-                          const Text(
-                            'Center your face within the frame\nwhen the camera opens',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: _subtleGrey,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                              height: 1.45,
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
 
@@ -615,7 +651,7 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
                               height: 16,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: _charcoal,
+                                color: _blue,
                               ),
                             )
                           else
@@ -668,10 +704,9 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
                         ),
                       ),
                       style: FilledButton.styleFrom(
-                        backgroundColor: _charcoal,
+                        backgroundColor: _blue,
                         foregroundColor: Colors.white,
-                        disabledBackgroundColor:
-                            const Color(0xFFAAAAAA),
+                        disabledBackgroundColor: _blue.withValues(alpha: 0.40),
                         disabledForegroundColor: Colors.white70,
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16)),

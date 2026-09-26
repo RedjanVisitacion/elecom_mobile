@@ -2120,31 +2120,32 @@ class _ElectionScreenState extends State<ElectionScreen>
                         Text(
                           'Election',
                           style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w900,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
                             color: titleColor,
+                            letterSpacing: -0.3,
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 6),
                         Text(
                           programCode.isEmpty
                               ? 'Your program: not detected from your account'
                               : 'Your program: $programCode',
                           style: TextStyle(
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
                             color: titleColor,
-                            height: 1.3,
+                            height: 1.4,
                           ),
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 4),
                         Text(
                           _whoYouCanVoteForExplanation(),
                           style: TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w400,
                             color: subtitleColor,
-                            height: 1.45,
+                            height: 1.5,
                           ),
                         ),
                       ],
