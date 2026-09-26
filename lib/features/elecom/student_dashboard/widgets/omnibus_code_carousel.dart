@@ -389,8 +389,12 @@ class _OmnibusCodeCarouselState extends State<OmnibusCodeCarousel> {
                 dotHeight: 5.5,
                 spacing: 4.5,
                 expansionFactor: 2.1,
-                dotColor: isDark ? Colors.white24 : const Color(0xFFCCCCCC),
-                activeDotColor: isDark ? Colors.white : const Color(0xFF4A4A4A),
+                dotColor: isDark
+                    ? const Color(0xFF2563EB).withValues(alpha: 0.35)
+                    : const Color(0xFF2563EB).withValues(alpha: 0.30),
+                activeDotColor: isDark
+                    ? Colors.white
+                    : const Color(0xFF2563EB),
               ),
             ),
           ),
