@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:iconsax_flutter/iconsax_flutter.dart';
 
 import '../../../../core/notifications/notification_center_store.dart';
+import '../../candidates/candidate_search_screen.dart';
 import '../../profile/notifications_screen.dart';
 
 class StudentDashboardAppBar {
@@ -96,6 +97,51 @@ class StudentDashboardAppBar {
             )
           : const Text('Dashboard'),
       actions: [
+        IconButton(
+          tooltip: 'Search candidates',
+          onPressed: () {
+            Navigator.of(context).push(
+              PageRouteBuilder<void>(
+                transitionDuration: Duration.zero,
+                reverseTransitionDuration: Duration.zero,
+                pageBuilder: (context, animation, secondaryAnimation) =>
+                    const CandidateSearchScreen(),
+                transitionsBuilder:
+                    (context, animation, secondaryAnimation, child) => child,
+                opaque: true,
+                barrierColor: null,
+                barrierDismissible: false,
+                barrierLabel: null,
+                maintainState: true,
+                fullscreenDialog: false,
+              ),
+            );
+          },
+          icon: Container(
+            width: isPremiumMode ? 38 : null,
+            height: isPremiumMode ? 38 : null,
+            alignment: Alignment.center,
+            decoration: isPremiumMode
+                ? BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.56),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF2563EB).withValues(alpha: 0.18),
+                        blurRadius: 16,
+                      ),
+                    ],
+                  )
+                : null,
+            child: Icon(
+              isPremiumMode
+                  ? Iconsax.search_normal_1
+                  : Icons.search,
+              color: isPremiumMode ? const Color(0xFF60A5FA) : titleColor,
+              size: isPremiumMode ? 22 : 24,
+            ),
+          ),
+        ),
         ValueListenableBuilder<int>(
           valueListenable: NotificationCenterStore.unreadCount,
           builder: (context, unreadCount, _) {

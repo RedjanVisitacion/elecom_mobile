@@ -17,7 +17,6 @@ import '../../../core/utils/toast_service.dart';
 import '../../../services/tutorial_service.dart';
 import '../candidates/all_candidates_screen.dart';
 import '../candidates/candidate_filing_screen.dart';
-import '../candidates/candidate_search_screen.dart';
 import '../data/elecom_mobile_api.dart';
 import '../elevote/elevote_chat_screen.dart';
 import '../election/election_screen.dart';
@@ -811,76 +810,6 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Facebook-style search bar that navigates to search screen.
-                    InkWell(
-                      borderRadius: BorderRadius.circular(18),
-                      onTap: () {
-                        Navigator.of(context).push(
-                          PageRouteBuilder<void>(
-                            transitionDuration: Duration.zero,
-                            reverseTransitionDuration: Duration.zero,
-                            pageBuilder:
-                                (context, animation, secondaryAnimation) =>
-                                    const CandidateSearchScreen(),
-                            transitionsBuilder:
-                                (
-                                  context,
-                                  animation,
-                                  secondaryAnimation,
-                                  child,
-                                ) => child,
-                          ),
-                        );
-                      },
-                      child: Container(
-                        height: 52,
-                        padding: const EdgeInsets.symmetric(horizontal: 14),
-                        decoration: BoxDecoration(
-                          color: cardColor,
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(color: borderColor),
-                          boxShadow: isPremiumMode
-                              ? [
-                                  BoxShadow(
-                                    color: const Color(
-                                      0xFF2563EB,
-                                    ).withValues(alpha: 0.15),
-                                    blurRadius: 26,
-                                    offset: const Offset(0, 14),
-                                  ),
-                                  BoxShadow(
-                                    color: Colors.white.withValues(alpha: 0.55),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, -2),
-                                  ),
-                                ]
-                              : null,
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              isPremiumMode
-                                  ? Iconsax.search_normal_1
-                                  : Icons.search,
-                              color: isPremiumMode
-                                  ? const Color(0xFF60A5FA)
-                                  : subtitleColor,
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                'Search candidates...',
-                                style: TextStyle(
-                                  color: subtitleColor,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
                     // Profile row — same horizontal bounds as search bar (single outer padding only).
                     Material(
                       color: cardColor,
