@@ -1678,7 +1678,7 @@ class _ElectionScreenState extends State<ElectionScreen>
                                     background: _premiumBlue,
                                     gold: _premiumBlue.withValues(alpha: 0.18),
                                     onPressed: () =>
-                                        widget.onRequestTabIndex?.call(2),
+                                        widget.onRequestTabIndex?.call(1),
                                   )
                                 : FilledButton.icon(
                                     style: FilledButton.styleFrom(
@@ -1690,7 +1690,7 @@ class _ElectionScreenState extends State<ElectionScreen>
                                           : Colors.white,
                                     ),
                                     onPressed: () =>
-                                        widget.onRequestTabIndex?.call(2),
+                                        widget.onRequestTabIndex?.call(1),
                                     icon: const Icon(Icons.bar_chart_outlined),
                                     label: const Text(
                                       'View Results',

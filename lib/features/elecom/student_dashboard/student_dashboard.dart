@@ -345,7 +345,7 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
     if (!mounted) return;
     setState(() {
       _voteIntentNonce++;
-      _currentIndex = 1;
+      _currentIndex = 2;
     });
   }
 
@@ -565,12 +565,12 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
                           label: 'Home',
                         ),
                         const BottomNavigationBarItem(
-                          icon: Icon(Icons.how_to_vote_outlined),
-                          label: 'Election',
-                        ),
-                        const BottomNavigationBarItem(
                           icon: Icon(Icons.bar_chart_outlined),
                           label: 'Results',
+                        ),
+                        const BottomNavigationBarItem(
+                          icon: Icon(Icons.how_to_vote_outlined),
+                          label: 'Election',
                         ),
                         const BottomNavigationBarItem(
                           icon: Icon(Icons.receipt_long_outlined),
@@ -603,20 +603,20 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
         label: 'Home',
       ),
       BottomNavigationBarItem(
-        icon: _premiumNavIcon(HugeIcons.strokeRoundedCheckList),
-        activeIcon: _premiumNavIcon(
-          HugeIcons.strokeRoundedCheckList,
-          selected: true,
-        ),
-        label: 'Election',
-      ),
-      BottomNavigationBarItem(
         icon: _premiumNavIcon(HugeIcons.strokeRoundedChartBarLine),
         activeIcon: _premiumNavIcon(
           HugeIcons.strokeRoundedChartBarLine,
           selected: true,
         ),
         label: 'Results',
+      ),
+      BottomNavigationBarItem(
+        icon: _premiumNavIcon(HugeIcons.strokeRoundedCheckList),
+        activeIcon: _premiumNavIcon(
+          HugeIcons.strokeRoundedCheckList,
+          selected: true,
+        ),
+        label: 'Election',
       ),
       BottomNavigationBarItem(
         icon: _premiumNavIcon(HugeIcons.strokeRoundedInvoice03),
@@ -703,6 +703,16 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
     }
 
     if (i == 1) {
+      // Recreate ResultsScreen on every Results-tab tap
+      // so charts replay animations even when already on Results.
+      setState(() {
+        _resultsScreenVersion++;
+        _currentIndex = 1;
+      });
+      return;
+    }
+
+    if (i == 2) {
       // Entering Election should force the same gates as "Vote Now":
       // enrollment check + face verification before ballot loads.
       await _openElectionForVoting();
@@ -710,11 +720,6 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
     }
 
     setState(() {
-      if (i == 2) {
-        // Recreate ResultsScreen on every Results-tab tap
-        // so charts replay animations even when already on Results.
-        _resultsScreenVersion++;
-      }
       if (i == 3 && _latestReceipt == null) {
         _receiptRefreshNonce++;
       }
@@ -727,9 +732,13 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
       index: _currentIndex,
       children: [
         _homeTab(context),
+        KeyedSubtree(
+          key: ValueKey<int>(_resultsScreenVersion),
+          child: const ResultsScreen(),
+        ),
         ElectionScreen(
           voteIntentNonce: _voteIntentNonce,
-          isActive: _currentIndex == 1,
+          isActive: _currentIndex == 2,
           onReceiptReady: (receipt) {
             if (!mounted) return;
             setState(() {
@@ -752,10 +761,6 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
               ),
             );
           },
-        ),
-        KeyedSubtree(
-          key: ValueKey<int>(_resultsScreenVersion),
-          child: const ResultsScreen(),
         ),
         ReceiptScreen(
           initialReceipt: _latestReceipt,
@@ -972,7 +977,7 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
                       onViewResults: () {
                         setState(() {
                           _resultsScreenVersion++;
-                          _currentIndex = 2;
+                          _currentIndex = 1;
                         });
                       },
                       onViewReceipt: () {
