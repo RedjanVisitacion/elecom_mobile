@@ -89,6 +89,7 @@ class CandidateProfileScreen extends StatelessWidget {
             : const Color(0xFF0C1E70);
 
         const double avatarRadius = 66;
+        final String heroTag = 'candidate_photo_${candidate['id'] ?? name}';
         final avatarCircle = CircleAvatar(
           radius: avatarRadius,
           backgroundColor: isDark ? Colors.white12 : const Color(0xFFEAF1FF),
@@ -208,24 +209,54 @@ class CandidateProfileScreen extends StatelessWidget {
                       ),
                       Positioned(
                         bottom: -40,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: ringColor, width: 3),
-                            boxShadow: [
-                              BoxShadow(
-                                color: isPremiumMode
-                                    ? _premiumBlue.withValues(alpha: 0.28)
-                                    : Colors.black.withValues(
-                                        alpha: isDark ? 0.35 : 0.12,
+                        child: GestureDetector(
+                          onTap: photo == null
+                              ? null
+                              : () {
+                                  Navigator.of(context).push(
+                                    PageRouteBuilder<void>(
+                                      opaque: false,
+                                      barrierColor: Colors.black,
+                                      transitionDuration: const Duration(
+                                          milliseconds: 280),
+                                      reverseTransitionDuration:
+                                          const Duration(milliseconds: 220),
+                                      pageBuilder: (_, __, ___) =>
+                                          _FullScreenPhotoViewer(
+                                        imageProvider: NetworkImage(photo),
+                                        heroTag: heroTag,
                                       ),
-                                blurRadius: isPremiumMode ? 18 : 8,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
+                                      transitionsBuilder:
+                                          (_, animation, __, child) =>
+                                              FadeTransition(
+                                                opacity: animation,
+                                                child: child,
+                                              ),
+                                    ),
+                                  );
+                                },
+                          child: Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: ringColor, width: 3),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: isPremiumMode
+                                      ? _premiumBlue.withValues(alpha: 0.28)
+                                      : Colors.black.withValues(
+                                          alpha: isDark ? 0.35 : 0.12,
+                                        ),
+                                  blurRadius: isPremiumMode ? 18 : 8,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            padding: const EdgeInsets.all(3),
+                            child: Hero(
+                              tag: heroTag,
+                              child: ClipOval(child: avatarCircle),
+                            ),
                           ),
-                          padding: const EdgeInsets.all(3),
-                          child: ClipOval(child: avatarCircle),
                         ),
                       ),
                     ],
@@ -464,6 +495,88 @@ class _PremiumChip extends StatelessWidget {
               color: _premiumSub,
               fontSize: 12,
               fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Full-screen photo viewer ───────────────────────────────────────────────
+
+class _FullScreenPhotoViewer extends StatefulWidget {
+  const _FullScreenPhotoViewer({
+    required this.imageProvider,
+    required this.heroTag,
+  });
+
+  final ImageProvider imageProvider;
+  final String heroTag;
+
+  @override
+  State<_FullScreenPhotoViewer> createState() => _FullScreenPhotoViewerState();
+}
+
+class _FullScreenPhotoViewerState extends State<_FullScreenPhotoViewer> {
+  final TransformationController _transformController =
+      TransformationController();
+
+  @override
+  void dispose() {
+    _transformController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          // ── Zoomable photo ──────────────────────────────────────────────
+          Center(
+            child: InteractiveViewer(
+              transformationController: _transformController,
+              minScale: 0.8,
+              maxScale: 5.0,
+              child: Hero(
+                tag: widget.heroTag,
+                child: Image(
+                  image: widget.imageProvider,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => const Icon(
+                    Icons.broken_image_outlined,
+                    color: Colors.white38,
+                    size: 64,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // ── Close button (top-right) ────────────────────────────────────
+          SafeArea(
+            child: Align(
+              alignment: Alignment.topRight,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: GestureDetector(
+                  onTap: () => Navigator.of(context).pop(),
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.55),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.close_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
         ],

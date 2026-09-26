@@ -279,8 +279,9 @@ class _AllCandidatesScreenState extends State<AllCandidatesScreen> {
               'Candidates',
               style: TextStyle(
                 color: primaryText,
-                fontWeight: FontWeight.w900,
-                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                fontSize: 18,
+                letterSpacing: -0.3,
               ),
             ),
             // ── search bar in appbar bottom ───────────────────────────────────
@@ -759,13 +760,18 @@ class _FilterChipButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activeBg = isPremium ? _blue : isDark ? Colors.white24 : Colors.black;
-    final activeText = Colors.white;
+    final activeBg = _blue;
+    const activeText = Colors.white;
     final inactiveBg = isPremium
-        ? const Color(0xFFE4E6EB)
+        ? _blue.withValues(alpha: 0.08)
         : isDark
         ? const Color(0xFF3A3B3C)
-        : const Color(0xFFE4E6EB);
+        : _blue.withValues(alpha: 0.07);
+    final inactiveText = isPremium
+        ? _blue
+        : isDark
+        ? Colors.white70
+        : _blue.withValues(alpha: 0.75);
 
     return GestureDetector(
       onTap: onTap,
@@ -783,16 +789,17 @@ class _FilterChipButton extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                color: isActive ? activeText : primaryText,
-                fontSize: 12.5,
+                color: isActive ? activeText : inactiveText,
+                fontSize: 12,
                 fontWeight: FontWeight.w600,
+                letterSpacing: 0.1,
               ),
             ),
             const SizedBox(width: 4),
             Icon(
               Icons.expand_more_rounded,
-              size: 16,
-              color: isActive ? activeText : primaryText,
+              size: 15,
+              color: isActive ? activeText : inactiveText,
             ),
           ],
         ),
@@ -874,7 +881,7 @@ class _CandidateCard extends StatelessWidget {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -888,9 +895,10 @@ class _CandidateCard extends StatelessWidget {
                           name,
                           style: TextStyle(
                             color: primaryText,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
-                            height: 1.25,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14.5,
+                            height: 1.3,
+                            letterSpacing: 0.1,
                           ),
                         ),
                         if (org.isNotEmpty) ...[
@@ -909,8 +917,9 @@ class _CandidateCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               color: secondaryText,
-                              fontSize: 13,
-                              height: 1.3,
+                              fontSize: 12,
+                              height: 1.4,
+                              letterSpacing: 0.1,
                             ),
                           ),
                         ],
@@ -920,10 +929,10 @@ class _CandidateCard extends StatelessWidget {
                             children: [
                               Icon(
                                 Icons.school_outlined,
-                                size: 13,
-                                color: secondaryText,
+                                size: 12,
+                                color: secondaryText.withValues(alpha: 0.70),
                               ),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: 3),
                               Expanded(
                                 child: Text(
                                   programLine,
@@ -931,8 +940,8 @@ class _CandidateCard extends StatelessWidget {
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
                                     color: secondaryText,
-                                    fontSize: 12.5,
-                                    height: 1.3,
+                                    fontSize: 11.5,
+                                    height: 1.4,
                                   ),
                                 ),
                               ),
@@ -942,43 +951,48 @@ class _CandidateCard extends StatelessWidget {
                         const SizedBox(height: 10),
                         SizedBox(
                           width: double.infinity,
-                          height: 34,
+                          height: 32,
                           child: isPremium
                               ? OutlinedButton(
                                   onPressed: onTap,
                                   style: OutlinedButton.styleFrom(
                                     foregroundColor: _blue,
-                                    side: const BorderSide(
-                                      color: _blue,
-                                      width: 1.4,
+                                    side: BorderSide(
+                                      color: _blue.withValues(alpha: 0.55),
+                                      width: 1.2,
                                     ),
                                     padding: EdgeInsets.zero,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     textStyle: const TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 12.5,
+                                      letterSpacing: 0.1,
                                     ),
                                   ),
                                   child: const Text('View profile'),
                                 )
-                              : FilledButton(
+                              : OutlinedButton(
                                   onPressed: onTap,
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor: isDark
-                                        ? const Color(0xFF3A3B3C)
-                                        : const Color(0xFFE4E6EB),
+                                  style: OutlinedButton.styleFrom(
                                     foregroundColor: isDark
-                                        ? Colors.white
-                                        : const Color(0xFF050505),
+                                        ? Colors.white70
+                                        : _blue,
+                                    side: BorderSide(
+                                      color: isDark
+                                          ? Colors.white24
+                                          : _blue.withValues(alpha: 0.40),
+                                      width: 1.2,
+                                    ),
                                     padding: EdgeInsets.zero,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     textStyle: const TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 12.5,
+                                      letterSpacing: 0.1,
                                     ),
                                   ),
                                   child: const Text('View profile'),
@@ -1024,15 +1038,15 @@ class _OrgBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
         org,
         style: TextStyle(
           color: text,
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.3,
+          fontSize: 10.5,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.2,
         ),
       ),
     );
