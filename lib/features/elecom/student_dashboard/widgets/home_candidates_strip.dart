@@ -79,20 +79,20 @@ class HomeCandidatesStrip extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         SizedBox(
-          height: 134,
+          height: 144,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
             clipBehavior: Clip.none,
-            padding: const EdgeInsets.fromLTRB(10, 4, 18, 10),
+            padding: const EdgeInsets.fromLTRB(0, 4, 16, 10),
             itemCount: candidates.length,
-            separatorBuilder: (context, index) => const SizedBox(width: 14),
+            separatorBuilder: (context, index) => const SizedBox(width: 6),
             itemBuilder: (context, i) {
               final c = candidates[i];
               final photo = resolvedCandidatePhotoUrl(c['photo_url']);
               final first = homeCandidateFirstName(c);
               return SizedBox(
-                width: 78,
+                width: 84,
                 child: Material(
                   color: Colors.transparent,
                   child: InkWell(
@@ -156,11 +156,11 @@ class HomeCandidatesStrip extends StatelessWidget {
                         const SizedBox(height: 7),
                         Text(
                           first,
-                          maxLines: 1,
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 11,
                             fontWeight: FontWeight.w700,
                             color: labelColor,
                           ),
