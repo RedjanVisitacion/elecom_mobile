@@ -181,57 +181,59 @@ class _CandidateApplicationSlide extends StatelessWidget {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 13, 14, 12),
+          padding: const EdgeInsets.fromLTRB(16, 12, 14, 12),
           child: FractionallySizedBox(
             alignment: Alignment.centerLeft,
-            widthFactor: 0.50,
+            widthFactor: 0.52,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  slide.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.visible,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 18,
-                    height: 1.04,
-                    shadows: [
-                      Shadow(
-                        color: Color(0x99000000),
-                        blurRadius: 8,
-                        offset: Offset(0, 2),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      slide.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                        height: 1.2,
+                        letterSpacing: -0.1,
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      slide.subtitle,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.82),
+                        fontWeight: FontWeight.w400,
+                        fontSize: 10,
+                        height: 1.35,
+                        letterSpacing: 0.1,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 5),
-                Text(
-                  slide.subtitle,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 10.5,
-                    height: 1.12,
-                  ),
-                ),
-                const Spacer(),
+                const SizedBox(height: 8),
                 SizedBox(
-                  height: 36,
+                  height: 32,
                   child: FilledButton.icon(
                     onPressed: onApplyNow,
-                    icon: const Icon(Icons.how_to_reg_rounded, size: 17),
+                    icon: const Icon(Icons.how_to_reg_rounded, size: 14),
                     label: const Text('File now'),
                     style: FilledButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: const Color(0xFF0C2C66),
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
                       textStyle: const TextStyle(
-                        fontWeight: FontWeight.w900,
-                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 11.5,
+                        letterSpacing: 0.1,
                       ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(999),

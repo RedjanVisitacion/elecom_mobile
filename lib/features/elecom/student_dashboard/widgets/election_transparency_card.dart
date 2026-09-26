@@ -52,16 +52,16 @@ class ElectionTransparencyCard extends StatelessWidget {
           'Election Transparency',
           style: TextStyle(
             color: titleColor,
-            fontWeight: FontWeight.w900,
-            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            fontSize: 14,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         Container(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: cardColor,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(color: borderColor),
           ),
           child: isLoading
@@ -94,21 +94,23 @@ class ElectionTransparencyCard extends StatelessWidget {
                           'Secured by Vote Ledger',
                           style: TextStyle(
                             color: titleColor,
-                            fontWeight: FontWeight.w800,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     Text(
                       'Vote records are linked with cryptographic hashes to help detect tampering.',
                       style: TextStyle(
                         color: subColor,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 11,
                         height: 1.35,
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     _kv(
                       label: 'Ledger Status',
                       value: ledgerStatus,
@@ -155,8 +157,8 @@ class ElectionTransparencyCard extends StatelessWidget {
                       'Vote choices and student identities are kept private. Only public verification hashes are shown.',
                       style: TextStyle(
                         color: subColor,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12.5,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 11,
                         height: 1.35,
                       ),
                     ),
@@ -199,7 +201,8 @@ class ElectionTransparencyCard extends StatelessWidget {
                           'View Public Ledger',
                           style: TextStyle(
                             color: isDark ? Colors.white70 : Colors.black54,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
                           ),
                         ),
                       ),
@@ -229,7 +232,7 @@ class ElectionTransparencyCard extends StatelessWidget {
   }) {
     final stackValue = label == 'Last Verified';
     return Padding(
-      padding: const EdgeInsets.only(bottom: 7),
+      padding: const EdgeInsets.only(bottom: 5),
       child: stackValue
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -238,18 +241,19 @@ class ElectionTransparencyCard extends StatelessWidget {
                   label,
                   style: TextStyle(
                     color: subColor,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 11,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 1),
                 Text(
                   value,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: valueColor ?? textColor,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
                     height: 1.2,
                   ),
                 ),
@@ -263,19 +267,20 @@ class ElectionTransparencyCard extends StatelessWidget {
                     label,
                     style: TextStyle(
                       color: subColor,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 11,
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 8),
                 Flexible(
                   child: Text(
                     value,
                     textAlign: TextAlign.right,
                     style: TextStyle(
                       color: valueColor ?? textColor,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 14.5,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
                       height: 1.2,
                     ),
                   ),

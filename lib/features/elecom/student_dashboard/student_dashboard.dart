@@ -1465,19 +1465,6 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        HomeCandidatesStrip(
-                          candidates: _homeCandidates,
-                          isDarkMode: isDarkMode && !isPremiumMode,
-                          isPremiumMode: isPremiumMode,
-                          onViewAll: () => Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => AllCandidatesScreen(
-                                preloaded: _homeCandidates,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 0),
                         ElectionHomeCountdown(
                           key: ValueKey<int>(_homeCountdownVersion),
                           orgName: widget.orgName,
@@ -1500,6 +1487,19 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
                               _currentIndex = 3;
                             });
                           },
+                        ),
+                        const SizedBox(height: 10),
+                        HomeCandidatesStrip(
+                          candidates: _homeCandidates,
+                          isDarkMode: isDarkMode && !isPremiumMode,
+                          isPremiumMode: isPremiumMode,
+                          onViewAll: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => AllCandidatesScreen(
+                                preloaded: _homeCandidates,
+                              ),
+                            ),
+                          ),
                         ),
                         const SizedBox(height: 12),
                         CandidateApplicationPromo(
