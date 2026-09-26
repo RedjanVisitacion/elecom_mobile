@@ -31,6 +31,8 @@ import 'widgets/election_transparency_card.dart';
 import 'widgets/home_candidates_strip.dart';
 import 'widgets/omnibus_code_carousel.dart';
 import 'widgets/student_dashboard_appbar.dart';
+import '../candidates/candidate_search_screen.dart';
+import '../profile/notifications_screen.dart';
 
 class StudentDashboard extends StatefulWidget {
   const StudentDashboard({
@@ -60,6 +62,8 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
   List<Map<String, dynamic>> _homeCandidates = <Map<String, dynamic>>[];
   Map<String, dynamic>? _ledgerSummary;
   bool _loadingLedger = false;
+  int _totalVoters = 0;
+  int _totalVoted = 0;
   bool _homeTutorialRequested = false;
   bool _dashboardRouteVisible = true;
   bool _assistantVisibleOnHome = EleVotePreferences.enabledNotifier.value;
@@ -104,6 +108,13 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
       context: context,
       force: force,
     );
+  }
+
+  String _timeGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour >= 5 && hour < 12) return 'Good Morning';
+    if (hour >= 12 && hour < 18) return 'Good Afternoon';
+    return 'Good Evening';
   }
 
   String _displayFirstName() {
@@ -172,6 +183,7 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
     });
     _loadHomeCandidates();
     _loadLedgerSummary();
+    _loadElectionMetrics();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _tryScheduleHomeTutorial();
     });
@@ -266,6 +278,7 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
       _boundedRefreshTask(NotificationCenterStore.refresh()),
       _boundedRefreshTask(_loadHomeCandidates()),
       _boundedRefreshTask(_loadLedgerSummary()),
+      _boundedRefreshTask(_loadElectionMetrics()),
     ], eagerError: false);
     if (mounted) {
       setState(() => _loadingLedger = false);
@@ -360,6 +373,22 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
             child,
       ),
     );
+  }
+
+  Future<void> _loadElectionMetrics() async {
+    try {
+      final res = await _api.getElectionWindow();
+      final metrics = res['metrics'] is Map<String, dynamic>
+          ? res['metrics'] as Map<String, dynamic>
+          : const <String, dynamic>{};
+      if (!mounted) return;
+      setState(() {
+        _totalVoters = (metrics['total_voters'] as num?)?.toInt() ?? 0;
+        _totalVoted = (metrics['total_cast_votes'] as num?)?.toInt() ?? 0;
+      });
+    } catch (_) {
+      // silently ignore; stats stay at 0
+    }
   }
 
   Future<void> _loadLedgerSummary() async {
@@ -516,13 +545,15 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
         return Theme(
           data: dashboardTheme,
           child: Scaffold(
-            appBar: StudentDashboardAppBar.build(
-              context: context,
-              isElecom: isElecom,
-              isPremiumMode: shouldUsePremiumMode,
-              forceDarkMode: shouldUseDarkMode && !shouldUsePremiumMode,
-              titleText: _currentIndex == 4 ? 'Account' : null,
-            ),
+            appBar: _currentIndex == 0
+                ? null
+                : StudentDashboardAppBar.build(
+                    context: context,
+                    isElecom: isElecom,
+                    isPremiumMode: shouldUsePremiumMode,
+                    forceDarkMode: shouldUseDarkMode && !shouldUsePremiumMode,
+                    titleText: _currentIndex == 4 ? 'Account' : null,
+                  ),
             body: shouldUsePremiumMode
                 ? _PremiumDashboardBackground(
                     child: Stack(
@@ -545,6 +576,429 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
           ),
         );
       },
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Globe-style info card — overlaps below the banner, shows user details
+  // and voter stats (Total Voters / Already Voted).
+  // ---------------------------------------------------------------------------
+  Widget _buildInfoCard(BuildContext context) {
+    final isPremiumMode = themeNotifier.isPremiumMode;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    final cardBg = isDarkMode
+        ? const Color(0xFF2A2A35)
+        : Colors.white;
+    final nameColor = isDarkMode ? Colors.white : Colors.black87;
+    final subColor = isDarkMode ? Colors.white60 : Colors.black54;
+    final dividerColor = isDarkMode ? Colors.white12 : Colors.black12;
+
+    final now = DateTime.now();
+    final dateStr =
+        '${_monthName(now.month)} ${now.day}, ${now.year}  ${_formatTime(now)}';
+
+    final phoneMasked = _maskPhone(_phone);
+    final emailMasked = _maskEmail(_email);
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDarkMode ? 0.35 : 0.10),
+            blurRadius: 18,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Name + date row ─────────────────────────────────────────
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _displayFirstName(),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: nameColor,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 18,
+                          height: 1.1,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        dateStr,
+                        style: TextStyle(
+                          color: subColor,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // ELECOM badge
+                Image.asset(
+                  isPremiumMode
+                      ? 'assets/USTP_ELECOM_ICON.png'
+                      : 'assets/USTP_ELECOM_ICON.png',
+                  width: 36,
+                  height: 36,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                ),
+              ],
+            ),
+            if (phoneMasked.isNotEmpty || emailMasked.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              if (phoneMasked.isNotEmpty)
+                Text(
+                  phoneMasked,
+                  style: TextStyle(
+                    color: subColor,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              if (emailMasked.isNotEmpty)
+                Text(
+                  emailMasked,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: subColor,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+            ],
+            const SizedBox(height: 14),
+            Divider(color: dividerColor, height: 1),
+            const SizedBox(height: 14),
+            // ── Stats row ───────────────────────────────────────────────
+            IntrinsicHeight(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _statTile(
+                      context: context,
+                      icon: Icons.how_to_vote_outlined,
+                      iconColor: const Color(0xFF2563EB),
+                      value: _totalVoters > 0
+                          ? _totalVoters.toString()
+                          : '—',
+                      label: 'Total Voters',
+                      nameColor: nameColor,
+                      subColor: subColor,
+                    ),
+                  ),
+                  VerticalDivider(color: dividerColor, width: 1),
+                  Expanded(
+                    child: _statTile(
+                      context: context,
+                      icon: Icons.check_circle_outline_rounded,
+                      iconColor: const Color(0xFF16A34A),
+                      value: _totalVoted > 0
+                          ? _totalVoted.toString()
+                          : '—',
+                      label: 'Already Voted',
+                      nameColor: nameColor,
+                      subColor: subColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _statTile({
+    required BuildContext context,
+    required IconData icon,
+    required Color iconColor,
+    required String value,
+    required String label,
+    required Color nameColor,
+    required Color subColor,
+  }) {
+    return Column(
+      children: [
+        Icon(icon, color: iconColor, size: 26),
+        const SizedBox(height: 6),
+        Text(
+          value,
+          style: TextStyle(
+            color: nameColor,
+            fontWeight: FontWeight.w800,
+            fontSize: 20,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: TextStyle(
+            color: subColor,
+            fontSize: 11.5,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _monthName(int m) {
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December',
+    ];
+    return months[m - 1];
+  }
+
+  String _formatTime(DateTime dt) {
+    final h = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
+    final min = dt.minute.toString().padLeft(2, '0');
+    final period = dt.hour < 12 ? 'AM' : 'PM';
+    return '$h:$min $period';
+  }
+
+  // ---------------------------------------------------------------------------
+  // Custom home header banner — full-width USTP campus photo with dark overlay,
+  // avatar + greeting on the left, search + notification on the right.
+  // ---------------------------------------------------------------------------
+  Widget _buildHomeHeader(BuildContext context) {
+    final isPremiumMode = themeNotifier.isPremiumMode;
+    final photoUrl = _resolvePhotoUrl();
+
+    return Stack(
+      children: [
+        // ── Background image ────────────────────────────────────────────
+        SizedBox(
+          width: double.infinity,
+          height: 170,
+          child: Image.asset(
+            'assets/USTP PICS/USTP_FRONT.png',
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) =>
+                Container(color: const Color(0xFF0C1E70)),
+          ),
+        ),
+        // ── Dark gradient overlay ───────────────────────────────────────
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withValues(alpha: 0.35),
+                  Colors.black.withValues(alpha: 0.55),
+                ],
+              ),
+            ),
+          ),
+        ),
+        // ── Content ─────────────────────────────────────────────────────
+        SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Avatar
+                GestureDetector(
+                  onTap: () => setState(() => _currentIndex = 4),
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        width: 52,
+                        height: 52,
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: const Color(0xFFFACC15),
+                            width: 2,
+                          ),
+                        ),
+                        child: CircleAvatar(
+                          radius: 24,
+                          backgroundColor: Colors.white12,
+                          backgroundImage: photoUrl.isNotEmpty
+                              ? NetworkImage(photoUrl)
+                              : null,
+                          onBackgroundImageError: photoUrl.isNotEmpty
+                              ? (e, s) {}
+                              : null,
+                          child: photoUrl.isNotEmpty
+                              ? null
+                              : const Icon(
+                                  Icons.person,
+                                  color: Colors.white70,
+                                  size: 26,
+                                ),
+                        ),
+                      ),
+                      Positioned(
+                        right: 0,
+                        bottom: 0,
+                        child: Container(
+                          width: 18,
+                          height: 18,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF4B5563),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white30,
+                              width: 1.5,
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            color: Colors.white,
+                            size: 13,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Greeting text
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _currentIndex = 4),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _timeGreeting(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontWeight: FontWeight.w400,
+                            fontSize: 13,
+                            height: 1.2,
+                            letterSpacing: 0.1,
+                          ),
+                        ),
+                        Text(
+                          _displayFirstName(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 20,
+                            height: 1.15,
+                            letterSpacing: 0.0,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                // Search button
+                IconButton(
+                  tooltip: 'Search candidates',
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      PageRouteBuilder<void>(
+                        transitionDuration: Duration.zero,
+                        reverseTransitionDuration: Duration.zero,
+                        pageBuilder: (c, a, b) =>
+                            const CandidateSearchScreen(),
+                        transitionsBuilder: (c, a, b, child) => child,
+                      ),
+                    );
+                  },
+                  icon: const Icon(
+                    Icons.search,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                ),
+                // Notification bell
+                ValueListenableBuilder<int>(
+                  valueListenable: NotificationCenterStore.unreadCount,
+                  builder: (context, unreadCount, _) {
+                    return IconButton(
+                      tooltip: 'Notifications',
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          PageRouteBuilder<void>(
+                            transitionDuration: Duration.zero,
+                            reverseTransitionDuration: Duration.zero,
+                            pageBuilder: (c, a, b) =>
+                                const NotificationsScreen(),
+                            transitionsBuilder: (c, a, b, child) => child,
+                          ),
+                        );
+                      },
+                      icon: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          const Icon(
+                            Icons.notifications_none,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                          if (unreadCount > 0)
+                            Positioned(
+                              right: -2,
+                              top: -2,
+                              child: Container(
+                                padding: const EdgeInsets.all(3),
+                                constraints: const BoxConstraints(
+                                  minWidth: 16,
+                                  minHeight: 16,
+                                ),
+                                decoration: const BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Text(
+                                  unreadCount > 99
+                                      ? '99+'
+                                      : unreadCount.toString(),
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -924,6 +1378,7 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
     final emailMasked = _maskEmail(_email);
 
     return SafeArea(
+      top: false,
       child: RefreshIndicator(
         key: _homeRefreshKey,
         color: isPremiumMode ? const Color(0xFF2563EB) : Colors.black,
@@ -935,225 +1390,101 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 600),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Profile row — same horizontal bounds as search bar (single outer padding only).
-                    Material(
-                      color: cardColor,
-                      elevation: isPremiumMode ? 10 : 0,
-                      shadowColor: const Color(
-                        0xFF2563EB,
-                      ).withValues(alpha: isPremiumMode ? 0.14 : 0),
-                      borderRadius: BorderRadius.circular(18),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(18),
-                        onTap: () => setState(() => _currentIndex = 4),
-                        child: Padding(
-                          padding: const EdgeInsets.all(14),
-                          child: Row(
-                            children: [
-                              Stack(
-                                clipBehavior: Clip.none,
-                                children: [
-                                  Container(
-                                    width: 62,
-                                    height: 62,
-                                    padding: const EdgeInsets.all(2),
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: isDarkMode
-                                            ? Colors.white24
-                                            : isPremiumMode
-                                            ? const Color(0xFFFACC15)
-                                            : const Color(0xFFFEA501),
-                                        width: 2,
-                                      ),
-                                    ),
-                                    child: CircleAvatar(
-                                      radius: 28,
-                                      backgroundColor: isDarkMode
-                                          ? Colors.white12
-                                          : const Color(0xFFEAF1FF),
-                                      backgroundImage: photoUrl.isNotEmpty
-                                          ? NetworkImage(photoUrl)
-                                          : null,
-                                      onBackgroundImageError:
-                                          photoUrl.isNotEmpty
-                                          ? (exception, stackTrace) {}
-                                          : null,
-                                      child: photoUrl.isNotEmpty
-                                          ? null
-                                          : Icon(
-                                              isPremiumMode
-                                                  ? Iconsax.profile_circle
-                                                  : Icons.person,
-                                              color: isDarkMode
-                                                  ? Colors.white70
-                                                  : isPremiumMode
-                                                  ? const Color(0xFF2563EB)
-                                                  : Colors.blue,
-                                              size: 28,
-                                            ),
-                                    ),
-                                  ),
-                                  Positioned(
-                                    right: 0,
-                                    bottom: 0,
-                                    child: Container(
-                                      width: 20,
-                                      height: 20,
-                                      decoration: BoxDecoration(
-                                        color: isPremiumMode
-                                            ? const Color(0xFF0F172A)
-                                            : isDarkMode
-                                            ? const Color(0xFF3A3A44)
-                                            : const Color(0xFF4B5563),
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: isDarkMode
-                                              ? const Color(0xFF171620)
-                                              : Colors.white,
-                                          width: 2,
-                                        ),
-                                      ),
-                                      child: const Icon(
-                                        Icons.keyboard_arrow_down_rounded,
-                                        color: Colors.white,
-                                        size: 15,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Hi, ${_displayFirstName().toUpperCase()}',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        color: titleColor,
-                                        fontWeight: FontWeight.w900,
-                                        fontSize: 18,
-                                        height: 1.05,
-                                        letterSpacing: 0.2,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    if (phoneMasked.isNotEmpty)
-                                      Text(
-                                        phoneMasked,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          color: subtitleColor,
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 13,
-                                          height: 1.1,
-                                        ),
-                                      ),
-                                    if (emailMasked.isNotEmpty) ...[
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        emailMasked,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          color: subtitleColor,
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 13,
-                                          height: 1.1,
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              SizedBox(
-                                width: 62,
-                                height: 62,
-                                child: Image.asset(
-                                  'assets/gif/Elecom Splash.gif',
-                                  fit: BoxFit.contain,
-                                ),
-                              ),
-                            ],
-                          ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // ── Banner + overlapping info card (Globe-style) ──────────
+                  SizedBox(
+                    height: 350,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        // Banner
+                        Positioned(
+                          top: 0, left: 0, right: 0,
+                          child: _buildHomeHeader(context),
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    ElectionHomeCountdown(
-                      key: ValueKey<int>(_homeCountdownVersion),
-                      orgName: widget.orgName,
-                      embeddedInProfileCard: false,
-                      isPremiumMode: isPremiumMode,
-                      tutorialPrimaryActionKey:
-                          ElecomTutorialKeys.homePrimaryAction,
-                      onVoteNow: _openElectionForVoting,
-                      onViewResults: () {
-                        setState(() {
-                          _resultsScreenVersion++;
-                          _currentIndex = 1;
-                        });
-                      },
-                      onViewReceipt: () {
-                        setState(() {
-                          if (_latestReceipt == null) {
-                            _receiptRefreshNonce++;
-                          }
-                          _currentIndex = 3;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    HomeCandidatesStrip(
-                      candidates: _homeCandidates,
-                      isDarkMode: isDarkMode && !isPremiumMode,
-                      isPremiumMode: isPremiumMode,
-                      onViewAll: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => AllCandidatesScreen(
-                            preloaded: _homeCandidates,
-                          ),
+                        // Info card: 15% overlap into the banner bottom
+                        Positioned(
+                          top: 140,
+                          left: 0,
+                          right: 0,
+                          child: _buildInfoCard(context),
                         ),
-                      ),
+                      ],
                     ),
-                    const SizedBox(height: 12),
-                    CandidateApplicationPromo(
-                      isDarkMode: isDarkMode && !isPremiumMode,
-                      isPremiumMode: isPremiumMode,
-                      onApplyNow: _openCandidateApplicationInfo,
-                    ),
-                    const SizedBox(height: 18),
-                    const OmnibusCodeCarousel(),
-                    const SizedBox(height: 14),
-                    Container(
-                      key: ElecomTutorialKeys.homeReports,
-                      child: ElectionTransparencyCard(
-                        summary: _ledgerSummary,
-                        isLoading: _loadingLedger,
-                        isPremiumMode: isPremiumMode,
-                        onTapViewLedger: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  const ElectionTransparencyScreen(),
+                  ),
+                  // ── Rest of home content ──────────────────────────────────
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        ElectionHomeCountdown(
+                          key: ValueKey<int>(_homeCountdownVersion),
+                          orgName: widget.orgName,
+                          embeddedInProfileCard: false,
+                          isPremiumMode: isPremiumMode,
+                          tutorialPrimaryActionKey:
+                              ElecomTutorialKeys.homePrimaryAction,
+                          onVoteNow: _openElectionForVoting,
+                          onViewResults: () {
+                            setState(() {
+                              _resultsScreenVersion++;
+                              _currentIndex = 1;
+                            });
+                          },
+                          onViewReceipt: () {
+                            setState(() {
+                              if (_latestReceipt == null) {
+                                _receiptRefreshNonce++;
+                              }
+                              _currentIndex = 3;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        HomeCandidatesStrip(
+                          candidates: _homeCandidates,
+                          isDarkMode: isDarkMode && !isPremiumMode,
+                          isPremiumMode: isPremiumMode,
+                          onViewAll: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => AllCandidatesScreen(
+                                preloaded: _homeCandidates,
+                              ),
                             ),
-                          );
-                        },
-                      ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        CandidateApplicationPromo(
+                          isDarkMode: isDarkMode && !isPremiumMode,
+                          isPremiumMode: isPremiumMode,
+                          onApplyNow: _openCandidateApplicationInfo,
+                        ),
+                        const SizedBox(height: 18),
+                        const OmnibusCodeCarousel(),
+                        const SizedBox(height: 14),
+                        Container(
+                          key: ElecomTutorialKeys.homeReports,
+                          child: ElectionTransparencyCard(
+                            summary: _ledgerSummary,
+                            isLoading: _loadingLedger,
+                            isPremiumMode: isPremiumMode,
+                            onTapViewLedger: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      const ElectionTransparencyScreen(),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
