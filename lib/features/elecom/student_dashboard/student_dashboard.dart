@@ -537,54 +537,10 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
                     ),
                   )
                 : _dashboardTabs(context),
-            bottomNavigationBar: SafeArea(
-              top: false,
-              child: BottomNavigationBar(
-                key: ElecomTutorialKeys.homeBottomNav,
-                type: BottomNavigationBarType.fixed,
-                currentIndex: _currentIndex,
-                onTap: _handleBottomNavTap,
-                selectedItemColor: shouldUsePremiumMode
-                    ? const Color(0xFFFACC15)
-                    : shouldUseDarkMode
-                    ? Colors.white
-                    : Colors.black,
-                unselectedItemColor: shouldUsePremiumMode
-                    ? const Color(0xFF2563EB)
-                    : shouldUseDarkMode
-                    ? Colors.white70
-                    : Colors.black54,
-                backgroundColor: shouldUseDarkMode
-                    ? const Color(0xFF242433)
-                    : Colors.white,
-                items: shouldUsePremiumMode
-                    ? _premiumBottomNavItems()
-                    : [
-                        const BottomNavigationBarItem(
-                          icon: Icon(Icons.home_outlined),
-                          label: 'Home',
-                        ),
-                        const BottomNavigationBarItem(
-                          icon: Icon(Icons.bar_chart_outlined),
-                          label: 'Results',
-                        ),
-                        const BottomNavigationBarItem(
-                          icon: Icon(Icons.how_to_vote_outlined),
-                          label: 'Election',
-                        ),
-                        const BottomNavigationBarItem(
-                          icon: Icon(Icons.receipt_long_outlined),
-                          label: 'Receipt',
-                        ),
-                        BottomNavigationBarItem(
-                          icon: Icon(
-                            Icons.person_outline,
-                            key: ElecomTutorialKeys.homeSettings,
-                          ),
-                          label: 'Me',
-                        ),
-                      ],
-              ),
+            bottomNavigationBar: _buildBottomNav(
+              context: context,
+              isPremiumMode: shouldUsePremiumMode,
+              isDarkMode: shouldUseDarkMode,
             ),
           ),
         );
@@ -592,52 +548,227 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
     );
   }
 
-  List<BottomNavigationBarItem> _premiumBottomNavItems() {
-    return [
-      BottomNavigationBarItem(
-        icon: _premiumNavIcon(HugeIcons.strokeRoundedHome01),
-        activeIcon: _premiumNavIcon(
-          HugeIcons.strokeRoundedHome01,
-          selected: true,
+  // ---------------------------------------------------------------------------
+  // ELECOM bottom navigation bar — DITO-style flat bar, oversized centre item.
+  //
+  // Layout (5 items, equal flex):
+  //   Home | Results | [VOTE — larger icon] | Receipt | Me
+  //
+  // The Vote item uses a circular container with a gold background and a white
+  // fingerprint icon.  Its icon is ~1.5× taller than the others so it peeks
+  // above the row mid-line while the label stays on the same baseline.
+  // The bar is a plain white rectangle with rounded top corners and a soft
+  // top-edge shadow — no notch, no FAB, no CustomPainter.
+  // ---------------------------------------------------------------------------
+  Widget _buildBottomNav({
+    required BuildContext context,
+    required bool isPremiumMode,
+    required bool isDarkMode,
+  }) {
+    // ── Colours ───────────────────────────────────────────────────────────
+    const Color elecomBlue = Color(0xFF2563EB);
+    const Color elecomGold = Color(0xFFFACC15);
+    const Color darkSurface = Color(0xFF1E1E2E);
+
+    final Color barBg = isDarkMode ? darkSurface : Colors.white;
+
+    final Color activeColor = isPremiumMode
+        ? elecomGold
+        : isDarkMode
+            ? Colors.white
+            : elecomBlue;
+
+    final Color inactiveColor = isDarkMode
+        ? Colors.white.withValues(alpha: 0.38)
+        : const Color(0xFFB0BEC5);
+
+    final Color shadowColor = isDarkMode
+        ? Colors.black.withValues(alpha: 0.45)
+        : Colors.black.withValues(alpha: 0.08);
+
+    // ── Regular nav item ──────────────────────────────────────────────────
+    Widget navItem(IconData icon, String label, int idx, {Key? iconKey}) {
+      final bool active = _currentIndex == idx;
+      final Color c = active ? activeColor : inactiveColor;
+      return Expanded(
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => _handleBottomNavTap(idx),
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              mainAxisSize: MainAxisSize.max,
+              children: [
+                Icon(icon, key: iconKey, color: c, size: 24),
+                const SizedBox(height: 3),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                    color: c,
+                    letterSpacing: 0.1,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
-        label: 'Home',
+      );
+    }
+
+    // Premium variant uses HugeIcons.
+    Widget premiumNavItem(
+      List<List<dynamic>> icon,
+      String label,
+      int idx, {
+      Key? iconKey,
+    }) {
+      final bool active = _currentIndex == idx;
+      final Color c = active ? activeColor : inactiveColor;
+      return Expanded(
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => _handleBottomNavTap(idx),
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              mainAxisSize: MainAxisSize.max,
+              children: [
+                _premiumNavIcon(icon, selected: active, key: iconKey),
+                const SizedBox(height: 3),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                    color: c,
+                    letterSpacing: 0.1,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    // ── Centre Vote item ──────────────────────────────────────────────────
+    // elecom.png has large transparent margins around the actual logo mark.
+    // Sizing the Image widget to 88×88 makes the *visible* logo fill roughly
+    // the same area the previous yellow circle (~56 px) occupied.
+    // When active (tab index == 2), a gold circular border rings the logo.
+    final bool voteActive = _currentIndex == 2;
+    final Widget voteItem = Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => _handleBottomNavTap(2),
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Transform.translate(
+            offset: const Offset(0, -8),
+            child: Container(
+              width: 156,
+              height: 156,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: voteActive
+                      ? const Color(0xFFFACC15)
+                      : Colors.transparent,
+                  width: 8,
+                ),
+              ),
+              child: Container(
+                width: 140,
+                height: 140,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white,
+                ),
+                child: Transform.scale(
+                  scale: 1.45,
+                  child: Image.asset(
+                    'assets/elecom.png',
+                    width: 140,
+                    height: 140,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => Icon(
+                      Icons.how_to_vote_rounded,
+                      color: voteActive ? activeColor : inactiveColor,
+                      size: 56,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
-      BottomNavigationBarItem(
-        icon: _premiumNavIcon(HugeIcons.strokeRoundedChartBarLine),
-        activeIcon: _premiumNavIcon(
-          HugeIcons.strokeRoundedChartBarLine,
-          selected: true,
-        ),
-        label: 'Results',
+    );
+
+    return SafeArea(
+      top: false,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: barBg,
+              borderRadius: BorderRadius.zero,
+              boxShadow: [
+                BoxShadow(
+                  color: shadowColor,
+                  blurRadius: 12,
+                  offset: const Offset(0, -2),
+                ),
+              ],
+            ),
+            child: SizedBox(
+              height: 64,
+              child: Row(
+                key: ElecomTutorialKeys.homeBottomNav,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  // Home
+                  isPremiumMode
+                      ? premiumNavItem(HugeIcons.strokeRoundedHome01, 'Home', 0)
+                      : navItem(Icons.home_rounded, 'Home', 0),
+                  // Results
+                  isPremiumMode
+                      ? premiumNavItem(
+                          HugeIcons.strokeRoundedChartBarLine, 'Results', 1)
+                      : navItem(Icons.bar_chart_rounded, 'Results', 1),
+                  // Vote — centre oversized item
+                  voteItem,
+                  // Receipt
+                  isPremiumMode
+                      ? premiumNavItem(
+                          HugeIcons.strokeRoundedInvoice03, 'Receipt', 3)
+                      : navItem(Icons.receipt_long_rounded, 'Receipt', 3),
+                  // Me
+                  isPremiumMode
+                      ? premiumNavItem(
+                          HugeIcons.strokeRoundedUserCircle,
+                          'Me',
+                          4,
+                          iconKey: ElecomTutorialKeys.homeSettings,
+                        )
+                      : navItem(
+                          Icons.person_rounded,
+                          'Me',
+                          4,
+                          iconKey: ElecomTutorialKeys.homeSettings,
+                        ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
-      BottomNavigationBarItem(
-        icon: _premiumNavIcon(HugeIcons.strokeRoundedCheckList),
-        activeIcon: _premiumNavIcon(
-          HugeIcons.strokeRoundedCheckList,
-          selected: true,
-        ),
-        label: 'Election',
-      ),
-      BottomNavigationBarItem(
-        icon: _premiumNavIcon(HugeIcons.strokeRoundedInvoice03),
-        activeIcon: _premiumNavIcon(
-          HugeIcons.strokeRoundedInvoice03,
-          selected: true,
-        ),
-        label: 'Receipt',
-      ),
-      BottomNavigationBarItem(
-        icon: _premiumNavIcon(
-          HugeIcons.strokeRoundedUserCircle,
-          key: ElecomTutorialKeys.homeSettings,
-        ),
-        activeIcon: _premiumNavIcon(
-          HugeIcons.strokeRoundedUserCircle,
-          selected: true,
-        ),
-        label: 'Me',
-      ),
-    ];
+    );
   }
 
   Widget _premiumNavIcon(
@@ -645,30 +776,29 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
     bool selected = false,
     Key? key,
   }) {
+    const Color elecomBlue = Color(0xFF2563EB);
+    const Color elecomGold = Color(0xFFFACC15);
+
+    final Color iconColor = selected ? elecomBlue : const Color(0xFFB0BEC5);
+
     final iconWidget = HugeIcon(
       key: key,
       icon: icon,
-      color: const Color(0xFF2563EB),
-      size: selected ? 23.5 : 22,
-      strokeWidth: selected ? 2.1 : 1.75,
+      color: iconColor,
+      size: selected ? 23.0 : 22.0,
+      strokeWidth: selected ? 2.0 : 1.7,
     );
 
     if (!selected) return iconWidget;
 
+    // Active state: subtle gold pill behind the icon.
     return Container(
-      width: 34,
-      height: 30,
+      width: 36,
+      height: 28,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: const Color(0xFFFACC15).withValues(alpha: 0.20),
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFFACC15).withValues(alpha: 0.32),
-            blurRadius: 14,
-            offset: const Offset(0, 5),
-          ),
-        ],
+        color: elecomGold.withValues(alpha: 0.16),
+        borderRadius: BorderRadius.circular(10),
       ),
       child: iconWidget,
     );
@@ -779,11 +909,6 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
         : isDarkMode
         ? const Color(0xFF2A2A35)
         : Colors.white;
-    final borderColor = isPremiumMode
-        ? const Color(0xFF2563EB).withValues(alpha: 0.12)
-        : isDarkMode
-        ? Colors.white12
-        : Colors.black12;
     final subtitleColor = isPremiumMode
         ? const Color(0xFF64748B)
         : isDarkMode
