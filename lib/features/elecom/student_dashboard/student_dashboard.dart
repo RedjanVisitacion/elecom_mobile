@@ -635,13 +635,13 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
             ),
             // ── Card content ─────────────────────────────────────────────
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Name + date row
                   Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Expanded(
                         child: Column(
@@ -654,17 +654,18 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
                               style: TextStyle(
                                 color: nameColor,
                                 fontWeight: FontWeight.w800,
-                                fontSize: 18,
+                                fontSize: 15,
                                 height: 1.1,
+                                letterSpacing: 0.1,
                               ),
                             ),
-                            const SizedBox(height: 2),
+                            const SizedBox(height: 1),
                             Text(
                               dateStr,
                               style: TextStyle(
                                 color: subColor,
-                                fontSize: 11.5,
-                                fontWeight: FontWeight.w400,
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
                           ],
@@ -672,22 +673,22 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
                       ),
                       Image.asset(
                         'assets/USTP_ELECOM_ICON.png',
-                        width: 36,
-                        height: 36,
+                        width: 28,
+                        height: 28,
                         fit: BoxFit.contain,
                         errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                       ),
                     ],
                   ),
                   if (phoneMasked.isNotEmpty || emailMasked.isNotEmpty) ...[
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                     if (phoneMasked.isNotEmpty)
                       Text(
                         phoneMasked,
                         style: TextStyle(
                           color: subColor,
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w500,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     if (emailMasked.isNotEmpty)
@@ -697,14 +698,14 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: subColor,
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w500,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                   ],
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 10),
                   Divider(color: dividerColor, height: 1),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 10),
                   // Stats row
                   IntrinsicHeight(
                     child: Row(
@@ -763,13 +764,13 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
       mainAxisSize: MainAxisSize.min,
       children: [
         SizedBox(
-          width: 72,
-          height: 72,
+          width: 60,
+          height: 60,
           child: Stack(
             alignment: Alignment.center,
             children: [
               CustomPaint(
-                size: const Size(72, 72),
+                size: const Size(60, 60),
                 painter: _ArcPainter(
                   progress: progress,
                   color: iconColor,
@@ -779,14 +780,14 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
               Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(icon, color: iconColor, size: 18),
-                  const SizedBox(height: 2),
+                  Icon(icon, color: iconColor, size: 14),
+                  const SizedBox(height: 1),
                   Text(
                     value,
                     style: TextStyle(
                       color: nameColor,
                       fontWeight: FontWeight.w800,
-                      fontSize: 15,
+                      fontSize: 13,
                       height: 1.0,
                     ),
                   ),
@@ -795,13 +796,13 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
             ],
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 4),
         Text(
           label,
           style: TextStyle(
             color: subColor,
-            fontSize: 11.5,
-            fontWeight: FontWeight.w500,
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ],
@@ -852,8 +853,8 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Colors.black.withValues(alpha: 0.20),
-                  Colors.black.withValues(alpha: 0.45),
+                  Colors.black.withValues(alpha: 0.10),
+                  Colors.black.withValues(alpha: 0.30),
                 ],
               ),
             ),
@@ -942,9 +943,8 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
                           style: const TextStyle(
                             color: Colors.white70,
                             fontWeight: FontWeight.w400,
-                            fontSize: 13,
+                            fontSize: 11,
                             height: 1.2,
-                            letterSpacing: 0.1,
                           ),
                         ),
                         Text(
@@ -954,9 +954,8 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w700,
-                            fontSize: 20,
+                            fontSize: 17,
                             height: 1.15,
-                            letterSpacing: 0.0,
                           ),
                         ),
                       ],
@@ -1441,7 +1440,7 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
                 children: [
                   // ── Banner + overlapping info card (Globe-style) ──────────
                   SizedBox(
-                    height: 350,
+                    height: 340,
                     child: Stack(
                       clipBehavior: Clip.none,
                       children: [
@@ -1462,10 +1461,23 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
                   ),
                   // ── Rest of home content ──────────────────────────────────
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 36, 16, 16),
+                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        HomeCandidatesStrip(
+                          candidates: _homeCandidates,
+                          isDarkMode: isDarkMode && !isPremiumMode,
+                          isPremiumMode: isPremiumMode,
+                          onViewAll: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => AllCandidatesScreen(
+                                preloaded: _homeCandidates,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 0),
                         ElectionHomeCountdown(
                           key: ValueKey<int>(_homeCountdownVersion),
                           orgName: widget.orgName,
@@ -1488,19 +1500,6 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
                               _currentIndex = 3;
                             });
                           },
-                        ),
-                        const SizedBox(height: 12),
-                        HomeCandidatesStrip(
-                          candidates: _homeCandidates,
-                          isDarkMode: isDarkMode && !isPremiumMode,
-                          isPremiumMode: isPremiumMode,
-                          onViewAll: () => Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => AllCandidatesScreen(
-                                preloaded: _homeCandidates,
-                              ),
-                            ),
-                          ),
                         ),
                         const SizedBox(height: 12),
                         CandidateApplicationPromo(

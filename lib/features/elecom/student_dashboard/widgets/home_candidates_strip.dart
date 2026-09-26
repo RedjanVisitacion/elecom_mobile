@@ -54,8 +54,8 @@ class HomeCandidatesStrip extends StatelessWidget {
                     : isDarkMode
                     ? Colors.white
                     : Colors.black,
-                fontWeight: FontWeight.w900,
-                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                fontSize: 14,
               ),
             ),
             const Spacer(),
@@ -71,20 +71,20 @@ class HomeCandidatesStrip extends StatelessWidget {
                         ? const Color(0xFFFEA501)
                         : const Color(0xFF0C1E70),
                     fontWeight: FontWeight.w600,
-                    fontSize: 13,
+                    fontSize: 11,
                   ),
                 ),
               ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         SizedBox(
-          height: 144,
+          height: 110,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
             clipBehavior: Clip.none,
-            padding: const EdgeInsets.fromLTRB(0, 4, 16, 10),
+            padding: const EdgeInsets.fromLTRB(0, 2, 16, 0),
             itemCount: candidates.length,
             separatorBuilder: (context, index) => const SizedBox(width: 6),
             itemBuilder: (context, i) {
@@ -160,7 +160,7 @@ class HomeCandidatesStrip extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 10,
                             fontWeight: FontWeight.w700,
                             color: labelColor,
                           ),

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:toastification/toastification.dart';
 
@@ -34,6 +35,7 @@ class ElecomApp extends StatelessWidget {
               title: 'Elecom',
               theme: ThemeData(
                 useMaterial3: true,
+                fontFamily: GoogleFonts.nunito().fontFamily,
                 colorScheme: ColorScheme.fromSeed(seedColor: Colors.black),
                 scaffoldBackgroundColor: Colors.white,
                 appBarTheme: const AppBarTheme(
@@ -64,6 +66,7 @@ class ElecomApp extends StatelessWidget {
 ThemeData _darkTheme() {
   return ThemeData(
     useMaterial3: true,
+    fontFamily: GoogleFonts.nunito().fontFamily,
     colorScheme: ColorScheme.fromSeed(
       seedColor: Colors.black,
       brightness: Brightness.dark,
@@ -91,6 +94,7 @@ ThemeData _premiumTheme() {
 
   return ThemeData(
     useMaterial3: true,
+    fontFamily: GoogleFonts.nunito().fontFamily,
     brightness: Brightness.dark,
     colorScheme: scheme,
     scaffoldBackgroundColor: const Color(0xFF05070B),

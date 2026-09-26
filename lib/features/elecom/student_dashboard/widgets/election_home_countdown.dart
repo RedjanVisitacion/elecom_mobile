@@ -249,16 +249,7 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SizedBox(height: widget.embeddedInProfileCard ? 10 : 8),
-        Text(
-          headline,
-          style: TextStyle(
-            color: titleColor,
-            fontWeight: FontWeight.w900,
-            fontSize: 16,
-          ),
-        ),
-        const SizedBox(height: 10),
+        SizedBox(height: widget.embeddedInProfileCard ? 10 : 0),
         if (_loadError != null)
           Text(
             _loadError!,
@@ -303,7 +294,7 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
                 : null,
           ),
           clipBehavior: Clip.antiAlias,
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
           child: Stack(
             children: [
               if (widget.isPremiumMode)
@@ -355,43 +346,43 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
             color: Colors.white,
-            fontWeight: FontWeight.w900,
-            fontSize: 17,
+            fontWeight: FontWeight.w800,
+            fontSize: 15,
             height: 1.1,
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 3),
         Text(
           'General election schedule',
           style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.92),
-            fontWeight: FontWeight.w600,
-            fontSize: 12.5,
+            color: Colors.white.withValues(alpha: 0.85),
+            fontWeight: FontWeight.w500,
+            fontSize: 11,
           ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         Row(
           children: [
             _timeCell(d, 'days'),
-            const SizedBox(width: 8),
+            const SizedBox(width: 6),
             _timeCell(h, 'hours'),
-            const SizedBox(width: 8),
+            const SizedBox(width: 6),
             _timeCell(m, 'mins'),
-            const SizedBox(width: 8),
+            const SizedBox(width: 6),
             _timeCell(s, 'sec'),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         Text(
           _statusLine(e, diff),
           style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.95),
-            fontWeight: FontWeight.w700,
-            fontSize: 12.5,
+            color: Colors.white.withValues(alpha: 0.90),
+            fontWeight: FontWeight.w600,
+            fontSize: 11.5,
             height: 1.25,
           ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         _voteNowButton(
           context,
           ctaText: ctaText,
@@ -426,7 +417,7 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
         },
         borderRadius: BorderRadius.circular(14),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+          padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 16),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -435,16 +426,16 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
                 color: widget.isPremiumMode
                     ? const Color(0xFFFACC15)
                     : const Color(0xFF0c1e70),
-                size: widget.isPremiumMode ? 23 : 24,
+                size: widget.isPremiumMode ? 20 : 20,
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Text(
                 ctaText,
                 style: TextStyle(
                   color: const Color(0xFF0c1e70),
-                  fontWeight: FontWeight.w900,
-                  fontSize: 16,
-                  letterSpacing: 0.4,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14,
+                  letterSpacing: 0.3,
                 ),
               ),
             ],
@@ -473,30 +464,30 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(vertical: 10),
+            padding: const EdgeInsets.symmetric(vertical: 8),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.22),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.30)),
             ),
             alignment: Alignment.center,
             child: Text(
               text,
               style: const TextStyle(
                 color: Colors.white,
-                fontWeight: FontWeight.w900,
-                fontSize: 22,
-                letterSpacing: 0.5,
+                fontWeight: FontWeight.w800,
+                fontSize: 18,
+                letterSpacing: 0.3,
               ),
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text(
             label,
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.9),
-              fontWeight: FontWeight.w800,
-              fontSize: 11,
+              color: Colors.white.withValues(alpha: 0.85),
+              fontWeight: FontWeight.w600,
+              fontSize: 10,
             ),
           ),
         ],
