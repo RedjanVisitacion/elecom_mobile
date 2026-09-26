@@ -137,7 +137,9 @@ class StudentDashboardAppBar {
               isPremiumMode
                   ? Iconsax.search_normal_1
                   : Icons.search,
-              color: isPremiumMode ? const Color(0xFF60A5FA) : titleColor,
+              color: isPremiumMode
+                  ? const Color(0xFF0F172A).withValues(alpha: 0.60)
+                  : titleColor,
               size: isPremiumMode ? 22 : 24,
             ),
           ),
@@ -192,7 +194,7 @@ class StudentDashboardAppBar {
                           ? Iconsax.notification_bing
                           : Icons.notifications_none,
                       color: isPremiumMode
-                          ? const Color(0xFFFACC15)
+                          ? const Color(0xFF0F172A).withValues(alpha: 0.60)
                           : titleColor,
                       size: isPremiumMode ? 22 : 24,
                     ),
