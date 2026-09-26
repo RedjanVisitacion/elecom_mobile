@@ -64,6 +64,8 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
   bool _loadingLedger = false;
   int _totalVoters = 0;
   int _totalCandidates = 0;
+  DateTime _now = DateTime.now();
+  Timer? _clockTimer;
   bool _homeTutorialRequested = false;
   bool _dashboardRouteVisible = true;
   bool _assistantVisibleOnHome = EleVotePreferences.enabledNotifier.value;
@@ -111,7 +113,7 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
   }
 
   String _timeGreeting() {
-    final hour = DateTime.now().hour;
+    final hour = _now.hour;
     if (hour >= 5 && hour < 12) return 'Good Morning';
     if (hour >= 12 && hour < 18) return 'Good Afternoon';
     return 'Good Evening';
@@ -184,6 +186,9 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
     _loadHomeCandidates();
     _loadLedgerSummary();
     _loadElectionMetrics();
+    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _now = DateTime.now());
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _tryScheduleHomeTutorial();
     });
@@ -590,11 +595,11 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
     final cardBg = isDarkMode
         ? const Color(0xFF2A2A35)
         : Colors.white;
-    final nameColor = isDarkMode ? Colors.white : Colors.black87;
-    final subColor = isDarkMode ? Colors.white60 : Colors.black54;
-    final dividerColor = isDarkMode ? Colors.white12 : Colors.black12;
+    final nameColor = const Color(0xFF2563EB);
+    final subColor = const Color(0xFF2563EB).withValues(alpha: isDarkMode ? 0.70 : 0.60);
+    final dividerColor = const Color(0xFF2563EB).withValues(alpha: isDarkMode ? 0.30 : 0.18);
 
-    final now = DateTime.now();
+    final now = _now;
     final dateStr =
         '${_monthName(now.month)} ${now.day}, ${now.year}  ${_formatTime(now)}';
 
@@ -614,109 +619,120 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
           ),
         ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // ── Name + date row ─────────────────────────────────────────
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
+            // ── Blue accent bar ──────────────────────────────────────────
+            Container(
+              height: 6,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF0C1E70), Color(0xFF1D4ED8)],
+                ),
+              ),
+            ),
+            // ── Card content ─────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Name + date row
+                  Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        _displayFirstName(),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: nameColor,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 18,
-                          height: 1.1,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _displayFirstName(),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: nameColor,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 18,
+                                height: 1.1,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              dateStr,
+                              style: TextStyle(
+                                color: subColor,
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        dateStr,
-                        style: TextStyle(
-                          color: subColor,
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w400,
-                        ),
+                      Image.asset(
+                        'assets/USTP_ELECOM_ICON.png',
+                        width: 36,
+                        height: 36,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                       ),
                     ],
                   ),
-                ),
-                // ELECOM badge
-                Image.asset(
-                  isPremiumMode
-                      ? 'assets/USTP_ELECOM_ICON.png'
-                      : 'assets/USTP_ELECOM_ICON.png',
-                  width: 36,
-                  height: 36,
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                ),
-              ],
-            ),
-            if (phoneMasked.isNotEmpty || emailMasked.isNotEmpty) ...[
-              const SizedBox(height: 6),
-              if (phoneMasked.isNotEmpty)
-                Text(
-                  phoneMasked,
-                  style: TextStyle(
-                    color: subColor,
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              if (emailMasked.isNotEmpty)
-                Text(
-                  emailMasked,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: subColor,
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-            ],
-            const SizedBox(height: 14),
-            Divider(color: dividerColor, height: 1),
-            const SizedBox(height: 14),
-            // ── Stats row ───────────────────────────────────────────────
-            IntrinsicHeight(
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _statTile(
-                      context: context,
-                      icon: Icons.how_to_vote_outlined,
-                      iconColor: const Color(0xFF2563EB),
-                      value: _totalVoters > 0
-                          ? _totalVoters.toString()
-                          : '—',
-                      label: 'Total Voters',
-                      nameColor: nameColor,
-                      subColor: subColor,
-                    ),
-                  ),
-                  VerticalDivider(color: dividerColor, width: 1),
-                  Expanded(
-                    child: _statTile(
-                      context: context,
-                      icon: Icons.person_outline_rounded,
-                      iconColor: const Color(0xFF7C3AED),
-                      value: _totalCandidates > 0
-                          ? _totalCandidates.toString()
-                          : '—',
-                      label: 'Total Candidates',
-                      nameColor: nameColor,
-                      subColor: subColor,
+                  if (phoneMasked.isNotEmpty || emailMasked.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    if (phoneMasked.isNotEmpty)
+                      Text(
+                        phoneMasked,
+                        style: TextStyle(
+                          color: subColor,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    if (emailMasked.isNotEmpty)
+                      Text(
+                        emailMasked,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: subColor,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                  ],
+                  const SizedBox(height: 14),
+                  Divider(color: dividerColor, height: 1),
+                  const SizedBox(height: 14),
+                  // Stats row
+                  IntrinsicHeight(
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _statTile(
+                            context: context,
+                            icon: Iconsax.people,
+                            iconColor: const Color(0xFF2563EB),
+                            value: _totalVoters > 0 ? _totalVoters.toString() : '—',
+                            label: 'Total Voters',
+                            nameColor: nameColor,
+                            subColor: subColor,
+                          ),
+                        ),
+                        VerticalDivider(color: dividerColor, width: 1),
+                        Expanded(
+                          child: _statTile(
+                            context: context,
+                            icon: Iconsax.profile_2user,
+                            iconColor: const Color(0xFF2563EB),
+                            value: _totalCandidates > 0 ? _totalCandidates.toString() : '—',
+                            label: 'Total Candidates',
+                            nameColor: nameColor,
+                            subColor: subColor,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -737,19 +753,49 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
     required Color nameColor,
     required Color subColor,
   }) {
+    // Parse value for progress arc (cap at reasonable max for visual fill)
+    final intVal = int.tryParse(value) ?? 0;
+    // Use a soft fill — cap at 2000 for voters, 100 for candidates
+    final maxVal = label.contains('Voter') ? 2000.0 : 100.0;
+    final progress = intVal > 0 ? (intVal / maxVal).clamp(0.0, 1.0) : 0.0;
+
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, color: iconColor, size: 26),
-        const SizedBox(height: 6),
-        Text(
-          value,
-          style: TextStyle(
-            color: nameColor,
-            fontWeight: FontWeight.w800,
-            fontSize: 20,
+        SizedBox(
+          width: 72,
+          height: 72,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              CustomPaint(
+                size: const Size(72, 72),
+                painter: _ArcPainter(
+                  progress: progress,
+                  color: iconColor,
+                  trackColor: iconColor.withValues(alpha: 0.12),
+                ),
+              ),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, color: iconColor, size: 18),
+                  const SizedBox(height: 2),
+                  Text(
+                    value,
+                    style: TextStyle(
+                      color: nameColor,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                      height: 1.0,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: 6),
         Text(
           label,
           style: TextStyle(
@@ -806,8 +852,8 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Colors.black.withValues(alpha: 0.35),
-                  Colors.black.withValues(alpha: 0.55),
+                  Colors.black.withValues(alpha: 0.20),
+                  Colors.black.withValues(alpha: 0.45),
                 ],
               ),
             ),
@@ -1416,7 +1462,7 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
                   ),
                   // ── Rest of home content ──────────────────────────────────
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                    padding: const EdgeInsets.fromLTRB(16, 36, 16, 16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -1495,6 +1541,7 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
 
   @override
   void dispose() {
+    _clockTimer?.cancel();
     TutorialReplayBus.unregister();
     elecomRouteObserver.unsubscribe(this);
     EleVotePreferences.enabledNotifier.removeListener(
@@ -1845,4 +1892,56 @@ class _PremiumAssistantBubble extends StatelessWidget {
       ),
     );
   }
+}
+
+// ---------------------------------------------------------------------------
+// Arc painter for the analytics-style stat tile circles
+// ---------------------------------------------------------------------------
+class _ArcPainter extends CustomPainter {
+  const _ArcPainter({
+    required this.progress,
+    required this.color,
+    required this.trackColor,
+  });
+
+  final double progress;
+  final Color color;
+  final Color trackColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const strokeWidth = 6.0;
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = (size.width - strokeWidth) / 2;
+
+    final trackPaint = Paint()
+      ..color = trackColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+
+    final arcPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+
+    // Full track circle
+    canvas.drawCircle(center, radius, trackPaint);
+
+    // Progress arc — starts from top (-π/2), sweeps clockwise
+    if (progress > 0) {
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        -3.14159 / 2,
+        2 * 3.14159 * progress,
+        false,
+        arcPaint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_ArcPainter old) =>
+      old.progress != progress || old.color != color;
 }
