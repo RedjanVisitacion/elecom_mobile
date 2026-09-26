@@ -51,7 +51,7 @@ class ElectionTransparencyCard extends StatelessWidget {
         Text(
           'Election Transparency',
           style: TextStyle(
-            color: titleColor,
+            color: isDark ? Colors.white : const Color(0xFF2563EB),
             fontWeight: FontWeight.w800,
             fontSize: 14,
           ),

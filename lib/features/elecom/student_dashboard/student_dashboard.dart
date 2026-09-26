@@ -1078,8 +1078,8 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
             : elecomBlue;
 
     final Color inactiveColor = isDarkMode
-        ? Colors.white.withValues(alpha: 0.38)
-        : const Color(0xFFB0BEC5);
+        ? const Color(0xFF2563EB).withValues(alpha: 0.60)
+        : const Color(0xFF2563EB).withValues(alpha: 0.55);
 
     final Color shadowColor = isDarkMode
         ? Colors.black.withValues(alpha: 0.45)
@@ -1278,7 +1278,9 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
     const Color elecomBlue = Color(0xFF2563EB);
     const Color elecomGold = Color(0xFFFACC15);
 
-    final Color iconColor = selected ? elecomBlue : const Color(0xFFB0BEC5);
+    final Color iconColor = selected
+        ? elecomBlue
+        : const Color(0xFF2563EB).withValues(alpha: 0.55);
 
     final iconWidget = HugeIcon(
       key: key,

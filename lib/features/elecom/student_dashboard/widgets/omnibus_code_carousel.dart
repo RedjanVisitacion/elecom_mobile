@@ -296,9 +296,9 @@ class _OmnibusCodeCarouselState extends State<OmnibusCodeCarousel> {
         Text(
           'Omnibus Code',
           style: TextStyle(
-            color: titleColor,
-            fontWeight: FontWeight.w900,
-            fontSize: 16,
+            color: isDark ? Colors.white : const Color(0xFF2563EB),
+            fontWeight: FontWeight.w800,
+            fontSize: 14,
           ),
         ),
         const SizedBox(height: 10),
