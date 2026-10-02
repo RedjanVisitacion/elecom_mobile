@@ -49,7 +49,9 @@ class HomeCandidatesStrip extends StatelessWidget {
             Text(
               'Candidates',
               style: TextStyle(
-                color: const Color(0xFF2563EB),
+                color: isDarkMode
+                    ? const Color(0xFF60A5FA)
+                    : const Color(0xFF2563EB),
                 fontWeight: FontWeight.w800,
                 fontSize: 14,
               ),

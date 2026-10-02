@@ -296,7 +296,7 @@ class _OmnibusCodeCarouselState extends State<OmnibusCodeCarousel> {
         Text(
           'Omnibus Code',
           style: TextStyle(
-            color: isDark ? Colors.white : const Color(0xFF2563EB),
+            color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
             fontWeight: FontWeight.w800,
             fontSize: 14,
           ),
@@ -390,7 +390,7 @@ class _OmnibusCodeCarouselState extends State<OmnibusCodeCarousel> {
                 spacing: 4.5,
                 expansionFactor: 2.1,
                 dotColor: isDark
-                    ? const Color(0xFF2563EB).withValues(alpha: 0.35)
+                    ? const Color(0xFF60A5FA).withValues(alpha: 0.30)
                     : const Color(0xFF2563EB).withValues(alpha: 0.30),
                 activeDotColor: isDark
                     ? Colors.white

@@ -595,9 +595,15 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
     final cardBg = isDarkMode
         ? const Color(0xFF2A2A35)
         : Colors.white;
-    final nameColor = const Color(0xFF2563EB);
-    final subColor = const Color(0xFF2563EB).withValues(alpha: isDarkMode ? 0.70 : 0.60);
-    final dividerColor = const Color(0xFF2563EB).withValues(alpha: isDarkMode ? 0.30 : 0.18);
+    final nameColor = isDarkMode
+        ? const Color(0xFF60A5FA)
+        : const Color(0xFF2563EB);
+    final subColor = isDarkMode
+        ? const Color(0xFF60A5FA).withValues(alpha: 0.70)
+        : const Color(0xFF2563EB).withValues(alpha: 0.60);
+    final dividerColor = isDarkMode
+        ? const Color(0xFF60A5FA).withValues(alpha: 0.25)
+        : const Color(0xFF2563EB).withValues(alpha: 0.18);
 
     final now = _now;
     final dateStr =
@@ -714,7 +720,7 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
                           child: _statTile(
                             context: context,
                             icon: Iconsax.people,
-                            iconColor: const Color(0xFF2563EB),
+                            iconColor: isDarkMode ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
                             value: _totalVoters > 0 ? _totalVoters.toString() : '—',
                             label: 'Total Voters',
                             nameColor: nameColor,
@@ -726,7 +732,7 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
                           child: _statTile(
                             context: context,
                             icon: Iconsax.profile_2user,
-                            iconColor: const Color(0xFF2563EB),
+                            iconColor: isDarkMode ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
                             value: _totalCandidates > 0 ? _totalCandidates.toString() : '—',
                             label: 'Total Candidates',
                             nameColor: nameColor,
@@ -1078,7 +1084,7 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
             : elecomBlue;
 
     final Color inactiveColor = isDarkMode
-        ? const Color(0xFF2563EB).withValues(alpha: 0.60)
+        ? const Color(0xFF60A5FA).withValues(alpha: 0.60)
         : const Color(0xFF2563EB).withValues(alpha: 0.55);
 
     final Color shadowColor = isDarkMode
