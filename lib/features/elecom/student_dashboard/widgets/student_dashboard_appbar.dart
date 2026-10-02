@@ -1,7 +1,6 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:iconsax_flutter/iconsax_flutter.dart';
 
 import '../../../../core/notifications/notification_center_store.dart';
 import '../../candidates/candidate_search_screen.dart';
@@ -99,6 +98,7 @@ class StudentDashboardAppBar {
       actions: [
         IconButton(
           tooltip: 'Search candidates',
+          padding: const EdgeInsets.fromLTRB(8, 8, 4, 8),
           onPressed: () {
             Navigator.of(context).push(
               PageRouteBuilder<void>(
@@ -117,31 +117,10 @@ class StudentDashboardAppBar {
               ),
             );
           },
-          icon: Container(
-            width: isPremiumMode ? 38 : null,
-            height: isPremiumMode ? 38 : null,
-            alignment: Alignment.center,
-            decoration: isPremiumMode
-                ? BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.56),
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF2563EB).withValues(alpha: 0.18),
-                        blurRadius: 16,
-                      ),
-                    ],
-                  )
-                : null,
-            child: Icon(
-              isPremiumMode
-                  ? Iconsax.search_normal_1
-                  : Icons.search,
-              color: isPremiumMode
-                  ? const Color(0xFF0F172A).withValues(alpha: 0.60)
-                  : titleColor,
-              size: isPremiumMode ? 22 : 24,
-            ),
+          icon: Icon(
+            Icons.search,
+            color: titleColor,
+            size: 24,
           ),
         ),
         ValueListenableBuilder<int>(
@@ -149,6 +128,7 @@ class StudentDashboardAppBar {
           builder: (context, unreadCount, _) {
             return IconButton(
               tooltip: 'Notifications',
+              padding: const EdgeInsets.fromLTRB(4, 8, 8, 8),
               onPressed: () {
                 Navigator.of(context).push(
                   PageRouteBuilder<void>(
@@ -171,69 +151,31 @@ class StudentDashboardAppBar {
               icon: Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  Container(
-                    width: isPremiumMode ? 38 : null,
-                    height: isPremiumMode ? 38 : null,
-                    alignment: Alignment.center,
-                    decoration: isPremiumMode
-                        ? BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.56),
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(
-                                  0xFF2563EB,
-                                ).withValues(alpha: 0.18),
-                                blurRadius: 16,
-                              ),
-                            ],
-                          )
-                        : null,
-                    child: Icon(
-                      isPremiumMode
-                          ? Iconsax.notification_bing
-                          : Icons.notifications_none,
-                      color: isPremiumMode
-                          ? const Color(0xFF0F172A).withValues(alpha: 0.60)
-                          : titleColor,
-                      size: isPremiumMode ? 22 : 24,
-                    ),
+                  Icon(
+                    Icons.notifications_none,
+                    color: titleColor,
+                    size: 24,
                   ),
                   if (unreadCount > 0)
                     Positioned(
-                      right: 1,
-                      top: 1,
+                      right: -2,
+                      top: -2,
                       child: Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: isPremiumMode ? 4 : 5,
-                          vertical: isPremiumMode ? 1 : 2,
+                        padding: const EdgeInsets.all(3),
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
                         ),
-                        constraints: BoxConstraints(
-                          minWidth: isPremiumMode ? 15 : 16,
-                          minHeight: isPremiumMode ? 15 : 0,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isPremiumMode
-                              ? const Color(0xFFEF4444)
-                              : Colors.red,
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
                           shape: BoxShape.circle,
-                          boxShadow: isPremiumMode
-                              ? [
-                                  BoxShadow(
-                                    color: const Color(
-                                      0xFFEF4444,
-                                    ).withValues(alpha: 0.32),
-                                    blurRadius: 10,
-                                  ),
-                                ]
-                              : null,
                         ),
                         child: Text(
                           unreadCount > 99 ? '99+' : unreadCount.toString(),
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 10,
+                            fontSize: 9,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
