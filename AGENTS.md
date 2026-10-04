@@ -154,3 +154,75 @@ If they show up as untracked changes, they should be removed from git tracking (
 - For **API** issues, confirm **which host** the device hits (`ApiConfig`) and **which repo** owns the route (Flutter vs `elecom_web/backend`).
 - For **SMS OTP** issues, always check the **server's** `.env` (not local) and gunicorn logs (`journalctl -u gunicorn -n 100 --no-pager`).
 - Prefer deterministic reproduction (minimal steps) and add/adjust tests where feasible.
+
+## EleVote Live Chat — Architecture & Lessons Learned
+
+### How the chat works (mobile ↔ backend ↔ web admin)
+
+- **Table**: `elevote_chat_messages` — columns: `id (BIGSERIAL)`, `student_id`, `role` (`user` / `assistant` / `admin`), `content`, `model`, `created_at`
+- **Table**: `elevote_chat_takeover` — columns: `student_id (PK)`, `active (bool)`, `taken_at`, `taken_by (admin student_id)`
+- **Mobile endpoint**: `GET/POST/DELETE /api/mobile/elevote/chat/`
+  - `GET ?since_id=<n>` returns only messages with `id > n` (up to 50, oldest-first) + `takeover_active` bool
+  - `POST { "message": "..." }` saves user message, calls Groq AI unless admin takeover is active
+  - POST response includes `message` (user row with real `id`), `assistant_message` (AI row), `takeover_active`
+- **Admin endpoints** (web only): `/api/admin/chat/reply/`, `/api/admin/chat/takeover/`, `/api/admin/chat/thread/?since_id=`
+
+### Polling approach (no WebSocket)
+
+The backend has **no Django Channels / WebSocket infrastructure** — it runs Gunicorn (WSGI). Real-time is achieved via **3-second interval polling** on the mobile:
+
+- `_pollTimer` fires `_poll()` every 3 s
+- `_poll()` calls `GET /api/mobile/elevote/chat/?since_id=_lastMessageId`
+- Only appends messages with `id > 0 && !existingIds.contains(id)` — **de-duplicates by server id**
+- Skips if `_sending == true` (avoids race with optimistic send)
+- `_isLive` green dot in appbar fades in for 2 s when a new message arrives
+
+### Optimistic send & de-duplication
+
+- When user sends, an optimistic bubble is added with `id: -1` (sentinel)
+- After POST response, the `-1` bubble is **replaced in-place** with the real server message (real id)
+- The poll filter `m.id > 0` skips any `-1` bubble, preventing duplicates
+- `_lastMessageId` is updated from POST response, not from poll — avoids race conditions
+
+### Admin photo in chat bubbles
+
+- `admin_chat_reply_api` saves the admin's own `student_id` into the `model` field of the message row
+- `_elevote_message_json` enriches admin messages with `sender_photo_url` + `sender_name` by joining `users` table on `row.model`
+- Fallback for old messages (where `model` is null): queries `elevote_chat_takeover.taken_by` for the same `student_id`
+- Mobile `_ChatBubble` renders `Image.network(senderPhotoUrl)` inside `ClipOval` with `support_agent` icon fallback
+- Admin name is shown above the bubble (like Messenger group chat sender label)
+
+### ListView blinking fix
+
+- Use `ListView.builder` (not `ListView` with `children:`) — only builds visible items, no full rebuild on setState
+- Use `ClampingScrollPhysics()` — prevents bounce/overscroll that triggers layout loops
+- Initial load uses `jumpTo` (instant, no animation frame loop); user actions use `animateTo`
+- `_onScroll` listener drives `_showScrollDown` bool — shows Messenger-style floating down-arrow FAB when user scrolls up
+
+### Dark mode color palette
+
+- In **dark mode**, use `Color(0xFF60A5FA)` (Tailwind blue-400) instead of `Color(0xFF2563EB)` (blue-600) for all blue UI elements — blue-600 is too dark to read on dark backgrounds
+- Section headers ("Candidates", "Omnibus Code", "Election Transparency") use `isDark ? Color(0xFF60A5FA) : Color(0xFF2563EB)`
+- Info card stat tiles, arc painters, and bottom nav inactive items follow the same rule
+
+### AppBar icons (Results / Election / Receipt / Me tabs)
+
+- Use plain `Icons.search` and `Icons.notifications_none` at 24px — **no Container wrapper, no circle decoration**
+- The circle/pill decoration caused large grey blobs in the appbar on non-home tabs
+- Padding: search icon `EdgeInsets.fromLTRB(8, 8, 4, 8)`, bell icon `EdgeInsets.fromLTRB(4, 8, 8, 8)` — keeps them visually close together
+- Notification badge: red circle at `right: -2, top: -2`, size 16, font 9px w900
+
+### Deploy sequence (production server)
+
+After changing `F:\elecom_web\backend\core\views.py` or any backend file:
+```bash
+cd /var/www/elecom
+git pull origin main
+sudo systemctl restart gunicorn
+sudo systemctl status gunicorn --no-pager | tail -5
+```
+
+After changing Flutter mobile code, rebuild APK:
+```powershell
+.\bump_and_build.ps1
+```

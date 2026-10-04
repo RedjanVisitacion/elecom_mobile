@@ -136,12 +136,17 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
               (item['sender_photo_url'] ?? '').toString().trim();
           final senderName =
               (item['sender_name'] ?? '').toString().trim();
+          final createdAtRaw = (item['created_at'] ?? '').toString().trim();
+          final createdAt = createdAtRaw.isNotEmpty
+              ? DateTime.tryParse(createdAtRaw)?.toLocal()
+              : null;
           return _EleVoteMessage(
             id: id,
             role: role,
             text: (item['content'] ?? '').toString(),
             senderPhotoUrl: senderPhotoUrl.isNotEmpty ? senderPhotoUrl : null,
             senderName: senderName.isNotEmpty ? senderName : null,
+            createdAt: createdAt,
           );
         })
         .where((m) => m.text.trim().isNotEmpty)
@@ -729,10 +734,20 @@ class _ChatBubble extends StatelessWidget {
 
   final _EleVoteMessage message;
 
+  // "06:41 PM" format — same as the web admin panel
+  static String _formatTime(DateTime? dt) {
+    if (dt == null) return '';
+    final h = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
+    final min = dt.minute.toString().padLeft(2, '0');
+    final period = dt.hour < 12 ? 'AM' : 'PM';
+    return '$h:$min $period';
+  }
+
   @override
   Widget build(BuildContext context) {
     final isUser = message.role == _EleVoteRole.user;
     final isAdmin = message.role == _EleVoteRole.admin;
+    final timeStr = _formatTime(message.createdAt);
 
     // Admin messages look like assistant bubbles but with a teal/admin tint
     // and a small "Admin" label so the student knows it's a human reply.
@@ -817,6 +832,18 @@ class _ChatBubble extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (timeStr.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4, bottom: 2),
+                    child: Text(
+                      timeStr,
+                      style: TextStyle(
+                        color: Colors.grey.shade400,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -835,33 +862,52 @@ class _ChatBubble extends StatelessWidget {
           const SizedBox(width: 8),
         ],
         Flexible(
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-            decoration: BoxDecoration(
-              color: isUser ? const Color(0xFF2563EB) : Colors.white,
-              borderRadius: BorderRadius.circular(16).copyWith(
-                bottomLeft: Radius.circular(isUser ? 16 : 4),
-                bottomRight: Radius.circular(isUser ? 4 : 16),
-              ),
-              border: isUser ? null : Border.all(color: Colors.black12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 12,
-                  offset: const Offset(0, 5),
+          child: Column(
+            crossAxisAlignment:
+                isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+            children: [
+              Container(
+                margin: const EdgeInsets.only(bottom: 3),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                decoration: BoxDecoration(
+                  color: isUser ? const Color(0xFF2563EB) : Colors.white,
+                  borderRadius: BorderRadius.circular(16).copyWith(
+                    bottomLeft: Radius.circular(isUser ? 16 : 4),
+                    bottomRight: Radius.circular(isUser ? 4 : 16),
+                  ),
+                  border: isUser ? null : Border.all(color: Colors.black12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 12,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: Text(
-              message.text,
-              style: TextStyle(
-                color: isUser ? Colors.white : const Color(0xFF1F2937),
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-                height: 1.28,
+                child: Text(
+                  message.text,
+                  style: TextStyle(
+                    color: isUser ? Colors.white : const Color(0xFF1F2937),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    height: 1.28,
+                  ),
+                ),
               ),
-            ),
+              if (timeStr.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 7, left: 2, right: 2),
+                  child: Text(
+                    timeStr,
+                    style: TextStyle(
+                      color: Colors.grey.shade400,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
       ],
@@ -1104,6 +1150,7 @@ class _EleVoteMessage {
     this.id = 0,
     this.senderPhotoUrl,
     this.senderName,
+    this.createdAt,
   });
 
   final _EleVoteRole role;
@@ -1111,4 +1158,5 @@ class _EleVoteMessage {
   final int id;
   final String? senderPhotoUrl;
   final String? senderName;
+  final DateTime? createdAt;
 }
