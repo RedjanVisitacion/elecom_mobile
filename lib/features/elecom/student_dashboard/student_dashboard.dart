@@ -628,6 +628,7 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+      height: double.infinity,
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: BorderRadius.circular(16),
@@ -1611,76 +1612,72 @@ class _SlidingCardStackState extends State<_SlidingCardStack> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Banner is always visible at the top (170px).
-        // The PageView sits below it and its height is driven by the tallest card.
-        Stack(
-          clipBehavior: Clip.hardEdge,
-          children: [
-            // Banner — shared, never scrolls
-            Positioned(
-              top: 0, left: 0, right: 0,
-              child: widget.header,
-            ),
-            // Transparent spacer so the Stack is tall enough for the banner
-            const SizedBox(height: 170),
-          ],
-        ),
-        // Cards — sit directly below the banner with a negative margin so they
-        // overlap the banner bottom edge by 30px (same visual as before)
-        Transform.translate(
-          offset: const Offset(0, -30),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+        // Single stack: banner + swipeable card overlapping it — same as the
+        // original layout but with a PageView replacing the single info card.
+        SizedBox(
+          height: 390,
+          child: Stack(
+            clipBehavior: Clip.hardEdge,
             children: [
-              SizedBox(
-                // Height driven by the taller card; profile card ~200px,
-                // countdown card ~230px. Use enough for countdown.
-                height: 250,
+              // Banner — full-width background photo + greeting + icons
+              Positioned(
+                top: 0, left: 0, right: 0,
+                child: widget.header,
+              ),
+              // Swipeable cards overlap the banner bottom (same top: 140 as before)
+              Positioned(
+                top: 140,
+                left: 0,
+                right: 0,
+                bottom: 0,
                 child: PageView(
                   controller: _pageController,
                   onPageChanged: (i) => setState(() => _page = i),
                   children: [
-                    // Page 0 — Profile card
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 0),
+                    // Page 0 — Profile / info card — stretched to fill same height as countdown
+                    SizedBox(
+                      height: 250,
                       child: widget.profileCard,
                     ),
                     // Page 1 — Election countdown
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: widget.countdownCard,
+                      child: SizedBox(
+                        height: 250,
+                        child: widget.countdownCard,
+                      ),
                     ),
                   ],
                 ),
               ),
-              // Page dots
-              Padding(
-                padding: const EdgeInsets.only(top: 6, bottom: 2),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(2, (i) {
-                    final active = i == _page;
-                    return GestureDetector(
-                      onTap: () => _pageController.animateToPage(
-                        i,
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeOutCubic,
-                      ),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        margin: const EdgeInsets.symmetric(horizontal: 3),
-                        width: active ? 20 : 7,
-                        height: 7,
-                        decoration: BoxDecoration(
-                          color: active ? _dotActive : _dotInactive,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                      ),
-                    );
-                  }),
-                ),
-              ),
             ],
+          ),
+        ),
+        // Page dots
+        Padding(
+          padding: const EdgeInsets.only(top: 6, bottom: 2),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(2, (i) {
+              final active = i == _page;
+              return GestureDetector(
+                onTap: () => _pageController.animateToPage(
+                  i,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOutCubic,
+                ),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  width: active ? 20 : 7,
+                  height: 7,
+                  decoration: BoxDecoration(
+                    color: active ? _dotActive : _dotInactive,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              );
+            }),
           ),
         ),
       ],
