@@ -226,3 +226,41 @@ After changing Flutter mobile code, rebuild APK:
 ```powershell
 .\bump_and_build.ps1
 ```
+
+## Face Verification — Local InsightFace (No Face++ API)
+
+### Why
+Face++ free plan has daily quota limits and `CONCURRENCY_LIMIT_EXCEEDED` errors under load.
+The system now uses **InsightFace (ArcFace)** running entirely on the server — no external API, no cost, no rate limits.
+
+### How it works
+- **Enrollment**: captures a selfie → InsightFace computes a 512-d ArcFace embedding → stored as JSON in `FaceEnrollment.face_encoding`
+- **Duplicate check**: on every enrollment, the new embedding is compared (cosine similarity ≥ 0.40) against all other active enrollments — blocks same-face registration under two accounts
+- **Verification before voting**: live selfie embedding compared against stored enrollment embedding — must score ≥ 0.40 to pass
+- Face++ is kept as a last-resort fallback only if both insightface and face_recognition are unavailable
+
+### Key files
+- `backend/core/local_face_service.py` — all face encoding/comparison logic
+- `backend/core/views.py` — `_save_face_enrollment_facepp()` and `_face_verification_vote_handler()` call `local_face_service` first
+- `elecom_voting/migrations/0016_face_enrollment_local_encoding.py` — adds `face_encoding` TextField to `FaceEnrollment` model
+
+### Fresh server setup (run once)
+```bash
+# 1. System library required by OpenCV (insightface dependency)
+apt-get install -y libgl1
+
+# 2. Install Python packages (insightface, onnxruntime, opencv-python are in requirements.txt)
+/var/www/elecom/venv/bin/pip install -r /var/www/elecom/backend/requirements.txt
+
+# 3. Run migrations (creates face_encoding column)
+/var/www/elecom/venv/bin/python /var/www/elecom/backend/manage.py migrate
+
+# 4. Restart gunicorn
+sudo systemctl restart gunicorn
+```
+
+### Troubleshooting
+- `ImportError: libGL.so.1` → run `apt-get install -y libgl1` then restart gunicorn
+- `InsightFace initialisation failed` → check gunicorn logs: `journalctl -u gunicorn -n 30 --no-pager | grep -i insightface`
+- First enrollment after deploy takes a few extra seconds — InsightFace downloads `buffalo_sc` model weights (~30MB) on first use and caches them in `~/.insightface/models/`
+- Legacy enrollments (before this migration) auto-backfill their `face_encoding` on first verification attempt by downloading the Cloudinary photo and re-encoding it
