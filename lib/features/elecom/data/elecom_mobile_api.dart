@@ -38,6 +38,10 @@ class ElecomMobileApi {
     return _getJson(MobileApiPaths.elevoteChat);
   }
 
+  Future<Map<String, dynamic>> getEleVoteHistorySince(int sinceId) async {
+    return _getJson('${MobileApiPaths.elevoteChat}?since_id=$sinceId');
+  }
+
   Future<Map<String, dynamic>> sendEleVoteMessage(String message) async {
     return _postJson(MobileApiPaths.elevoteChat, <String, dynamic>{
       'message': message,

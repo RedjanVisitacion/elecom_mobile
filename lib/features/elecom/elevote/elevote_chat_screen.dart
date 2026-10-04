@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 
@@ -23,6 +25,14 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
   bool _clearingChat = false;
   bool _suggestionsOpen = false;
 
+  // ── Polling ──────────────────────────────────────────────────────────────
+  Timer? _pollTimer;
+  bool _polling = false;       // true while a poll request is in-flight
+  bool _isLive = false;        // drives the live indicator dot
+  int _lastMessageId = 0;      // highest message id we have seen
+  bool _takeover = false;      // true when admin has suppressed EleVote AI
+  static const _pollInterval = Duration(seconds: 3);
+
   static const List<String> _suggestions = [
     'What is ELECOM?',
     'How do I vote?',
@@ -46,6 +56,7 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
 
   @override
   void dispose() {
+    _pollTimer?.cancel();
     _messageController.dispose();
     _messageFocusNode.dispose();
     _scrollController.dispose();
@@ -56,31 +67,104 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
     try {
       final res = await _api.getEleVoteHistory();
       final raw = res['messages'];
-      final loaded = raw is List
-          ? raw
-                .whereType<Map>()
-                .map((item) {
-                  return _EleVoteMessage(
-                    role: (item['role'] ?? '').toString() == 'assistant'
-                        ? _EleVoteRole.assistant
-                        : _EleVoteRole.user,
-                    text: (item['content'] ?? '').toString(),
-                  );
-                })
-                .where((item) => item.text.trim().isNotEmpty)
-                .toList()
-          : <_EleVoteMessage>[];
+      final loaded = _parseMessages(raw);
       if (!mounted) return;
       setState(() {
         _messages
           ..clear()
           ..addAll(loaded);
+        _lastMessageId = _maxId(loaded);
         _loadingHistory = false;
       });
       _scrollToBottom();
+      _startPolling();
     } catch (_) {
       if (!mounted) return;
       setState(() => _loadingHistory = false);
+      _startPolling();
+    }
+  }
+
+  // ── Polling helpers ──────────────────────────────────────────────────────
+
+  void _startPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(_pollInterval, (_) => _poll());
+  }
+
+  void _stopPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = null;
+  }
+
+  /// Converts raw API message list into typed _EleVoteMessage objects,
+  /// preserving the server-assigned id and mapping role="admin" correctly.
+  List<_EleVoteMessage> _parseMessages(dynamic raw) {
+    if (raw is! List) return const [];
+    return raw
+        .whereType<Map>()
+        .map((item) {
+          final roleStr = (item['role'] ?? '').toString();
+          final idVal = item['id'];
+          final id = idVal is int ? idVal : int.tryParse(idVal.toString()) ?? 0;
+          _EleVoteRole role;
+          switch (roleStr) {
+            case 'assistant':
+              role = _EleVoteRole.assistant;
+            case 'admin':
+              role = _EleVoteRole.admin;
+            default:
+              role = _EleVoteRole.user;
+          }
+          return _EleVoteMessage(
+            id: id,
+            role: role,
+            text: (item['content'] ?? '').toString(),
+          );
+        })
+        .where((m) => m.text.trim().isNotEmpty)
+        .toList();
+  }
+
+  int _maxId(List<_EleVoteMessage> messages) =>
+      messages.fold(0, (max, m) => m.id > max ? m.id : max);
+
+  /// Incremental poll: only fetches messages newer than the last known id.
+  /// Skips if a send is in-flight, another poll is running, or widget gone.
+  Future<void> _poll() async {
+    if (_polling || _sending || !mounted) return;
+    _polling = true;
+    try {
+      final res = await _api.getEleVoteHistorySince(_lastMessageId);
+      if (!mounted) return;
+
+      // Update takeover state whenever the server tells us
+      final serverTakeover = res['takeover_active'];
+      if (serverTakeover is bool && serverTakeover != _takeover) {
+        setState(() => _takeover = serverTakeover);
+      }
+
+      final newMessages = _parseMessages(res['messages']);
+      if (newMessages.isEmpty) return;
+
+      final hasAdminMsg =
+          newMessages.any((m) => m.role == _EleVoteRole.admin);
+
+      setState(() {
+        _messages.addAll(newMessages);
+        _lastMessageId = _maxId(_messages);
+        _isLive = true;
+      });
+
+      if (hasAdminMsg) _scrollToBottom();
+
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) setState(() => _isLive = false);
+      });
+    } catch (_) {
+      // silently ignore poll failures
+    } finally {
+      _polling = false;
     }
   }
 
@@ -97,18 +181,52 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
 
     try {
       final res = await _api.sendEleVoteMessage(text);
-      final reply = (res['reply'] ?? '').toString().trim();
       if (!mounted) return;
+
+      // Update last known id from the saved user message
+      final msgRaw = res['message'];
+      if (msgRaw is Map) {
+        final idVal = msgRaw['id'];
+        final id = idVal is int ? idVal : int.tryParse(idVal.toString()) ?? 0;
+        if (id > _lastMessageId) _lastMessageId = id;
+      }
+
+      final takeoverActive = res['takeover_active'] == true;
+      setState(() {
+        _takeover = takeoverActive;
+        _sending = false;
+      });
+
+      // When admin has taken over, no AI reply is returned — the poll will
+      // pick up the admin's manual response automatically.
+      if (takeoverActive) {
+        _scrollToBottom();
+        return;
+      }
+
+      // Normal AI reply path
+      final assistantRaw = res['assistant_message'];
+      String reply;
+      int assistantId = 0;
+      if (assistantRaw is Map) {
+        reply = (assistantRaw['content'] ?? '').toString().trim();
+        final idVal = assistantRaw['id'];
+        assistantId = idVal is int ? idVal : int.tryParse(idVal.toString()) ?? 0;
+      } else {
+        reply = (res['reply'] ?? '').toString().trim();
+      }
+
       setState(() {
         _messages.add(
           _EleVoteMessage(
+            id: assistantId,
             role: _EleVoteRole.assistant,
             text: reply.isEmpty
                 ? 'I could not prepare an answer right now. Please try again.'
                 : reply,
           ),
         );
-        _sending = false;
+        if (assistantId > _lastMessageId) _lastMessageId = assistantId;
       });
       _scrollToBottom();
     } catch (e) {
@@ -143,6 +261,7 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
     if (_clearingChat) return;
     Navigator.of(sheetContext).pop();
     setState(() => _clearingChat = true);
+    _stopPolling();
     try {
       await _api.clearEleVoteHistory();
       if (!mounted) return;
@@ -152,9 +271,11 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
         _clearingChat = false;
       });
       AppToast.success(context, 'EleVote chat cleared.');
+      _startPolling();
     } catch (e) {
       if (!mounted) return;
       setState(() => _clearingChat = false);
+      _startPolling();
       final message = e is ElecomApiException
           ? e.message
           : 'Could not clear chat from the database.';
@@ -231,9 +352,27 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
         foregroundColor: const Color(0xFF1E293B),
         elevation: 0,
         titleSpacing: 0,
-        title: const Text(
-          'EleVote Ai Assistant',
-          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'EleVote Ai Assistant',
+              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
+            ),
+            const SizedBox(width: 8),
+            AnimatedOpacity(
+              opacity: _isLive ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 300),
+              child: Container(
+                width: 8,
+                height: 8,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF22C55E),
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+          ],
         ),
         actions: [
           IconButton(
@@ -490,6 +629,81 @@ class _ChatBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isUser = message.role == _EleVoteRole.user;
+    final isAdmin = message.role == _EleVoteRole.admin;
+
+    // Admin messages look like assistant bubbles but with a teal/admin tint
+    // and a small "Admin" label so the student knows it's a human reply.
+    if (isAdmin) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          // Admin icon instead of robot avatar
+          Container(
+            width: 28,
+            height: 28,
+            decoration: const BoxDecoration(
+              color: Color(0xFF0F172A),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.support_agent_rounded,
+              color: Colors.white,
+              size: 16,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(left: 4, bottom: 3),
+                  child: Text(
+                    'Admin',
+                    style: TextStyle(
+                      color: Colors.grey.shade500,
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ),
+                Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 11),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFF6FF),
+                    borderRadius: BorderRadius.circular(16).copyWith(
+                      bottomLeft: const Radius.circular(4),
+                    ),
+                    border: Border.all(color: const Color(0xFFBFDBFE)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 12,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    message.text,
+                    style: const TextStyle(
+                      color: Color(0xFF1E3A5F),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      height: 1.28,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
     return Row(
       mainAxisAlignment: isUser
           ? MainAxisAlignment.end
@@ -761,11 +975,16 @@ class _EleVoteAvatar extends StatelessWidget {
   }
 }
 
-enum _EleVoteRole { user, assistant }
+enum _EleVoteRole { user, assistant, admin }
 
 class _EleVoteMessage {
-  const _EleVoteMessage({required this.role, required this.text});
+  const _EleVoteMessage({
+    required this.role,
+    required this.text,
+    this.id = 0,
+  });
 
   final _EleVoteRole role;
   final String text;
+  final int id;
 }
