@@ -27,6 +27,18 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
 
   // ── Polling ──────────────────────────────────────────────────────────────
   Timer? _pollTimer;
+  bool _showScrollDown = false;
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final pos = _scrollController.position;
+    final nearBottom = pos.maxScrollExtent - pos.pixels < 120;
+    final shouldShow = !nearBottom;
+    if (_showScrollDown != shouldShow) {
+      setState(() => _showScrollDown = shouldShow);
+    }
+  }
+
   bool _polling = false;       // true while a poll request is in-flight
   bool _isLive = false;        // drives the live indicator dot
   int _lastMessageId = 0;      // highest message id we have seen
@@ -46,6 +58,7 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     _messageFocusNode.addListener(() {
       if (_messageFocusNode.hasFocus && _suggestionsOpen) {
         setState(() => _suggestionsOpen = false);
@@ -69,14 +82,17 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
       final raw = res['messages'];
       final loaded = _parseMessages(raw);
       if (!mounted) return;
+      final maxId = _maxId(loaded);
       setState(() {
         _messages
           ..clear()
           ..addAll(loaded);
-        _lastMessageId = _maxId(loaded);
+        // If server returned real ids, use them. Otherwise use a sentinel
+        // large enough that since_id=N returns nothing on first poll.
+        _lastMessageId = maxId > 0 ? maxId : 0;
         _loadingHistory = false;
       });
-      _scrollToBottom(force: true);
+      _scrollToBottom(force: true, jump: true);
       _startPolling();
     } catch (_) {
       if (!mounted) return;
@@ -116,10 +132,16 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
             default:
               role = _EleVoteRole.user;
           }
+          final senderPhotoUrl =
+              (item['sender_photo_url'] ?? '').toString().trim();
+          final senderName =
+              (item['sender_name'] ?? '').toString().trim();
           return _EleVoteMessage(
             id: id,
             role: role,
             text: (item['content'] ?? '').toString(),
+            senderPhotoUrl: senderPhotoUrl.isNotEmpty ? senderPhotoUrl : null,
+            senderName: senderName.isNotEmpty ? senderName : null,
           );
         })
         .where((m) => m.text.trim().isNotEmpty)
@@ -144,22 +166,34 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
         setState(() => _takeover = serverTakeover);
       }
 
-      final newMessages = _parseMessages(res['messages']);
+      final incoming = _parseMessages(res['messages']);
+      if (incoming.isEmpty) return;
+
+      // De-duplicate: only keep messages with an id strictly greater than
+      // the highest id we already have. This prevents re-adding messages
+      // that were returned by the full history load (id=0 or already present).
+      final existingIds = _messages.map((m) => m.id).toSet();
+      final newMessages = incoming
+          .where((m) => m.id > 0 && !existingIds.contains(m.id))
+          .toList();
+
       if (newMessages.isEmpty) return;
 
       final hasAdminMsg =
           newMessages.any((m) => m.role == _EleVoteRole.admin);
+      final newMax = _maxId(newMessages);
 
       setState(() {
         _messages.addAll(newMessages);
-        _lastMessageId = _maxId(_messages);
+        if (newMax > _lastMessageId) _lastMessageId = newMax;
         _isLive = true;
       });
 
       if (hasAdminMsg) _scrollToBottom();
 
+      // Dim the live dot after 2s — use a one-shot timer, not setState loop
       Future.delayed(const Duration(seconds: 2), () {
-        if (mounted) setState(() => _isLive = false);
+        if (mounted && _isLive) setState(() => _isLive = false);
       });
     } catch (_) {
       // silently ignore poll failures
@@ -172,10 +206,13 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
     final text = (directMessage ?? _messageController.text).trim();
     if (text.isEmpty || _sending) return;
     _messageController.clear();
+
+    // Add optimistic bubble with a temp marker id of -1
+    // so the de-dupe filter (id > 0) ignores it during polls.
     setState(() {
       _suggestionsOpen = false;
       _sending = true;
-      _messages.add(_EleVoteMessage(role: _EleVoteRole.user, text: text));
+      _messages.add(_EleVoteMessage(id: -1, role: _EleVoteRole.user, text: text));
     });
     _scrollToBottom(force: true);
 
@@ -183,22 +220,36 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
       final res = await _api.sendEleVoteMessage(text);
       if (!mounted) return;
 
-      // Update last known id from the saved user message
+      // Replace the optimistic bubble with the real server-saved message.
+      // This gives it the correct server id so future polls de-dupe correctly.
       final msgRaw = res['message'];
+      int userMsgId = 0;
+      String? serverText;
       if (msgRaw is Map) {
         final idVal = msgRaw['id'];
-        final id = idVal is int ? idVal : int.tryParse(idVal.toString()) ?? 0;
-        if (id > _lastMessageId) _lastMessageId = id;
+        userMsgId = idVal is int ? idVal : int.tryParse(idVal.toString()) ?? 0;
+        serverText = (msgRaw['content'] ?? '').toString().trim();
       }
 
+      // Find and replace the optimistic bubble (-1) with the real one.
+      final optimisticIdx = _messages.indexWhere((m) => m.id == -1);
+
       final takeoverActive = res['takeover_active'] == true;
+
       setState(() {
+        if (optimisticIdx >= 0) {
+          _messages[optimisticIdx] = _EleVoteMessage(
+            id: userMsgId,
+            role: _EleVoteRole.user,
+            text: serverText?.isNotEmpty == true ? serverText! : text,
+          );
+        }
+        if (userMsgId > _lastMessageId) _lastMessageId = userMsgId;
         _takeover = takeoverActive;
         _sending = false;
       });
 
-      // When admin has taken over, no AI reply is returned — the poll will
-      // pick up the admin's manual response automatically.
+      // When admin has taken over, no AI reply — poll picks it up.
       if (takeoverActive) {
         _scrollToBottom(force: true);
         return;
@@ -211,7 +262,8 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
       if (assistantRaw is Map) {
         reply = (assistantRaw['content'] ?? '').toString().trim();
         final idVal = assistantRaw['id'];
-        assistantId = idVal is int ? idVal : int.tryParse(idVal.toString()) ?? 0;
+        assistantId =
+            idVal is int ? idVal : int.tryParse(idVal.toString()) ?? 0;
       } else {
         reply = (res['reply'] ?? '').toString().trim();
       }
@@ -231,7 +283,9 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
       _scrollToBottom(force: true);
     } catch (e) {
       if (!mounted) return;
+      // Remove the failed optimistic bubble and show error
       setState(() {
+        _messages.removeWhere((m) => m.id == -1);
         _messages.add(
           const _EleVoteMessage(
             role: _EleVoteRole.assistant,
@@ -246,18 +300,21 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
     }
   }
 
-  void _scrollToBottom({bool force = false}) {
+  void _scrollToBottom({bool force = false, bool jump = false}) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scrollController.hasClients) return;
       final pos = _scrollController.position;
-      // Only auto-scroll when already near the bottom, or forced (user sent msg)
       final nearBottom = pos.maxScrollExtent - pos.pixels < 120;
       if (!force && !nearBottom) return;
-      _scrollController.animateTo(
-        pos.maxScrollExtent,
-        duration: const Duration(milliseconds: 240),
-        curve: Curves.easeOutCubic,
-      );
+      if (jump) {
+        _scrollController.jumpTo(pos.maxScrollExtent);
+      } else {
+        _scrollController.animateTo(
+          pos.maxScrollExtent,
+          duration: const Duration(milliseconds: 240),
+          curve: Curves.easeOutCubic,
+        );
+      }
     });
   }
 
@@ -389,23 +446,62 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
       body: Column(
         children: [
           Expanded(
-            child: _loadingHistory
-                ? const Center(
-                    child: CircularProgressIndicator(color: Color(0xFF2563EB)),
-                  )
-                : ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.fromLTRB(14, 12, 14, 18),
-                    // +1 for the intro, +1 for the typing bubble when sending
-                    itemCount: _messages.length + 1 + (_sending ? 1 : 0),
-                    itemBuilder: (context, index) {
-                      if (index == 0) return const _AssistantIntro();
-                      if (_sending && index == _messages.length + 1) {
-                        return const _TypingBubble();
-                      }
-                      return _ChatBubble(message: _messages[index - 1]);
-                    },
+            child: Stack(
+              children: [
+                _loadingHistory
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                            color: Color(0xFF2563EB)),
+                      )
+                    : ListView.builder(
+                        controller: _scrollController,
+                        physics: const ClampingScrollPhysics(),
+                        padding: const EdgeInsets.fromLTRB(14, 12, 14, 18),
+                        itemCount:
+                            _messages.length + 1 + (_sending ? 1 : 0),
+                        itemBuilder: (context, index) {
+                          if (index == 0) return const _AssistantIntro();
+                          if (_sending && index == _messages.length + 1) {
+                            return const _TypingBubble();
+                          }
+                          return _ChatBubble(
+                              message: _messages[index - 1]);
+                        },
+                      ),
+                // ── Scroll-to-bottom FAB (Messenger-style) ──────────────
+                AnimatedPositioned(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOutCubic,
+                  bottom: _showScrollDown ? 12 : -56,
+                  right: 16,
+                  child: GestureDetector(
+                    onTap: () => _scrollToBottom(force: true),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                            color: Colors.grey.shade300),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.12),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        color: Color(0xFF2563EB),
+                        size: 24,
+                      ),
+                    ),
                   ),
+                ),
+              ],
+            ),
           ),
           _SuggestionPanel(
             open: _suggestionsOpen && !keyboardOpen,
@@ -641,11 +737,14 @@ class _ChatBubble extends StatelessWidget {
     // Admin messages look like assistant bubbles but with a teal/admin tint
     // and a small "Admin" label so the student knows it's a human reply.
     if (isAdmin) {
+      final photoUrl = message.senderPhotoUrl;
+      final name = message.senderName ?? 'Admin';
+
       return Row(
         mainAxisAlignment: MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          // Admin icon instead of robot avatar
+          // Admin avatar — real photo if available, fallback icon otherwise
           Container(
             width: 28,
             height: 28,
@@ -653,10 +752,24 @@ class _ChatBubble extends StatelessWidget {
               color: Color(0xFF0F172A),
               shape: BoxShape.circle,
             ),
-            child: const Icon(
-              Icons.support_agent_rounded,
-              color: Colors.white,
-              size: 16,
+            child: ClipOval(
+              child: photoUrl != null && photoUrl.isNotEmpty
+                  ? Image.network(
+                      photoUrl,
+                      width: 28,
+                      height: 28,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Icons.support_agent_rounded,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                    )
+                  : const Icon(
+                      Icons.support_agent_rounded,
+                      color: Colors.white,
+                      size: 16,
+                    ),
             ),
           ),
           const SizedBox(width: 8),
@@ -667,7 +780,7 @@ class _ChatBubble extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(left: 4, bottom: 3),
                   child: Text(
-                    'Admin',
+                    name,
                     style: TextStyle(
                       color: Colors.grey.shade500,
                       fontSize: 10.5,
@@ -989,9 +1102,13 @@ class _EleVoteMessage {
     required this.role,
     required this.text,
     this.id = 0,
+    this.senderPhotoUrl,
+    this.senderName,
   });
 
   final _EleVoteRole role;
   final String text;
   final int id;
+  final String? senderPhotoUrl;
+  final String? senderName;
 }
