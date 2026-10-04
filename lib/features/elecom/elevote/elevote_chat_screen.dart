@@ -76,7 +76,7 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
         _lastMessageId = _maxId(loaded);
         _loadingHistory = false;
       });
-      _scrollToBottom();
+      _scrollToBottom(force: true);
       _startPolling();
     } catch (_) {
       if (!mounted) return;
@@ -177,7 +177,7 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
       _sending = true;
       _messages.add(_EleVoteMessage(role: _EleVoteRole.user, text: text));
     });
-    _scrollToBottom();
+    _scrollToBottom(force: true);
 
     try {
       final res = await _api.sendEleVoteMessage(text);
@@ -200,7 +200,7 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
       // When admin has taken over, no AI reply is returned — the poll will
       // pick up the admin's manual response automatically.
       if (takeoverActive) {
-        _scrollToBottom();
+        _scrollToBottom(force: true);
         return;
       }
 
@@ -228,7 +228,7 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
         );
         if (assistantId > _lastMessageId) _lastMessageId = assistantId;
       });
-      _scrollToBottom();
+      _scrollToBottom(force: true);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -242,15 +242,19 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
         _sending = false;
       });
       AppToast.error(context, 'EleVote AI is unavailable.');
-      _scrollToBottom();
+      _scrollToBottom(force: true);
     }
   }
 
-  void _scrollToBottom() {
+  void _scrollToBottom({bool force = false}) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scrollController.hasClients) return;
+      final pos = _scrollController.position;
+      // Only auto-scroll when already near the bottom, or forced (user sent msg)
+      final nearBottom = pos.maxScrollExtent - pos.pixels < 120;
+      if (!force && !nearBottom) return;
       _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
+        pos.maxScrollExtent,
         duration: const Duration(milliseconds: 240),
         curve: Curves.easeOutCubic,
       );
@@ -389,15 +393,18 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
                 ? const Center(
                     child: CircularProgressIndicator(color: Color(0xFF2563EB)),
                   )
-                : ListView(
+                : ListView.builder(
                     controller: _scrollController,
                     padding: const EdgeInsets.fromLTRB(14, 12, 14, 18),
-                    children: [
-                      const _AssistantIntro(),
-                      for (final message in _messages)
-                        _ChatBubble(message: message),
-                      if (_sending) const _TypingBubble(),
-                    ],
+                    // +1 for the intro, +1 for the typing bubble when sending
+                    itemCount: _messages.length + 1 + (_sending ? 1 : 0),
+                    itemBuilder: (context, index) {
+                      if (index == 0) return const _AssistantIntro();
+                      if (_sending && index == _messages.length + 1) {
+                        return const _TypingBubble();
+                      }
+                      return _ChatBubble(message: _messages[index - 1]);
+                    },
                   ),
           ),
           _SuggestionPanel(
