@@ -136,9 +136,19 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
       }
     } on ElecomApiException catch (e) {
       if (!mounted) return;
+      final isConcurrency = e.message.toUpperCase().contains('CONCURRENCY') ||
+          e.message.toUpperCase().contains('BUSY') ||
+          e.message.contains('concurrency_limit');
+      final isQuota = e.message.toUpperCase().contains('QUOTA') ||
+          e.message.toUpperCase().contains('UNAVAILABLE') ||
+          e.message.contains('facepp_quota_error');
       final msg = ElecomMobileApi.isFaceAlreadyEnrolled(e)
           ? 'This face is already registered to another account. Please contact ELECOM.'
-          : 'Enrollment could not be saved. ${e.message}';
+          : isQuota
+              ? 'Face verification is currently unavailable. Please contact ELECOM or try again later.'
+              : isConcurrency
+                  ? 'The face verification service is temporarily busy. Please wait a moment and tap Retry.'
+                  : 'Enrollment could not be saved. ${e.message}';
       setState(() {
         _uploadFailed = true;
         _status = msg;
