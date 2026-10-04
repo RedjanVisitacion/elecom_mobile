@@ -73,4 +73,5 @@ class MobileApiPaths {
   static String get adminCandidatesDelete => '$base/admin/candidates/delete/';
   static String get adminCandidatesBulkDelete =>
       '$base/admin/candidates/bulk-delete/';
+  static String get calendarEvents => '$base/calendar-events/';
 }

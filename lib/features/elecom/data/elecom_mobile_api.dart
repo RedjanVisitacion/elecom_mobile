@@ -38,6 +38,23 @@ class ElecomMobileApi {
     return _getJson(MobileApiPaths.elevoteChat);
   }
 
+  Future<List<Map<String, dynamic>>> getCalendarEvents({
+    int? year,
+    int? month,
+  }) async {
+    String url = MobileApiPaths.calendarEvents;
+    if (year != null && month != null) {
+      url = '$url?year=$year&month=$month';
+    }
+    final res = await _getJson(url);
+    final raw = res['events'];
+    if (raw is! List) return <Map<String, dynamic>>[];
+    return raw
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
+  }
+
   Future<Map<String, dynamic>> getEleVoteHistorySince(int sinceId) async {
     return _getJson('${MobileApiPaths.elevoteChat}?since_id=$sinceId');
   }

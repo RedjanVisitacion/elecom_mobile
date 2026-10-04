@@ -26,6 +26,7 @@ import '../profile/profile_screen.dart';
 import '../results/results_screen.dart';
 import 'utils/theme_notifier.dart';
 import 'widgets/candidate_application_promo.dart';
+import 'widgets/calendar_events_card.dart';
 import 'widgets/election_home_countdown.dart';
 import 'widgets/election_transparency_card.dart';
 import 'widgets/home_candidates_strip.dart';
@@ -64,6 +65,7 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
   bool _loadingLedger = false;
   int _totalVoters = 0;
   int _totalCandidates = 0;
+  List<Map<String, dynamic>> _calendarEvents = <Map<String, dynamic>>[];
   DateTime _now = DateTime.now();
   Timer? _clockTimer;
   bool _homeTutorialRequested = false;
@@ -186,6 +188,7 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
     _loadHomeCandidates();
     _loadLedgerSummary();
     _loadElectionMetrics();
+    _loadCalendarEvents();
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() => _now = DateTime.now());
     });
@@ -284,6 +287,7 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
       _boundedRefreshTask(_loadHomeCandidates()),
       _boundedRefreshTask(_loadLedgerSummary()),
       _boundedRefreshTask(_loadElectionMetrics()),
+      _boundedRefreshTask(_loadCalendarEvents()),
     ], eagerError: false);
     if (mounted) {
       setState(() => _loadingLedger = false);
@@ -393,6 +397,16 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
       });
     } catch (_) {
       // silently ignore; stats stay at 0
+    }
+  }
+
+  Future<void> _loadCalendarEvents() async {
+    try {
+      final events = await _api.getCalendarEvents();
+      if (!mounted) return;
+      setState(() => _calendarEvents = events);
+    } catch (_) {
+      // silently ignore; calendar stays empty
     }
   }
 
@@ -1446,26 +1460,35 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // ── Banner + overlapping info card (Globe-style) ──────────
-                  SizedBox(
-                    height: 340,
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        // Banner
-                        Positioned(
-                          top: 0, left: 0, right: 0,
-                          child: _buildHomeHeader(context),
-                        ),
-                        // Info card: 15% overlap into the banner bottom
-                        Positioned(
-                          top: 140,
-                          left: 0,
-                          right: 0,
-                          child: _buildInfoCard(context),
-                        ),
-                      ],
+                  // ── Sliding cards: Profile ↔ Election Countdown ──────────
+                  _SlidingCardStack(
+                    profileCard: _buildInfoCard(context),
+                    countdownCard: ElectionHomeCountdown(
+                      key: ValueKey<int>(_homeCountdownVersion),
+                      orgName: widget.orgName,
+                      embeddedInProfileCard: false,
+                      isPremiumMode: isPremiumMode,
+                      tutorialPrimaryActionKey:
+                          ElecomTutorialKeys.homePrimaryAction,
+                      onVoteNow: _openElectionForVoting,
+                      onViewResults: () {
+                        setState(() {
+                          _resultsScreenVersion++;
+                          _currentIndex = 1;
+                        });
+                      },
+                      onViewReceipt: () {
+                        setState(() {
+                          if (_latestReceipt == null) {
+                            _receiptRefreshNonce++;
+                          }
+                          _currentIndex = 3;
+                        });
+                      },
                     ),
+                    header: _buildHomeHeader(context),
+                    isDarkMode: isDarkMode && !isPremiumMode,
+                    isPremiumMode: isPremiumMode,
                   ),
                   // ── Rest of home content ──────────────────────────────────
                   Padding(
@@ -1473,28 +1496,11 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        ElectionHomeCountdown(
-                          key: ValueKey<int>(_homeCountdownVersion),
-                          orgName: widget.orgName,
-                          embeddedInProfileCard: false,
+                        const SizedBox(height: 12),
+                        CalendarEventsCard(
+                          events: _calendarEvents,
                           isPremiumMode: isPremiumMode,
-                          tutorialPrimaryActionKey:
-                              ElecomTutorialKeys.homePrimaryAction,
-                          onVoteNow: _openElectionForVoting,
-                          onViewResults: () {
-                            setState(() {
-                              _resultsScreenVersion++;
-                              _currentIndex = 1;
-                            });
-                          },
-                          onViewReceipt: () {
-                            setState(() {
-                              if (_latestReceipt == null) {
-                                _receiptRefreshNonce++;
-                              }
-                              _currentIndex = 3;
-                            });
-                          },
+                          isDarkMode: isDarkMode && !isPremiumMode,
                         ),
                         const SizedBox(height: 10),
                         HomeCandidatesStrip(
@@ -1559,6 +1565,117 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
   }
 
   // (previous _displayName removed; home tab now uses profile summary row)
+}
+
+// ── Sliding card stack: Profile card ↔ Election Countdown ────────────────────
+/// Shows the header banner once, with two swipeable cards overlapping it.
+/// Swiping left reveals the Election Countdown; swiping right reveals the
+/// Profile card.  A page-dot indicator sits below the cards.
+class _SlidingCardStack extends StatefulWidget {
+  const _SlidingCardStack({
+    required this.profileCard,
+    required this.countdownCard,
+    required this.header,
+    required this.isDarkMode,
+    required this.isPremiumMode,
+  });
+
+  final Widget profileCard;
+  final Widget countdownCard;
+  final Widget header;
+  final bool isDarkMode;
+  final bool isPremiumMode;
+
+  @override
+  State<_SlidingCardStack> createState() => _SlidingCardStackState();
+}
+
+class _SlidingCardStackState extends State<_SlidingCardStack> {
+  final PageController _pageController = PageController();
+  int _page = 0;
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  Color get _dotActive =>
+      widget.isDarkMode ? const Color(0xFF60A5FA) : const Color(0xFF2563EB);
+  Color get _dotInactive =>
+      (widget.isDarkMode ? const Color(0xFF60A5FA) : const Color(0xFF2563EB))
+          .withValues(alpha: 0.25);
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Fixed height container — banner is always visible, card slides over it
+        SizedBox(
+          height: 340,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              // Banner — shared, never moves
+              Positioned(
+                top: 0, left: 0, right: 0,
+                child: widget.header,
+              ),
+              // Swipeable card area overlapping banner
+              Positioned(
+                top: 140,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: PageView(
+                  controller: _pageController,
+                  onPageChanged: (i) => setState(() => _page = i),
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(0, 0, 0, 0),
+                      child: widget.profileCard,
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                      child: widget.countdownCard,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Page dots
+        Padding(
+          padding: const EdgeInsets.only(top: 8, bottom: 2),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(2, (i) {
+              final active = i == _page;
+              return GestureDetector(
+                onTap: () => _pageController.animateToPage(
+                  i,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOutCubic,
+                ),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  width: active ? 20 : 7,
+                  height: 7,
+                  decoration: BoxDecoration(
+                    color: active ? _dotActive : _dotInactive,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 ThemeData _premiumDashboardTheme() {
