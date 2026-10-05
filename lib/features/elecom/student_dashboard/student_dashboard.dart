@@ -1514,11 +1514,10 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
                   ),
                   // ── Rest of home content ──────────────────────────────────
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+                    padding: const EdgeInsets.fromLTRB(16, 6, 16, 16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const SizedBox(height: 4),
                         CalendarEventsCard(
                           events: _calendarEvents,
                           isPremiumMode: isPremiumMode,
@@ -1651,8 +1650,8 @@ class _SlidingCardStackState extends State<_SlidingCardStack> {
 
   @override
   Widget build(BuildContext context) {
-    // stackH = banner overlap (140) + card height + dots area (20)
-    const double stackH = 140 + _cardH + 20;
+    // stackH = banner overlap (140) + card height + dots area (12)
+    const double stackH = 140 + _cardH + 12;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -1701,7 +1700,7 @@ class _SlidingCardStackState extends State<_SlidingCardStack> {
 
               // Dots — pinned at bottom of stack, always same position
               Positioned(
-                bottom: 4,
+                bottom: 2,
                 left: 0,
                 right: 0,
                 child: Row(
@@ -1716,9 +1715,9 @@ class _SlidingCardStackState extends State<_SlidingCardStack> {
                       ),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
-                        margin: const EdgeInsets.symmetric(horizontal: 3),
-                        width: active ? 20 : 7,
-                        height: 7,
+                        margin: const EdgeInsets.symmetric(horizontal: 2),
+                        width: active ? 14 : 5,
+                        height: 5,
                         decoration: BoxDecoration(
                           color: active ? _dotActive : _dotInactive,
                           borderRadius: BorderRadius.circular(999),

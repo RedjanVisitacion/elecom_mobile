@@ -254,7 +254,7 @@ class _CalendarEventsCardState extends State<CalendarEventsCard> {
                       d,
                       style: TextStyle(
                         color: _subColor,
-                        fontSize: 10,
+                        fontSize: 9.5,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -276,7 +276,7 @@ class _CalendarEventsCardState extends State<CalendarEventsCard> {
                     final cellIndex = rowIdx * 7 + colIdx;
                     final day = cellIndex - startOffset + 1;
                     if (day < 1 || day > daysInMonth) {
-                      return const Expanded(child: SizedBox(height: 34));
+                      return const Expanded(child: SizedBox(height: 30));
                     }
                     final isToday = today.year == _displayMonth.year &&
                         today.month == _displayMonth.month &&
@@ -288,7 +288,7 @@ class _CalendarEventsCardState extends State<CalendarEventsCard> {
                             ? () => _showEventDetail(dayEvents.first)
                             : null,
                         child: Container(
-                          height: 34,
+                          height: 30,
                           alignment: Alignment.center,
                           decoration: isToday
                               ? BoxDecoration(
@@ -306,7 +306,7 @@ class _CalendarEventsCardState extends State<CalendarEventsCard> {
                                 '$day',
                                 style: TextStyle(
                                   color: isToday ? _blue : _textColor,
-                                  fontSize: 11.5,
+                                  fontSize: 10.5,
                                   fontWeight: isToday
                                       ? FontWeight.w700
                                       : FontWeight.w500,
@@ -356,95 +356,141 @@ class _CalendarEventsCardState extends State<CalendarEventsCard> {
 
   Widget _buildUpcomingEvents() {
     final now = DateTime.now();
-    final upcoming = widget.events
-        .where((e) {
-          final d = DateTime.tryParse((e['event_date'] ?? '').toString());
-          if (d == null) return false;
-          final endRaw = (e['end_date'] ?? '').toString().trim();
-          final endD = endRaw.isNotEmpty ? DateTime.tryParse(endRaw) : d;
-          final effectiveEnd = endD ?? d;
-          return !DateTime(
-            effectiveEnd.year,
-            effectiveEnd.month,
-            effectiveEnd.day,
-          ).isBefore(DateTime(now.year, now.month, now.day));
-        })
-        .take(3)
-        .toList();
+    final today = DateTime(now.year, now.month, now.day);
 
-    if (upcoming.isEmpty) return const SizedBox.shrink();
+    final relevant = widget.events.where((e) {
+      final d = DateTime.tryParse((e['event_date'] ?? '').toString());
+      if (d == null) return false;
+      final endRaw = (e['end_date'] ?? '').toString().trim();
+      final endD = endRaw.isNotEmpty ? DateTime.tryParse(endRaw) : d;
+      final effectiveEnd = DateTime(
+        (endD ?? d).year, (endD ?? d).month, (endD ?? d).day,
+      );
+      return !effectiveEnd.isBefore(today);
+    }).take(4).toList();
+
+    if (relevant.isEmpty) return const SizedBox.shrink();
+
+    // Split into today vs future
+    final todayEvents = relevant.where((e) {
+      final d = DateTime.tryParse((e['event_date'] ?? '').toString());
+      if (d == null) return false;
+      final start = DateTime(d.year, d.month, d.day);
+      final endRaw = (e['end_date'] ?? '').toString().trim();
+      final endD = endRaw.isNotEmpty ? DateTime.tryParse(endRaw) : d;
+      final end = DateTime((endD ?? d).year, (endD ?? d).month, (endD ?? d).day);
+      return !today.isBefore(start) && !today.isAfter(end);
+    }).toList();
+
+    final futureEvents = relevant.where((e) {
+      final d = DateTime.tryParse((e['event_date'] ?? '').toString());
+      if (d == null) return false;
+      return DateTime(d.year, d.month, d.day).isAfter(today);
+    }).take(3).toList();
+
+    Widget eventRow(Map<String, dynamic> e) {
+      final color = _parseColor(e['color']?.toString());
+      final title = (e['title'] ?? '').toString();
+      final dateStr = (e['event_date'] ?? '').toString();
+      final startT = _formatTime(e['start_time']?.toString());
+      return GestureDetector(
+        onTap: () => _showEventDetail(e),
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 7),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 3,
+                height: 36,
+                margin: const EdgeInsets.only(right: 10, top: 2),
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: _textColor,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12.5,
+                        height: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      startT.isNotEmpty ? '$dateStr · $startT' : dateStr,
+                      style: TextStyle(
+                        color: _subColor,
+                        fontSize: 11,
+                        height: 1.2,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Divider(color: _gridBorder, height: 20),
-        Text(
-          'Upcoming',
-          style: TextStyle(
-            color: _titleColor,
-            fontWeight: FontWeight.w700,
-            fontSize: 12,
-            letterSpacing: 0.2,
-          ),
-        ),
-        const SizedBox(height: 6),
-        ...upcoming.map((e) {
-          final color = _parseColor(e['color']?.toString());
-          final title = (e['title'] ?? '').toString();
-          final dateStr = (e['event_date'] ?? '').toString();
-          final startT = _formatTime(e['start_time']?.toString());
-          return GestureDetector(
-            onTap: () => _showEventDetail(e),
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 7),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 3,
-                    height: 36,
-                    margin: const EdgeInsets.only(right: 10, top: 2),
-                    decoration: BoxDecoration(
-                      color: color,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: _textColor,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 12.5,
-                            height: 1.2,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          startT.isNotEmpty ? '$dateStr · $startT' : dateStr,
-                          style: TextStyle(
-                            color: _subColor,
-                            fontSize: 11,
-                            height: 1.2,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+        // ── Today ───────────────────────────────────────────────────────
+        if (todayEvents.isNotEmpty) ...[
+          Row(
+            children: [
+              Container(
+                width: 6,
+                height: 6,
+                margin: const EdgeInsets.only(right: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF22C55E),
+                  shape: BoxShape.circle,
+                ),
               ),
+              Text(
+                'Today',
+                style: TextStyle(
+                  color: const Color(0xFF22C55E),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ...todayEvents.map(eventRow),
+        ],
+        // ── Upcoming ────────────────────────────────────────────────────
+        if (futureEvents.isNotEmpty) ...[
+          if (todayEvents.isNotEmpty) const SizedBox(height: 4),
+          Text(
+            'Upcoming',
+            style: TextStyle(
+              color: _titleColor,
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+              letterSpacing: 0.2,
             ),
-          );
-        }),
+          ),
+          const SizedBox(height: 6),
+          ...futureEvents.map(eventRow),
+        ],
       ],
     );
   }
-
   // ── Build ───────────────────────────────────────────────────────────────────
 
   @override
@@ -485,19 +531,23 @@ class _CalendarEventsCardState extends State<CalendarEventsCard> {
                   children: [
                     Icon(
                       Icons.calendar_month_rounded,
-                      size: 15,
+                      size: 14,
                       color: _titleColor,
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Calendar of Activities',
-                      style: TextStyle(
-                        color: _titleColor,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 14,
+                    const SizedBox(width: 5),
+                    Flexible(
+                      child: Text(
+                        'Calendar of Activities',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: _titleColor,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13,
+                        ),
                       ),
                     ),
-                    const Spacer(),
+                    const SizedBox(width: 6),
                     // Month nav — only visible when expanded
                     if (!_collapsed) ...[
                       GestureDetector(
@@ -510,7 +560,7 @@ class _CalendarEventsCardState extends State<CalendarEventsCard> {
                         child: Icon(
                           Icons.chevron_left_rounded,
                           color: _blue,
-                          size: 20,
+                          size: 18,
                         ),
                       ),
                       const SizedBox(width: 2),
@@ -519,7 +569,7 @@ class _CalendarEventsCardState extends State<CalendarEventsCard> {
                         style: TextStyle(
                           color: _textColor,
                           fontWeight: FontWeight.w600,
-                          fontSize: 11.5,
+                          fontSize: 11,
                         ),
                       ),
                       const SizedBox(width: 2),
@@ -533,10 +583,10 @@ class _CalendarEventsCardState extends State<CalendarEventsCard> {
                         child: Icon(
                           Icons.chevron_right_rounded,
                           color: _blue,
-                          size: 20,
+                          size: 18,
                         ),
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 4),
                     ],
                     // Collapse / expand chevron
                     AnimatedRotation(
@@ -553,7 +603,7 @@ class _CalendarEventsCardState extends State<CalendarEventsCard> {
                 ),
               ),
             ),
-            // ── Collapsible body — calendar grid + upcoming events ─────────
+            // ── Collapsible body — calendar grid only ─────────────────────
             AnimatedSize(
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeOutCubic,
@@ -561,15 +611,14 @@ class _CalendarEventsCardState extends State<CalendarEventsCard> {
               child: _collapsed
                   ? const SizedBox.shrink()
                   : Padding(
-                      padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _buildCalendarGrid(),
-                          _buildUpcomingEvents(),
-                        ],
-                      ),
+                      padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+                      child: _buildCalendarGrid(),
                     ),
+            ),
+            // ── Today / Upcoming — always visible ─────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+              child: _buildUpcomingEvents(),
             ),
           ],
         ),
