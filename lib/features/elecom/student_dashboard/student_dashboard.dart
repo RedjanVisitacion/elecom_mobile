@@ -1619,8 +1619,8 @@ class _SlidingCardStackState extends State<_SlidingCardStack> {
   @override
   void initState() {
     super.initState();
-    // Auto-slide every 5 seconds — not too fast
-    _autoSlideTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+    // Auto-slide every 30 seconds — slow and unobtrusive
+    _autoSlideTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       if (!mounted || !_pageController.hasClients) return;
       final next = (_page + 1) % 2;
       _pageController.animateToPage(
