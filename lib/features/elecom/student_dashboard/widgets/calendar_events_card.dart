@@ -26,6 +26,7 @@ class CalendarEventsCard extends StatefulWidget {
 
 class _CalendarEventsCardState extends State<CalendarEventsCard> {
   late DateTime _displayMonth;
+  bool _collapsed = true; // starts collapsed to save space
 
   @override
   void initState() {
@@ -452,9 +453,7 @@ class _CalendarEventsCardState extends State<CalendarEventsCard> {
       decoration: BoxDecoration(
         color: _cardBg,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: _blue.withValues(alpha: 0.14),
-        ),
+        border: Border.all(color: _blue.withValues(alpha: 0.14)),
         boxShadow: [
           BoxShadow(
             color: _blue.withValues(alpha: 0.07),
@@ -473,37 +472,34 @@ class _CalendarEventsCardState extends State<CalendarEventsCard> {
               height: 4,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [
-                    const Color(0xFF0C1E70),
-                    _blue,
-                  ],
+                  colors: [const Color(0xFF0C1E70), _blue],
                 ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // ── Header row ──────────────────────────────────────────
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.calendar_month_rounded,
-                        size: 15,
+            // ── Tappable header row — always visible ──────────────────────
+            InkWell(
+              onTap: () => setState(() => _collapsed = !_collapsed),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.calendar_month_rounded,
+                      size: 15,
+                      color: _titleColor,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Calendar of Activities',
+                      style: TextStyle(
                         color: _titleColor,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
                       ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Calendar of Activities',
-                        style: TextStyle(
-                          color: _titleColor,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 14,
-                        ),
-                      ),
-                      const Spacer(),
-                      // Month nav
+                    ),
+                    const Spacer(),
+                    // Month nav — only visible when expanded
+                    if (!_collapsed) ...[
                       GestureDetector(
                         onTap: () => setState(() {
                           _displayMonth = DateTime(
@@ -540,15 +536,40 @@ class _CalendarEventsCardState extends State<CalendarEventsCard> {
                           size: 20,
                         ),
                       ),
+                      const SizedBox(width: 6),
                     ],
-                  ),
-                  const SizedBox(height: 10),
-                  // ── Calendar grid ───────────────────────────────────────
-                  _buildCalendarGrid(),
-                  // ── Upcoming events ─────────────────────────────────────
-                  _buildUpcomingEvents(),
-                ],
+                    // Collapse / expand chevron
+                    AnimatedRotation(
+                      turns: _collapsed ? 0.0 : 0.5,
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeOutCubic,
+                      child: Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        color: _blue,
+                        size: 20,
+                      ),
+                    ),
+                  ],
+                ),
               ),
+            ),
+            // ── Collapsible body — calendar grid + upcoming events ─────────
+            AnimatedSize(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOutCubic,
+              alignment: Alignment.topCenter,
+              child: _collapsed
+                  ? const SizedBox.shrink()
+                  : Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _buildCalendarGrid(),
+                          _buildUpcomingEvents(),
+                        ],
+                      ),
+                    ),
             ),
           ],
         ),

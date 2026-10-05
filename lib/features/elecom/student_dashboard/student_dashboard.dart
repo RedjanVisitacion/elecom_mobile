@@ -1615,9 +1615,26 @@ class _SlidingCardStack extends StatefulWidget {
 class _SlidingCardStackState extends State<_SlidingCardStack> {
   final PageController _pageController = PageController();
   int _page = 0;
+  Timer? _autoSlideTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    // Auto-slide every 5 seconds — not too fast
+    _autoSlideTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (!mounted || !_pageController.hasClients) return;
+      final next = (_page + 1) % 2;
+      _pageController.animateToPage(
+        next,
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeInOutCubic,
+      );
+    });
+  }
 
   @override
   void dispose() {
+    _autoSlideTimer?.cancel();
     _pageController.dispose();
     super.dispose();
   }
@@ -1628,8 +1645,9 @@ class _SlidingCardStackState extends State<_SlidingCardStack> {
       (widget.isDarkMode ? const Color(0xFF60A5FA) : const Color(0xFF2563EB))
           .withValues(alpha: 0.25);
 
-  // Single card height shared by BOTH slides — change this one value to resize both.
-  static const double _cardH = 220.0;
+  // Single card height shared by BOTH slides.
+  // Must be >= the countdown card's natural content height to prevent overflow.
+  static const double _cardH = 235.0;
 
   @override
   Widget build(BuildContext context) {
@@ -1653,19 +1671,31 @@ class _SlidingCardStackState extends State<_SlidingCardStack> {
                 left: 0,
                 right: 0,
                 height: _cardH,
-                child: PageView(
-                  controller: _pageController,
-                  onPageChanged: (i) => setState(() => _page = i),
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: SizedBox.expand(child: widget.profileCard),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: SizedBox.expand(child: widget.countdownCard),
-                    ),
-                  ],
+                child: ClipRect(
+                  child: PageView(
+                    controller: _pageController,
+                    onPageChanged: (i) => setState(() => _page = i),
+                    children: [
+                      // Slide 0 — Profile card
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: OverflowBox(
+                          alignment: Alignment.topCenter,
+                          maxHeight: _cardH,
+                          child: widget.profileCard,
+                        ),
+                      ),
+                      // Slide 1 — Election countdown
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: OverflowBox(
+                          alignment: Alignment.topCenter,
+                          maxHeight: _cardH,
+                          child: widget.countdownCard,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
 
