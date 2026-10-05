@@ -627,27 +627,28 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
     final emailMasked = _maskEmail(_email);
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+      margin: EdgeInsets.zero,
       height: double.infinity,
       decoration: BoxDecoration(
         color: cardBg,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDarkMode ? 0.35 : 0.10),
-            blurRadius: 18,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: isDarkMode ? 0.20 : 0.07),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.max,
           children: [
             // ── Blue accent bar ──────────────────────────────────────────
             Container(
-              height: 6,
+              height: 5,
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   colors: [Color(0xFF0C1E70), Color(0xFF1D4ED8)],
@@ -655,109 +656,129 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
               ),
             ),
             // ── Card content ─────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Name + date row
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Name + date + contact
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            Text(
-                              _displayFirstName(),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: nameColor,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 15,
-                                height: 1.1,
-                                letterSpacing: 0.1,
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _displayFirstName(),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: nameColor,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 15,
+                                      height: 1.1,
+                                      letterSpacing: 0.1,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 1),
+                                  Text(
+                                    dateStr,
+                                    style: TextStyle(
+                                      color: subColor,
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            const SizedBox(height: 1),
-                            Text(
-                              dateStr,
-                              style: TextStyle(
-                                color: subColor,
-                                fontSize: 10.5,
-                                fontWeight: FontWeight.w500,
-                              ),
+                            Image.asset(
+                              'assets/USTP_ELECOM_ICON.png',
+                              width: 28,
+                              height: 28,
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, __, ___) =>
+                                  const SizedBox.shrink(),
                             ),
                           ],
                         ),
-                      ),
-                      Image.asset(
-                        'assets/USTP_ELECOM_ICON.png',
-                        width: 28,
-                        height: 28,
-                        fit: BoxFit.contain,
-                        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                      ),
-                    ],
-                  ),
-                  if (phoneMasked.isNotEmpty || emailMasked.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    if (phoneMasked.isNotEmpty)
-                      Text(
-                        phoneMasked,
-                        style: TextStyle(
-                          color: subColor,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    if (emailMasked.isNotEmpty)
-                      Text(
-                        emailMasked,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: subColor,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                  ],
-                  const SizedBox(height: 10),
-                  Divider(color: dividerColor, height: 1),
-                  const SizedBox(height: 10),
-                  // Stats row
-                  IntrinsicHeight(
-                    child: Row(
+                        if (phoneMasked.isNotEmpty || emailMasked.isNotEmpty) ...[
+                          const SizedBox(height: 3),
+                          if (phoneMasked.isNotEmpty)
+                            Text(
+                              phoneMasked,
+                              style: TextStyle(
+                                color: subColor,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          if (emailMasked.isNotEmpty)
+                            Text(
+                              emailMasked,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: subColor,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                        ],
+                      ],
+                    ),
+                    // Divider + stats
+                    Column(
                       children: [
-                        Expanded(
-                          child: _statTile(
-                            context: context,
-                            icon: Iconsax.people,
-                            iconColor: isDarkMode ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
-                            value: _totalVoters > 0 ? _totalVoters.toString() : '—',
-                            label: 'Total Voters',
-                            nameColor: nameColor,
-                            subColor: subColor,
-                          ),
-                        ),
-                        VerticalDivider(color: dividerColor, width: 1),
-                        Expanded(
-                          child: _statTile(
-                            context: context,
-                            icon: Iconsax.profile_2user,
-                            iconColor: isDarkMode ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
-                            value: _totalCandidates > 0 ? _totalCandidates.toString() : '—',
-                            label: 'Total Candidates',
-                            nameColor: nameColor,
-                            subColor: subColor,
+                        Divider(color: dividerColor, height: 1),
+                        const SizedBox(height: 8),
+                        IntrinsicHeight(
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: _statTile(
+                                  context: context,
+                                  icon: Iconsax.people,
+                                  iconColor: isDarkMode
+                                      ? const Color(0xFF60A5FA)
+                                      : const Color(0xFF2563EB),
+                                  value: _totalVoters > 0
+                                      ? _totalVoters.toString()
+                                      : '—',
+                                  label: 'Total Voters',
+                                  nameColor: nameColor,
+                                  subColor: subColor,
+                                ),
+                              ),
+                              VerticalDivider(color: dividerColor, width: 1),
+                              Expanded(
+                                child: _statTile(
+                                  context: context,
+                                  icon: Iconsax.profile_2user,
+                                  iconColor: isDarkMode
+                                      ? const Color(0xFF60A5FA)
+                                      : const Color(0xFF2563EB),
+                                  value: _totalCandidates > 0
+                                      ? _totalCandidates.toString()
+                                      : '—',
+                                  label: 'Total Candidates',
+                                  nameColor: nameColor,
+                                  subColor: subColor,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],
@@ -1497,7 +1518,7 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 4),
                         CalendarEventsCard(
                           events: _calendarEvents,
                           isPremiumMode: isPremiumMode,
@@ -1607,77 +1628,77 @@ class _SlidingCardStackState extends State<_SlidingCardStack> {
       (widget.isDarkMode ? const Color(0xFF60A5FA) : const Color(0xFF2563EB))
           .withValues(alpha: 0.25);
 
+  // Single card height shared by BOTH slides — change this one value to resize both.
+  static const double _cardH = 220.0;
+
   @override
   Widget build(BuildContext context) {
+    // stackH = banner overlap (140) + card height + dots area (20)
+    const double stackH = 140 + _cardH + 20;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Single stack: banner + swipeable card overlapping it — same as the
-        // original layout but with a PageView replacing the single info card.
         SizedBox(
-          height: 390,
+          height: stackH,
           child: Stack(
-            clipBehavior: Clip.hardEdge,
+            clipBehavior: Clip.none,
             children: [
-              // Banner — full-width background photo + greeting + icons
-              Positioned(
-                top: 0, left: 0, right: 0,
-                child: widget.header,
-              ),
-              // Swipeable cards overlap the banner bottom (same top: 140 as before)
+              // Banner — full-width photo, greeting, icons
+              Positioned(top: 0, left: 0, right: 0, child: widget.header),
+
+              // PageView: fixed position, fixed height
               Positioned(
                 top: 140,
                 left: 0,
                 right: 0,
-                bottom: 0,
+                height: _cardH,
                 child: PageView(
                   controller: _pageController,
                   onPageChanged: (i) => setState(() => _page = i),
                   children: [
-                    // Page 0 — Profile / info card — stretched to fill same height as countdown
-                    SizedBox(
-                      height: 250,
-                      child: widget.profileCard,
-                    ),
-                    // Page 1 — Election countdown
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: SizedBox(
-                        height: 250,
-                        child: widget.countdownCard,
-                      ),
+                      child: SizedBox.expand(child: widget.profileCard),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: SizedBox.expand(child: widget.countdownCard),
                     ),
                   ],
                 ),
               ),
+
+              // Dots — pinned at bottom of stack, always same position
+              Positioned(
+                bottom: 4,
+                left: 0,
+                right: 0,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(2, (i) {
+                    final active = i == _page;
+                    return GestureDetector(
+                      onTap: () => _pageController.animateToPage(
+                        i,
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeOutCubic,
+                      ),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        margin: const EdgeInsets.symmetric(horizontal: 3),
+                        width: active ? 20 : 7,
+                        height: 7,
+                        decoration: BoxDecoration(
+                          color: active ? _dotActive : _dotInactive,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ),
             ],
-          ),
-        ),
-        // Page dots
-        Padding(
-          padding: const EdgeInsets.only(top: 6, bottom: 2),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(2, (i) {
-              final active = i == _page;
-              return GestureDetector(
-                onTap: () => _pageController.animateToPage(
-                  i,
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeOutCubic,
-                ),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  margin: const EdgeInsets.symmetric(horizontal: 3),
-                  width: active ? 20 : 7,
-                  height: 7,
-                  decoration: BoxDecoration(
-                    color: active ? _dotActive : _dotInactive,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                ),
-              );
-            }),
           ),
         ),
       ],

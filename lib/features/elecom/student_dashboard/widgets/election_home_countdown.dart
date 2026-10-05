@@ -248,6 +248,7 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.max,
       children: [
         SizedBox(height: widget.embeddedInProfileCard ? 10 : 0),
         if (_loadError != null)
@@ -258,7 +259,8 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
               fontWeight: FontWeight.w700,
             ),
           ),
-        Container(
+        Expanded(
+          child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(widget.isPremiumMode ? 22 : 18),
             gradient: LinearGradient(
@@ -322,7 +324,8 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
               ),
             ],
           ),
-        ),
+        ),    // Container
+        ),    // Expanded
       ],
     );
   }
@@ -339,6 +342,8 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.max,
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
           'ELECOM USTP Oroquieta Campus',
