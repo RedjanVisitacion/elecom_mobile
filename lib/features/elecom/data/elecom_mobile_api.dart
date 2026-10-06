@@ -8,6 +8,12 @@ import '../../../core/network/api_client.dart';
 import 'mobile_api_paths.dart';
 
 class ElecomMobileApi {
+  ElecomMobileApi({http.Client? client})
+    : _client = client ?? ApiClient.httpClient;
+
+  final http.Client _client;
+  static const int candidateRequirementMaxBytes = 8 * 1024 * 1024;
+
   /// Returned by [saveFaceEnrollment] when the server rejects enrollment because
   /// this face matches another user's enrollment (`ok: false`, JSON `code`).
   static const String codeFaceAlreadyEnrolled = 'face_already_enrolled';
@@ -109,7 +115,7 @@ class ElecomMobileApi {
 
       http.StreamedResponse streamed;
       try {
-        streamed = await ApiClient.httpClient.send(request);
+        streamed = await _client.send(request);
       } catch (_) {
         throw const ElecomApiException('Network error: cannot reach server');
       }
@@ -139,7 +145,7 @@ class ElecomMobileApi {
     final uri = Uri.parse(MobileApiPaths.candidatesList);
     http.Response res;
     try {
-      res = await ApiClient.httpClient.get(
+      res = await _client.get(
         uri,
         headers: const {'Accept': 'application/json'},
       );
@@ -167,7 +173,7 @@ class ElecomMobileApi {
     final allUri = Uri.parse(MobileApiPaths.candidatesAll);
     http.Response res;
     try {
-      res = await ApiClient.httpClient.get(
+      res = await _client.get(
         allUri,
         headers: const {'Accept': 'application/json'},
       );
@@ -216,7 +222,7 @@ class ElecomMobileApi {
     ).replace(queryParameters: {'q': q});
     http.Response res;
     try {
-      res = await ApiClient.httpClient.get(
+      res = await _client.get(
         uri,
         headers: const {'Accept': 'application/json'},
       );
@@ -256,7 +262,7 @@ class ElecomMobileApi {
 
     http.StreamedResponse streamed;
     try {
-      streamed = await ApiClient.httpClient.send(request);
+      streamed = await _client.send(request);
     } catch (e, stackTrace) {
       developer.log(
         'Candidate application submit failed to reach $uri',
@@ -276,16 +282,28 @@ class ElecomMobileApi {
   Future<Map<String, dynamic>> submitCandidateRequirements({
     required Map<String, File> files,
   }) async {
+    if (files.isEmpty) {
+      throw const ElecomApiException('Please attach your requirements.');
+    }
     final uri = Uri.parse(MobileApiPaths.candidateApplicationRequirements);
     final request = http.MultipartRequest('POST', uri)
       ..headers['Accept'] = 'application/json';
     for (final entry in files.entries) {
+      final size = await entry.value.length();
+      if (size == 0 || size > candidateRequirementMaxBytes) {
+        final name = entry.value.uri.pathSegments.last;
+        throw ElecomApiException(
+          '$name must be a non-empty file no larger than 8 MB.',
+          code: 'invalid_requirement_size',
+        );
+      }
       request.files.add(
         await http.MultipartFile.fromPath(entry.key, entry.value.path),
       );
     }
+    http.StreamedResponse streamed;
     try {
-      return _decodeStreamed(await ApiClient.httpClient.send(request));
+      streamed = await _client.send(request);
     } catch (e, stackTrace) {
       developer.log(
         'Candidate requirements upload failed to reach $uri',
@@ -295,6 +313,7 @@ class ElecomMobileApi {
       );
       throw const ElecomApiException('Network error: cannot reach server');
     }
+    return _decodeStreamed(streamed);
   }
 
   Future<List<String>> getCandidateApplicationParties() async {
@@ -370,7 +389,7 @@ class ElecomMobileApi {
       );
     http.StreamedResponse streamed;
     try {
-      streamed = await ApiClient.httpClient.send(request);
+      streamed = await _client.send(request);
     } catch (_) {
       throw const ElecomApiException('Network error: cannot reach server');
     }
@@ -395,7 +414,7 @@ class ElecomMobileApi {
     }
     http.StreamedResponse streamed;
     try {
-      streamed = await ApiClient.httpClient.send(request);
+      streamed = await _client.send(request);
     } catch (_) {
       throw const ElecomApiException('Network error: cannot reach server');
     }
@@ -644,7 +663,7 @@ class ElecomMobileApi {
     final uri = Uri.parse(url);
     http.Response res;
     try {
-      res = await ApiClient.httpClient.get(
+      res = await _client.get(
         uri,
         headers: const {'Accept': 'application/json'},
       );
@@ -661,7 +680,7 @@ class ElecomMobileApi {
     final uri = Uri.parse(url);
     http.Response res;
     try {
-      res = await ApiClient.httpClient.post(
+      res = await _client.post(
         uri,
         headers: const {
           'Content-Type': 'application/json',
@@ -679,7 +698,7 @@ class ElecomMobileApi {
     final uri = Uri.parse(url);
     http.Response res;
     try {
-      res = await ApiClient.httpClient.delete(
+      res = await _client.delete(
         uri,
         headers: const {'Accept': 'application/json'},
       );
@@ -715,6 +734,13 @@ class ElecomMobileApi {
   Future<Map<String, dynamic>> _decodeStreamed(
     http.StreamedResponse streamed,
   ) async {
+    if (streamed.statusCode == 413) {
+      await streamed.stream.drain<void>();
+      throw const ElecomApiException(
+        'The server rejected the upload size. Please try smaller files or contact ELECOM support.',
+        code: 'upload_too_large',
+      );
+    }
     try {
       final body = await streamed.stream.bytesToString();
       final decoded = jsonDecode(body);
