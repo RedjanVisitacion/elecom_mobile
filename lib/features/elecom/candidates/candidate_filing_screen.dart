@@ -10,6 +10,7 @@ import '../../../core/notifications/notification_center_store.dart';
 import '../../../core/session/user_session.dart';
 import '../../../core/utils/toast_service.dart';
 import '../data/elecom_mobile_api.dart';
+import '../data/candidate_application_policy.dart';
 import '../student_dashboard/utils/theme_notifier.dart';
 
 const _premiumBlue = Color(0xFF2563EB);
@@ -874,6 +875,11 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
                             isPremiumMode: isPremiumMode,
                             onRequirementsSubmitted: _loadApplicationStatus,
                             onFileAgain: () {
+                              if (!canFileCandidateApplicationAgain(
+                                existingApplication,
+                              )) {
+                                return;
+                              }
                               setState(() {
                                 _existingApplication = null;
                                 _candidatePhoto = null;
@@ -1180,6 +1186,8 @@ class _ApplicationStatusCard extends StatelessWidget {
         .toString()
         .trim()
         .toLowerCase();
+    final canFileAgain = canFileCandidateApplicationAgain(application);
+    final requirementsRejected = status == 'rejected' && !canFileAgain;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final titleColor = isPremiumMode
         ? _premiumInk
@@ -1220,7 +1228,9 @@ class _ApplicationStatusCard extends StatelessWidget {
         bg: const Color(0xFFFFF1F2),
         fg: const Color(0xFFBE123C),
         icon: Icons.cancel_rounded,
-        title: 'Filing Rejected',
+        title: requirementsRejected
+            ? 'Requirements Rejected'
+            : 'Filing Rejected',
         body:
             'ELECOM reviewed your filing and marked it rejected. Please check the reason below or contact ELECOM for clarification.',
       ),
@@ -1428,7 +1438,7 @@ class _ApplicationStatusCard extends StatelessWidget {
               ),
             ],
             const SizedBox(height: 10),
-            if (status == 'rejected') ...[
+            if (canFileAgain) ...[
               Text(
                 'You may correct your filing and submit again.',
                 style: TextStyle(
@@ -1456,7 +1466,9 @@ class _ApplicationStatusCard extends StatelessWidget {
               ),
             ] else
               Text(
-                'You cannot submit another candidate filing for this election.',
+                requirementsRejected
+                    ? 'Your follow-up requirements were rejected. You cannot file again for this election. Contact ELECOM for clarification.'
+                    : 'You cannot submit another candidate filing for this election.',
                 style: TextStyle(
                   color: titleColor,
                   fontWeight: FontWeight.w900,
