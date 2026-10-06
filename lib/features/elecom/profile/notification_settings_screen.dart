@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/notifications/push_notification_service.dart';
+
 import '../../../core/session/notification_preferences.dart';
 
 class NotificationSettingsScreen extends StatefulWidget {
@@ -36,6 +38,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
       _pushNotifications = value;
     });
     await NotificationPreferences.setPushEnabled(value);
+    await PushNotificationService.syncForLoggedInUser();
   }
 
   Future<void> _setInAppNotifications(bool value) async {

@@ -48,3 +48,6 @@ app.*.map.json
 /android/key.properties
 /android/app/*.jks
 /android/app/*.keystore
+
+# Environment Firebase configuration
+/android/app/google-services.json

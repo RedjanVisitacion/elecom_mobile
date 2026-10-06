@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 
 import '../../features/elecom/data/elecom_mobile_api.dart';
 import '../session/notification_preferences.dart';
+import '../session/user_session.dart';
 import 'local_push_service.dart';
 
 class NotificationCenterStore {
@@ -10,34 +14,71 @@ class NotificationCenterStore {
   static final ValueNotifier<List<Map<String, dynamic>>> items =
       ValueNotifier<List<Map<String, dynamic>>>(<Map<String, dynamic>>[]);
   static final ValueNotifier<int> unreadCount = ValueNotifier<int>(0);
-  static final ElecomMobileApi _api = ElecomMobileApi();
+  static ElecomMobileApi _api = ElecomMobileApi();
+
+  @visibleForTesting
+  static void setApiForTesting(ElecomMobileApi api) => _api = api;
   static bool _initialized = false;
+  static bool _hasBaseline = false;
+  static int _generation = 0;
+  static Future<void>? _refreshInFlight;
+  static Timer? _pollTimer;
+  static final _lifecycle = _NotificationLifecycle();
+
+  static void _startPolling() {
+    if (_pollTimer != null) return;
+    WidgetsBinding.instance.addObserver(_lifecycle);
+    _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (_lifecycle.resumed && (UserSession.studentId ?? '').isNotEmpty) {
+        unawaited(refresh());
+      }
+    });
+  }
+
   static final Set<int> _seenNotificationIds = <int>{};
 
   static Future<void> init({bool forceRefresh = false}) async {
     if (_initialized && !forceRefresh) return;
     _initialized = true;
+    _startPolling();
     await refresh();
   }
 
-  static Future<void> refresh() async {
+  static Future<void> refresh() {
+    if ((UserSession.studentId ?? '').isEmpty) return Future.value();
+    return _refreshInFlight ??= _refresh().whenComplete(() {
+      _refreshInFlight = null;
+    });
+  }
+
+  static Future<void> _refresh() async {
+    final generation = _generation;
+    final studentId = UserSession.studentId;
     try {
       final remote = await _api.getNotifications();
+      if (generation != _generation || studentId != UserSession.studentId) {
+        return;
+      }
       final mapped = remote.map(_mapRemoteItem).toList()
         ..sort((a, b) {
           final ap = a['pinned'] == true ? 1 : 0;
           final bp = b['pinned'] == true ? 1 : 0;
-          if (ap != bp) return bp - ap; // pinned first
-          final ac = (a['created_at'] ?? '').toString();
-          final bc = (b['created_at'] ?? '').toString();
-          return bc.compareTo(ac);
+          if (ap != bp) return bp - ap;
+          return (b['created_at'] ?? '').toString().compareTo(
+            (a['created_at'] ?? '').toString(),
+          );
         });
-      await _showLocalPushForNewItems(mapped);
-      items.value = mapped;
+      // Publish the inbox even if Android notification permission is unavailable.
+      if (!listEquals(
+        items.value.map((item) => item.toString()).toList(),
+        mapped.map((item) => item.toString()).toList(),
+      )) {
+        items.value = mapped;
+      }
       unreadCount.value = mapped.where((e) => e['read'] != true).length;
+      await _showLocalPushForNewItems(mapped, generation);
     } catch (_) {
-      items.value = <Map<String, dynamic>>[];
-      unreadCount.value = 0;
+      // Preserve the last successful inbox and retry on the next poll.
     }
   }
 
@@ -120,7 +161,12 @@ class NotificationCenterStore {
   }
 
   static void clearLocal() {
+    _generation++;
     _initialized = false;
+    _hasBaseline = false;
+    _pollTimer?.cancel();
+    _pollTimer = null;
+    WidgetsBinding.instance.removeObserver(_lifecycle);
     _seenNotificationIds.clear();
     items.value = <Map<String, dynamic>>[];
     unreadCount.value = 0;
@@ -128,17 +174,20 @@ class NotificationCenterStore {
 
   static Future<void> _showLocalPushForNewItems(
     List<Map<String, dynamic>> mapped,
+    int generation,
   ) async {
     final currentIds = mapped
         .map((e) => (e['id'] as num?)?.toInt() ?? 0)
         .where((id) => id > 0)
         .toSet();
-    if (_seenNotificationIds.isEmpty) {
+    if (!_hasBaseline) {
+      _hasBaseline = true;
       _seenNotificationIds.addAll(currentIds);
       return;
     }
 
     final pushEnabled = await NotificationPreferences.isPushEnabled();
+    if (generation != _generation) return;
     if (!pushEnabled) {
       _seenNotificationIds
         ..clear()
@@ -147,6 +196,7 @@ class NotificationCenterStore {
     }
 
     for (final item in mapped.reversed) {
+      if (generation != _generation) return;
       final id = (item['id'] as num?)?.toInt() ?? 0;
       if (id <= 0 || _seenNotificationIds.contains(id)) continue;
       if (item['read'] == true) continue;
@@ -174,5 +224,18 @@ class NotificationCenterStore {
       'read': readAt.isNotEmpty && readAt.toLowerCase() != 'null',
       'pinned': remote['pinned'] == true,
     };
+  }
+}
+
+class _NotificationLifecycle with WidgetsBindingObserver {
+  bool get resumed =>
+      WidgetsBinding.instance.lifecycleState == null ||
+      WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(NotificationCenterStore.refresh());
+    }
   }
 }
