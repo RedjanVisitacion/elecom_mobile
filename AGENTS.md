@@ -22,9 +22,7 @@ Agents fixing **404/500 on API routes**, **email/OTP**, or **DB behavior** must 
 ## API base URL (Flutter)
 
 - **Preferred**: `flutter run --dart-define=API_BASE_URL=http://<host>:8000`
-- **Implementation**: `lib/core/config/api_config.dart` reads `String.fromEnvironment('API_BASE_URL')`. If empty, it falls back to:
-  - Android emulator/device: `http://192.168.1.171:8000` (LAN IP — adjust if the user's PC address differs)
-  - Other platforms: `http://127.0.0.1:8000`
+- **Implementation**: `lib/core/config/api_config.dart` reads `String.fromEnvironment('API_BASE_URL')`. The current fallback on all platforms is `https://el3com.duckdns.org` (production). Local development requires an explicit override; do not assume the default points to a local server.
 - **Rule**: Do not scatter hardcoded base URLs; use `ApiConfig.baseUrl` (or the same pattern) for new HTTP code.
 
 ## Mobile HTTP API shape (contract hints)
@@ -264,3 +262,86 @@ sudo systemctl restart gunicorn
 - `InsightFace initialisation failed` → check gunicorn logs: `journalctl -u gunicorn -n 30 --no-pager | grep -i insightface`
 - First enrollment after deploy takes a few extra seconds — InsightFace downloads `buffalo_sc` model weights (~30MB) on first use and caches them in `~/.insightface/models/`
 - Legacy enrollments (before this migration) auto-backfill their `face_encoding` on first verification attempt by downloading the Cloudinary photo and re-encoding it
+
+## Calendar of Activities — Automatic Updates
+
+- Implemented in `lib/features/elecom/student_dashboard/student_dashboard.dart`. Fetches `/api/mobile/calendar-events/` every **3 seconds**, following the chat polling approach; this is polling, not a WebSocket connection.
+- Poll only while the app is resumed, the dashboard route is visible, and Home is the selected tab. Refresh immediately when returning to the visible Home route or resuming the app.
+- `_loadingCalendarEvents` prevents overlapping requests. Compare the new event list with the previous list before calling `setState`; retain the last successful list on failures and retry on the next poll.
+- Fetch the full list so additions, edits, and deletions are reflected. Preserve the calendar widget's selected month, expansion state, and scroll position during updates.
+- Cancel `_calendarPollTimer` and unregister `WidgetsBindingObserver` in `dispose`.
+- The backend admin and mobile calendar endpoints read the same `election_calendar_events` table. No backend change was needed for automatic mobile updates.
+
+## Candidate Filing — Follow-up Documents and Rejection Rules
+
+### Filing stages
+
+- Initial filing: `pending`. Initial approval changes it to `requirements_pending`; the candidate is not yet published.
+- Follow-up submission: a 2x2 photo, Certificate of Enrollment, grades for the last two consecutive semesters, and Good Moral Certificate. Once all four are saved, the status becomes `requirements_review` and `requirements_submitted_at` is recorded.
+- Final approval publishes the candidate and changes the status to `approved`.
+- Both rejection stages use `rejected`, but their refiling rules differ:
+  - **Initial filing rejected:** corrections and **File Again** are allowed.
+  - **Follow-up documents rejected:** no new filing is allowed for that election, including a different position. Show **Requirements Rejected**, retain the reason, and hide **File Again**.
+- Do not treat every `rejected` application as eligible to refile. A non-empty `requirements_submitted_at` or any of the four saved requirement URLs identifies the follow-up stage, including older records.
+
+### Enforcement and files
+
+- Mobile rule: `lib/features/elecom/data/candidate_application_policy.dart`, function `canFileCandidateApplicationAgain`. Also honors a server `can_file_again: false` restriction. Used by `candidate_filing_screen.dart` for the button, callback guard, and rejection message.
+- Backend: `F:\elecom_web\backend\core\views.py`, helper `_candidate_application_can_file_again`. `_candidate_application_json` exposes the `can_file_again` boolean.
+- `candidate_application_submit_api` must fetch the requirement metadata for the student's existing filing in the current election and return **409**, code `requirements_rejected`, after a follow-up rejection. Hiding a button alone is insufficient.
+- No database migration is needed for this rule; the timestamp and requirement URL columns already exist. Do not delete the rejected filing or its documents to enable another filing.
+
+### Upload failures: 413 and SQL errors
+
+- Mobile `submitCandidateRequirements` sends all four attachments in **one multipart POST** to `/api/mobile/candidate-applications/requirements/`.
+- Each file must be non-empty and at most **8 MiB**. The combined request can approach **32 MiB**, plus multipart overhead. The app validates sizes before sending; Django retains per-file validation.
+- An HTML **413** response means an upload-size rejection, not invalid document JSON. Preserve the specific upload error and backend validation errors; do not relabel response-decoding errors as network failures.
+- Nginx configuration is separate from the Git repository. In `/etc/nginx/sites-available/elecom`, set `client_max_body_size 40m;` inside the **HTTPS server block with `listen 443 ssl`**. Putting it only in the port 80 redirect block does not affect HTTPS uploads. Check for smaller location-level overrides.
+- Validate and apply with `sudo nginx -t && sudo systemctl reload nginx`. Full steps are in `docs/candidate-requirements-server-fix.md`.
+- The requirements SELECT in `candidate_application_requirements_api` must include `FROM candidate_applications`. A prior missing FROM caused `column "id" does not exist`, even though the table had an `id` column. Inspect the query and running code before altering the schema.
+- `git pull` does not reload Gunicorn workers. After pushing and pulling backend fixes, run `sudo systemctl restart gunicorn`.
+- Use absolute paths in diagnostic commands to avoid confusion when already inside `backend`:
+
+```bash
+grep -n -A 5 'SELECT id, status, requirements_photo_url' /var/www/elecom/backend/core/views.py
+sudo journalctl -u gunicorn --since "2 minutes ago" --no-pager
+```
+
+Reproduce the submission before inspecting logs. Successful GET polling entries alone do not prove a requirements POST succeeded. SQL displayed by `grep` is code to inspect, not a shell command to execute.
+
+### Focused regression checks
+
+```powershell
+flutter test test/candidate_requirements_upload_test.dart test/candidate_application_policy_test.dart
+python F:/elecom_web/backend/core/test_candidate_application_policy.py
+```
+
+The backend tests extract the relevant view functions to test policy and the submit guard without importing unrelated face-service dependencies. They do not replace a full Django system check or live upload verification.
+
+## Windows Release Builds — Disk Space and Gradle Cache Recovery
+
+- Check free space on **both C: and F:**. Even with outputs on F:, Gradle normally uses `C:\Users\Redjan Phil\.gradle` and Windows temporary storage on C:. An APK build previously failed at `mergeReleaseNativeLibs` / `ExtractJniTransform` with **There is not enough space on the disk**.
+- A working alternative is the ignored workspace cache at `F:\elecom_mobile\.dart_tool\gradle-user-home` and temporary directory at `.dart_tool\build-temp`. These are disposable build artifacts; never commit them.
+- For a new alternate cache, copy only the original `.gradle\caches\modules-2` dependency cache and `.gradle\wrapper` distributions if needed. Avoid copying interrupted generated caches such as version-specific caches or `jars-9`; an incomplete generated Gradle API jar caused missing `Settings` / `pluginManagement` errors despite unchanged build scripts.
+- If that cache error occurs, stop the failed build and regenerate only the affected temporary generated cache. Before recursive cleanup, verify resolved absolute paths are inside the intended cache directory. Do not delete source files, signing files, or personal files.
+- Set these variables **only for the build session**, creating the directories first:
+
+```powershell
+$env:GRADLE_USER_HOME = 'F:\elecom_mobile\.dart_tool\gradle-user-home'
+$env:TEMP = 'F:\elecom_mobile\.dart_tool\build-temp'
+$env:TMP = $env:TEMP
+$env:JAVA_TOOL_OPTIONS = ($env:JAVA_TOOL_OPTIONS + ' -Djava.io.tmpdir=F:/elecom_mobile/.dart_tool/build-temp').Trim()
+flutter build apk --release --no-pub
+```
+
+- Use `--no-pub` only when dependencies are already resolved. On retry, keep the version already bumped; do not repeatedly run the bump script for failed attempts.
+- If PowerShell blocks `bump_and_build.ps1`, use `powershell -NoProfile -ExecutionPolicy Bypass -File .\bump_and_build.ps1` for that process rather than changing the machine's execution policy.
+- The bump script can print **Build failed** while returning process exit code 0. Inspect Flutter/Gradle's final output, and verify `build/app/outputs/apk/release/output-metadata.json` for the expected `versionCode`; do not mistake an older APK for a successful new build.
+- Cache regeneration and release builds were slow on this machine. Preserve completed caches and wait for the actual build result rather than repeatedly restarting an active build.
+
+### Verification snapshot (2026-10-07)
+
+- Release `1.0.0+7` built successfully and includes the follow-up rejection restriction. Check `pubspec.yaml` for the current version rather than treating this snapshot as the latest release forever.
+- Nine targeted Flutter tests and four backend policy tests passed; the changed filing screen and policy analyzed cleanly.
+- Full-app analysis had 42 existing warnings/lint findings, and the existing login widget test expected missing text `WELCOME`. Investigate current output before attributing these to a new change.
+- Local `manage.py check` was blocked by missing `numpy` from the face-service import. Backend syntax and isolated policy tests passed; full Django checks still require the appropriate backend environment and dependencies.
