@@ -117,6 +117,7 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
   final TextEditingController _lastNameController = TextEditingController();
   final TextEditingController _platformController = TextEditingController();
   final TextEditingController _partyNameController = TextEditingController();
+  final FocusNode _partyNameFocusNode = FocusNode();
   final TextEditingController _partyCodeController = TextEditingController();
 
   String _candidateType = 'Political Party';
@@ -152,6 +153,7 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
     _lastNameController.dispose();
     _platformController.dispose();
     _partyNameController.dispose();
+    _partyNameFocusNode.dispose();
     _partyCodeController.dispose();
     super.dispose();
   }
@@ -415,6 +417,10 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
         _partyNameController.clear();
         _partyCodeController.clear();
       });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !_addingNewParty) return;
+        _partyNameFocusNode.requestFocus();
+      });
       return;
     }
     setState(() {
@@ -591,6 +597,7 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
         children: [
           TextFormField(
             controller: _partyNameController,
+            focusNode: _partyNameFocusNode,
             validator: _partyNameValidator,
             textInputAction: TextInputAction.next,
             decoration: InputDecoration(
