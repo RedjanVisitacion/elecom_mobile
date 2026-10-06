@@ -642,6 +642,20 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
         final baseTheme = Theme.of(context);
         final formTheme = isPremiumMode
             ? baseTheme.copyWith(
+                colorScheme: baseTheme.colorScheme.copyWith(
+                  primary: _premiumBlue,
+                  onPrimary: Colors.white,
+                  primaryContainer: const Color(0xFFDBEAFE),
+                  onPrimaryContainer: _premiumInk,
+                  surface: Colors.white,
+                  surfaceTint: Colors.transparent,
+                  onSurface: _premiumInk,
+                  onSurfaceVariant: _premiumSub,
+                ),
+                bottomSheetTheme: baseTheme.bottomSheetTheme.copyWith(
+                  backgroundColor: Colors.white,
+                  surfaceTintColor: Colors.transparent,
+                ),
                 canvasColor: Colors.white,
                 highlightColor: _premiumBlue.withValues(alpha: 0.12),
                 focusColor: _premiumBlue.withValues(alpha: 0.10),
@@ -753,9 +767,9 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
             ),
           ),
           child: Scaffold(
-            backgroundColor: isPremiumMode ? const Color(0xFFFDFEFF) : null,
+            backgroundColor: isPremiumMode ? Colors.white : null,
             appBar: AppBar(
-              backgroundColor: isPremiumMode ? const Color(0xFFFDFEFF) : null,
+              backgroundColor: isPremiumMode ? Colors.white : null,
               surfaceTintColor: Colors.transparent,
               elevation: 0,
               scrolledUnderElevation: 0,
