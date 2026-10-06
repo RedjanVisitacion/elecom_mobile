@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:hugeicons/hugeicons.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/notifications/notification_center_store.dart';
@@ -17,16 +16,6 @@ const _premiumBlue = Color(0xFF2563EB);
 const _premiumAccentBlue = Color(0xFF60A5FA);
 const _premiumInk = Color(0xFF0F172A);
 const _premiumSub = Color(0xFF475569);
-const _premiumBg = LinearGradient(
-  begin: Alignment.topLeft,
-  end: Alignment.bottomRight,
-  colors: [
-    Color(0xFFFFFFFF),
-    Color(0xFFF4F8FF),
-    Color(0xFFEAF2FF),
-    Color(0xFFFDFEFF),
-  ],
-);
 
 class CandidateFilingScreen extends StatefulWidget {
   const CandidateFilingScreen({super.key});
@@ -446,7 +435,7 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
       maxWidth: 800,
       maxHeight: 800,
     );
-    if (picked == null) return;
+    if (picked == null || !mounted) return;
     setState(() => _candidatePhoto = File(picked.path));
   }
 
@@ -569,131 +558,80 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
   }
 
   Widget _buildPartyNameField(bool isPremiumMode) {
-    if (_loadingParties) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          LinearProgressIndicator(
-            minHeight: 3,
-            borderRadius: BorderRadius.circular(999),
-            color: isPremiumMode ? _premiumBlue : null,
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'Loading available party names...',
-            style: TextStyle(
-              color: isPremiumMode ? _premiumSub : null,
-              fontWeight: FontWeight.w700,
-              fontSize: 12,
-            ),
-          ),
-        ],
-      );
-    }
-
-    if (_existingPartyNames.isEmpty || _addingNewParty) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SegmentedButton<bool>(
+          showSelectedIcon: false,
+          segments: const [
+            ButtonSegment(value: false, label: Text('Select Existing Party')),
+            ButtonSegment(value: true, label: Text('Register New Party')),
+          ],
+          selected: {_addingNewParty},
+          onSelectionChanged: _loadingParties
+              ? null
+              : (selection) {
+                  if (selection.first) {
+                    _selectPartyName(_addNewPartyValue);
+                  } else {
+                    _chooseExistingParty();
+                  }
+                },
+        ),
+        const SizedBox(height: 12),
+        if (_loadingParties) const LinearProgressIndicator(),
+        if (_addingNewParty)
           TextFormField(
             controller: _partyNameController,
             focusNode: _partyNameFocusNode,
             validator: _partyNameValidator,
             textInputAction: TextInputAction.next,
-            decoration: InputDecoration(
-              labelText: _existingPartyNames.isEmpty
-                  ? 'Party name'
-                  : 'New party name',
-              helperText: _existingPartyNames.isEmpty
-                  ? 'Enter your party name.'
-                  : 'Use this only if your party is not listed.',
-              prefixIcon: const Icon(Icons.flag_outlined),
+            decoration: const InputDecoration(
+              labelText: 'New Party Name',
+              helperText: 'A security code is generated after submission.',
+              helperMaxLines: 2,
             ),
-          ),
-          if (_existingPartyNames.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                onPressed: _chooseExistingParty,
-                icon: const Icon(Icons.groups_2_outlined, size: 18),
-                label: const Text('Choose existing party'),
-              ),
-            ),
-          ],
-        ],
-      );
-    }
-
-    final dropdownValue =
-        _selectedPartyName != null &&
-            _existingPartyNames.contains(_selectedPartyName)
-        ? _selectedPartyName
-        : null;
-    return DropdownButtonFormField<String>(
-      initialValue: dropdownValue,
-      dropdownColor: Colors.white,
-      validator: (_) => _partyNameValidator(null),
-      items: [
-        ..._existingPartyNames.map(
-          (party) => DropdownMenuItem(value: party, child: Text(party)),
-        ),
-        const DropdownMenuItem(
-          value: _addNewPartyValue,
-          child: Text('Add new party name'),
-        ),
-      ],
-      onChanged: _selectPartyName,
-      decoration: const InputDecoration(
-        labelText: 'Party name',
-        helperText: 'Choose your party if it already exists.',
-        prefixIcon: Icon(Icons.flag_outlined),
-      ),
-    );
-  }
-
-  Widget _buildPartyCodeField() {
-    if (_addingNewParty) {
-      return DecoratedBox(
-        decoration: BoxDecoration(
-          color: _premiumBlue.withValues(alpha: 0.07),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: _premiumBlue.withValues(alpha: 0.16)),
-        ),
-        child: const Padding(
-          padding: EdgeInsets.all(12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(Icons.lock_reset_rounded, color: _premiumBlue, size: 22),
-              SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'A party security code will be generated automatically after you submit this new party.',
-                  style: TextStyle(
-                    color: _premiumSub,
-                    fontWeight: FontWeight.w800,
-                    height: 1.3,
+          )
+        else ...[
+          DropdownButtonFormField<String>(
+            key: ValueKey(_selectedPartyName),
+            initialValue: _selectedPartyName,
+            isExpanded: true,
+            validator: (_) => _partyNameValidator(null),
+            items: _existingPartyNames
+                .map(
+                  (party) => DropdownMenuItem(
+                    value: party,
+                    child: Text(party, overflow: TextOverflow.ellipsis),
                   ),
-                ),
-              ),
-            ],
+                )
+                .toList(),
+            onChanged: _loadingParties ? null : _selectPartyName,
+            decoration: const InputDecoration(labelText: 'Existing Party'),
           ),
-        ),
-      );
-    }
-    return TextFormField(
-      controller: _partyCodeController,
-      validator: _partyCodeValidator,
-      obscureText: true,
-      enableSuggestions: false,
-      autocorrect: false,
-      textInputAction: TextInputAction.next,
-      decoration: InputDecoration(
-        labelText: 'Party security code',
-        helperText: 'Enter the code shared by your party leader.',
-        prefixIcon: const Icon(Icons.lock_outline_rounded),
-      ),
+          if (!_loadingParties && _existingPartyNames.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                'No parties available. Register a new party.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _partyCodeController,
+            validator: _partyCodeValidator,
+            obscureText: true,
+            enableSuggestions: false,
+            autocorrect: false,
+            decoration: const InputDecoration(
+              labelText: 'Party Security Code',
+              helperText: 'Enter the code shared by your party leader.',
+              helperMaxLines: 2,
+            ),
+          ),
+        ],
+      ],
     );
   }
 
@@ -709,11 +647,6 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
             : isDark
             ? Colors.white
             : const Color(0xFF0F172A);
-        final mutedColor = isPremiumMode
-            ? _premiumSub
-            : isDark
-            ? Colors.white70
-            : const Color(0xFF64748B);
         final existingApplication = _existingApplication;
         final baseTheme = Theme.of(context);
         final formTheme = isPremiumMode
@@ -790,7 +723,44 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
             : baseTheme;
 
         return Theme(
-          data: formTheme,
+          data: formTheme.copyWith(
+            inputDecorationTheme: formTheme.inputDecorationTheme.copyWith(
+              isDense: true,
+              filled: true,
+              fillColor: isDark && !isPremiumMode
+                  ? Colors.white.withValues(alpha: 0.04)
+                  : const Color(0xFFF8FAFC),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 14,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(
+                  color: isDark && !isPremiumMode
+                      ? Colors.white24
+                      : const Color(0xFFCBD5E1),
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(
+                  color: isDark ? _premiumAccentBlue : _premiumBlue,
+                ),
+              ),
+              disabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(
+                  color: isDark && !isPremiumMode
+                      ? Colors.white12
+                      : const Color(0xFFE2E8F0),
+                ),
+              ),
+            ),
+          ),
           child: Scaffold(
             backgroundColor: isPremiumMode ? const Color(0xFFFDFEFF) : null,
             appBar: AppBar(
@@ -806,10 +776,52 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
                 ),
               ),
             ),
+            bottomNavigationBar: !_loadingStatus && existingApplication == null
+                ? DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: formTheme.colorScheme.surface,
+                      border: Border(
+                        top: BorderSide(color: formTheme.dividerColor),
+                      ),
+                    ),
+                    child: SafeArea(
+                      top: false,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                        child: SizedBox(
+                          height: 52,
+                          child: FilledButton.icon(
+                            onPressed: _submitting ? null : _submit,
+                            icon: _submitting
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Icon(Icons.send_rounded),
+                            label: Text(
+                              _submitting ? 'Submitting...' : 'Submit Filing',
+                            ),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: const Color(0xFF2563EB),
+                              foregroundColor: Colors.white,
+                              textStyle: const TextStyle(
+                                fontWeight: FontWeight.w900,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                : null,
             body: Container(
-              decoration: isPremiumMode
-                  ? const BoxDecoration(gradient: _premiumBg)
-                  : null,
+              color: formTheme.colorScheme.surface,
               child: SafeArea(
                 child: RefreshIndicator(
                   color: _premiumBlue,
@@ -820,57 +832,17 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
                       physics: const AlwaysScrollableScrollPhysics(),
                       padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
                       children: [
-                        Row(
-                          children: [
-                            if (isPremiumMode) ...[
-                              Container(
-                                width: 42,
-                                height: 42,
-                                decoration: BoxDecoration(
-                                  color: _premiumBlue.withValues(alpha: 0.10),
-                                  borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.75),
-                                  ),
-                                ),
-                                child: const Center(
-                                  child: HugeIcon(
-                                    icon: HugeIcons.strokeRoundedUserCheck01,
-                                    color: _premiumBlue,
-                                    size: 23,
-                                    strokeWidth: 1.8,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                            ],
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Request to Run',
-                                    style: TextStyle(
-                                      color: titleColor,
-                                      fontWeight: FontWeight.w900,
-                                      fontSize: 24,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Submit your information and photo. ELECOM will review your eligibility before you appear as an official candidate.',
-                                    style: TextStyle(
-                                      color: mutedColor,
-                                      fontWeight: FontWeight.w600,
-                                      height: 1.35,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                        Text(
+                          existingApplication == null
+                              ? 'Complete your candidate application'
+                              : 'Your candidate application',
+                          style: TextStyle(
+                            color: titleColor,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 18,
+                          ),
                         ),
-                        const SizedBox(height: 18),
+                        const SizedBox(height: 16),
                         if (_loadingStatus)
                           const Padding(
                             padding: EdgeInsets.symmetric(vertical: 28),
@@ -897,7 +869,6 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
                         else ...[
                           _Section(
                             title: 'Candidate Type',
-                            premiumIcon: HugeIcons.strokeRoundedUserMultiple,
                             isPremiumMode: isPremiumMode,
                             child: SegmentedButton<String>(
                               segments: const [
@@ -933,7 +904,6 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
                           const SizedBox(height: 14),
                           _Section(
                             title: 'Student Information',
-                            premiumIcon: HugeIcons.strokeRoundedId,
                             isPremiumMode: isPremiumMode,
                             child: Column(
                               children: [
@@ -942,8 +912,7 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
                                   validator: _required,
                                   readOnly: true,
                                   decoration: const InputDecoration(
-                                    labelText: 'Candidate student ID',
-                                    prefixIcon: Icon(Icons.badge_outlined),
+                                    labelText: 'Candidate Student ID',
                                   ),
                                 ),
                                 const SizedBox(height: 12),
@@ -955,7 +924,7 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
                                         validator: _required,
                                         readOnly: true,
                                         decoration: const InputDecoration(
-                                          labelText: 'First name',
+                                          labelText: 'First Name',
                                         ),
                                       ),
                                     ),
@@ -966,7 +935,7 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
                                         validator: _required,
                                         readOnly: true,
                                         decoration: const InputDecoration(
-                                          labelText: 'Last name',
+                                          labelText: 'Last Name',
                                         ),
                                       ),
                                     ),
@@ -977,62 +946,8 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
                                   controller: _middleNameController,
                                   readOnly: true,
                                   decoration: const InputDecoration(
-                                    labelText: 'Middle name',
+                                    labelText: 'Middle Name',
                                     hintText: 'Optional',
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          _Section(
-                            title: 'Candidacy Details',
-                            premiumIcon: HugeIcons.strokeRoundedUniversity,
-                            isPremiumMode: isPremiumMode,
-                            child: Column(
-                              children: [
-                                DropdownButtonFormField<String>(
-                                  initialValue: _organization,
-                                  dropdownColor: Colors.white,
-                                  validator: _required,
-                                  items: _availableOrganizations
-                                      .map(
-                                        (org) => DropdownMenuItem(
-                                          value: org,
-                                          child: Text(org),
-                                        ),
-                                      )
-                                      .toList(),
-                                  onChanged: (value) => setState(() {
-                                    _setOrganization(value);
-                                  }),
-                                  decoration: const InputDecoration(
-                                    labelText: 'Organization',
-                                    prefixIcon: Icon(
-                                      Icons.account_balance_outlined,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                DropdownButtonFormField<String>(
-                                  initialValue: _position,
-                                  dropdownColor: Colors.white,
-                                  validator: _required,
-                                  items: _availablePositions
-                                      .map(
-                                        (position) => DropdownMenuItem(
-                                          value: position,
-                                          child: Text(position),
-                                        ),
-                                      )
-                                      .toList(),
-                                  onChanged: (value) =>
-                                      setState(() => _position = value),
-                                  decoration: const InputDecoration(
-                                    labelText: 'Position',
-                                    prefixIcon: Icon(
-                                      Icons.workspace_premium_outlined,
-                                    ),
                                   ),
                                 ),
                                 const SizedBox(height: 12),
@@ -1041,7 +956,9 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
                                     Expanded(
                                       child: DropdownButtonFormField<String>(
                                         initialValue: _program,
-                                        dropdownColor: Colors.white,
+                                        dropdownColor:
+                                            formTheme.colorScheme.surface,
+                                        isExpanded: true,
                                         validator: _required,
                                         items: _programs
                                             .map(
@@ -1065,7 +982,9 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
                                     Expanded(
                                       child: DropdownButtonFormField<String>(
                                         initialValue: _yearSection,
-                                        dropdownColor: Colors.white,
+                                        dropdownColor:
+                                            formTheme.colorScheme.surface,
+                                        isExpanded: true,
                                         validator: _required,
                                         items: _yearSections
                                             .where(
@@ -1095,10 +1014,66 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
                                   ],
                                 ),
                                 const SizedBox(height: 12),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          _Section(
+                            title: 'Candidacy Details',
+                            isPremiumMode: isPremiumMode,
+                            child: Column(
+                              children: [
+                                DropdownButtonFormField<String>(
+                                  initialValue: _organization,
+                                  dropdownColor: formTheme.colorScheme.surface,
+                                  isExpanded: true,
+                                  validator: _required,
+                                  items: _availableOrganizations
+                                      .map(
+                                        (org) => DropdownMenuItem(
+                                          value: org,
+                                          child: Text(org),
+                                        ),
+                                      )
+                                      .toList(),
+                                  onChanged: (value) => setState(() {
+                                    _setOrganization(value);
+                                  }),
+                                  decoration: const InputDecoration(
+                                    labelText: 'Organization',
+                                    prefixIcon: Icon(
+                                      Icons.account_balance_outlined,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                DropdownButtonFormField<String>(
+                                  initialValue: _position,
+                                  dropdownColor: formTheme.colorScheme.surface,
+                                  isExpanded: true,
+                                  validator: _required,
+                                  items: _availablePositions
+                                      .map(
+                                        (position) => DropdownMenuItem(
+                                          value: position,
+                                          child: Text(position),
+                                        ),
+                                      )
+                                      .toList(),
+                                  onChanged: (value) =>
+                                      setState(() => _position = value),
+                                  decoration: const InputDecoration(
+                                    labelText: 'Position',
+                                    prefixIcon: Icon(
+                                      Icons.workspace_premium_outlined,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
                                 TextFormField(
                                   controller: _platformController,
                                   validator: _required,
-                                  minLines: 4,
+                                  minLines: 3,
                                   maxLines: 7,
                                   decoration: const InputDecoration(
                                     labelText: 'Platform',
@@ -1117,8 +1092,6 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
                                 children: [
                                   _buildPartyNameField(isPremiumMode),
                                   const SizedBox(height: 12),
-                                  _buildPartyCodeField(),
-                                  const SizedBox(height: 12),
                                   _MiniImagePicker(
                                     title: 'Party logo',
                                     imageFile: _partyLogo,
@@ -1131,35 +1104,6 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
                               ),
                             ),
                           ],
-                          const SizedBox(height: 20),
-                          SizedBox(
-                            height: 52,
-                            child: FilledButton.icon(
-                              onPressed: _submitting ? null : _submit,
-                              icon: _submitting
-                                  ? const SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                  : const Icon(Icons.send_rounded),
-                              label: Text(
-                                _submitting ? 'Submitting...' : 'Submit Filing',
-                              ),
-                              style: FilledButton.styleFrom(
-                                backgroundColor: const Color(0xFF2563EB),
-                                foregroundColor: Colors.white,
-                                textStyle: const TextStyle(
-                                  fontWeight: FontWeight.w900,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                              ),
-                            ),
-                          ),
                         ],
                       ],
                     ),
@@ -1835,91 +1779,28 @@ class _Section extends StatelessWidget {
     required this.title,
     required this.child,
     required this.isPremiumMode,
-    this.premiumIcon,
   });
-
   final String title;
   final Widget child;
   final bool isPremiumMode;
-  final List<List<dynamic>>? premiumIcon;
 
   @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: isPremiumMode
-            ? Colors.white.withValues(alpha: 0.86)
-            : isDark
-            ? const Color(0xFF242433)
-            : Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Text(
+        title,
+        style: Theme.of(context).textTheme.labelLarge?.copyWith(
           color: isPremiumMode
-              ? Colors.white.withValues(alpha: 0.74)
-              : isDark
-              ? Colors.white12
-              : Colors.black12,
-        ),
-        boxShadow: isPremiumMode
-            ? [
-                BoxShadow(
-                  color: _premiumBlue.withValues(alpha: 0.10),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ]
-            : null,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                if (isPremiumMode && premiumIcon != null) ...[
-                  Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      color: _premiumBlue.withValues(alpha: 0.10),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Center(
-                      child: HugeIcon(
-                        icon: premiumIcon!,
-                        color: _premiumBlue,
-                        size: 16,
-                        strokeWidth: 1.8,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                ],
-                Expanded(
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      color: isPremiumMode
-                          ? _premiumInk
-                          : isDark
-                          ? Colors.white
-                          : const Color(0xFF0F172A),
-                      fontWeight: FontWeight.w900,
-                      fontSize: 15,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            child,
-          ],
+              ? _premiumSub
+              : Theme.of(context).colorScheme.onSurfaceVariant,
+          fontWeight: FontWeight.w600,
         ),
       ),
-    );
-  }
+      const SizedBox(height: 10),
+      child,
+    ],
+  );
 }
 
 class _PhotoPickerCard extends StatelessWidget {
@@ -1931,7 +1812,6 @@ class _PhotoPickerCard extends StatelessWidget {
     required this.onGallery,
     required this.onCamera,
   });
-
   final String title;
   final String subtitle;
   final File? imageFile;
@@ -1939,122 +1819,109 @@ class _PhotoPickerCard extends StatelessWidget {
   final VoidCallback onGallery;
   final VoidCallback onCamera;
 
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: isPremiumMode
-            ? Colors.white.withValues(alpha: 0.86)
-            : isDark
-            ? const Color(0xFF242433)
-            : Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: isPremiumMode
-              ? Colors.white.withValues(alpha: 0.74)
-              : isDark
-              ? Colors.white12
-              : Colors.black12,
-        ),
-        boxShadow: isPremiumMode
-            ? [
-                BoxShadow(
-                  color: _premiumBlue.withValues(alpha: 0.10),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ]
-            : null,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
+  Future<void> _showSources(BuildContext context) async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: SizedBox(
-                width: 88,
-                height: 104,
-                child: imageFile == null
-                    ? ColoredBox(
-                        color: isDark
-                            ? Colors.white10
-                            : isPremiumMode
-                            ? _premiumBlue.withValues(alpha: 0.10)
-                            : const Color(0xFFEAF1FF),
-                        child: Center(
-                          child: isPremiumMode
-                              ? const HugeIcon(
-                                  icon: HugeIcons.strokeRoundedUserAdd01,
-                                  color: _premiumBlue,
-                                  size: 34,
-                                  strokeWidth: 1.8,
-                                )
-                              : const Icon(
-                                  Icons.person_add_alt_1_rounded,
-                                  color: Color(0xFF2563EB),
-                                  size: 34,
-                                ),
-                        ),
-                      )
-                    : Image.file(imageFile!, fit: BoxFit.cover),
-              ),
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('Take Photo'),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      color: isPremiumMode
-                          ? _premiumInk
-                          : isDark
-                          ? Colors.white
-                          : const Color(0xFF0F172A),
-                      fontWeight: FontWeight.w900,
-                      fontSize: 15,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      color: isPremiumMode
-                          ? _premiumSub
-                          : isDark
-                          ? Colors.white70
-                          : const Color(0xFF64748B),
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12,
-                      height: 1.25,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      OutlinedButton.icon(
-                        onPressed: onGallery,
-                        icon: const Icon(Icons.photo_library_outlined),
-                        label: const Text('Gallery'),
-                      ),
-                      OutlinedButton.icon(
-                        onPressed: onCamera,
-                        icon: const Icon(Icons.photo_camera_outlined),
-                        label: const Text('Camera'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Choose from Gallery'),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
             ),
           ],
         ),
       ),
+    );
+    if (!context.mounted || source == null) return;
+    if (source == ImageSource.camera) {
+      onCamera();
+    } else {
+      onGallery();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = Theme.of(context).brightness == Brightness.dark
+        ? _premiumAccentBlue
+        : _premiumBlue;
+    return Column(
+      children: [
+        Semantics(
+          button: true,
+          label: imageFile == null
+              ? 'Upload candidate photo, required'
+              : 'Change candidate photo',
+          child: Tooltip(
+            message: 'Upload candidate photo',
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: () => _showSources(context),
+                child: SizedBox(
+                  width: 80,
+                  height: 80,
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: ClipOval(
+                          child: imageFile == null
+                              ? ColoredBox(
+                                  color: accent.withValues(alpha: 0.10),
+                                  child: Icon(
+                                    Icons.person_outline,
+                                    size: 40,
+                                    color: accent,
+                                  ),
+                                )
+                              : Image.file(imageFile!, fit: BoxFit.cover),
+                        ),
+                      ),
+                      Positioned(
+                        right: 0,
+                        bottom: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(5),
+                          decoration: BoxDecoration(
+                            color: accent,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Theme.of(context).colorScheme.surface,
+                              width: 2,
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.camera_alt,
+                            size: 16,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          imageFile == null
+              ? 'Candidate photo ? Required'
+              : 'Tap to change photo',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ],
     );
   }
 }
