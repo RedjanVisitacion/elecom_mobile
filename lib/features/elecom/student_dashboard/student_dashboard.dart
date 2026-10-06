@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui';
@@ -49,7 +50,8 @@ class StudentDashboard extends StatefulWidget {
   State<StudentDashboard> createState() => _StudentDashboardState();
 }
 
-class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
+class _StudentDashboardState extends State<StudentDashboard>
+    with RouteAware, WidgetsBindingObserver {
   final ElecomMobileApi _api = ElecomMobileApi();
   final GlobalKey<RefreshIndicatorState> _homeRefreshKey =
       GlobalKey<RefreshIndicatorState>();
@@ -66,6 +68,9 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
   int _totalVoters = 0;
   int _totalCandidates = 0;
   List<Map<String, dynamic>> _calendarEvents = <Map<String, dynamic>>[];
+  Timer? _calendarPollTimer;
+  bool _loadingCalendarEvents = false;
+  bool _appResumed = true;
   DateTime _now = DateTime.now();
   Timer? _clockTimer;
   bool _homeTutorialRequested = false;
@@ -176,6 +181,10 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _appResumed =
+        WidgetsBinding.instance.lifecycleState == null ||
+        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
     TutorialReplayBus.register(_onReplayDashboardTutorial);
     EleVotePreferences.enabledNotifier.addListener(
       _handleAssistantPreferenceChanged,
@@ -189,6 +198,11 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
     _loadLedgerSummary();
     _loadElectionMetrics();
     _loadCalendarEvents();
+    _calendarPollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (_appResumed && _dashboardRouteVisible && _currentIndex == 0) {
+        unawaited(_loadCalendarEvents());
+      }
+    });
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() => _now = DateTime.now());
     });
@@ -223,7 +237,18 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
   @override
   void didPopNext() {
     _dashboardRouteVisible = true;
+    if (_appResumed && _currentIndex == 0) {
+      unawaited(_loadCalendarEvents());
+    }
     _syncAssistantBubbleVisibility(replayIfStillEnabled: true);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _appResumed = state == AppLifecycleState.resumed;
+    if (_appResumed && _dashboardRouteVisible && _currentIndex == 0) {
+      unawaited(_loadCalendarEvents());
+    }
   }
 
   Future<void> _loadHomeCandidates() async {
@@ -263,7 +288,8 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
     if (p.contains('auditor') || p.contains('audit')) return 5;
     if (p.contains('public information') ||
         p.contains('p.i.o') ||
-        p.contains('pio')) return 6;
+        p.contains('pio'))
+      return 6;
     if (p.contains('representative') || p.contains('rep')) return 7;
     return 8;
   }
@@ -401,12 +427,17 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
   }
 
   Future<void> _loadCalendarEvents() async {
+    if (!mounted || _loadingCalendarEvents) return;
+    _loadingCalendarEvents = true;
     try {
       final events = await _api.getCalendarEvents();
       if (!mounted) return;
+      if (jsonEncode(events) == jsonEncode(_calendarEvents)) return;
       setState(() => _calendarEvents = events);
     } catch (_) {
-      // silently ignore; calendar stays empty
+      // Keep the last successful list; the next poll retries automatically.
+    } finally {
+      _loadingCalendarEvents = false;
     }
   }
 
@@ -606,9 +637,7 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
     final isPremiumMode = themeNotifier.isPremiumMode;
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    final cardBg = isDarkMode
-        ? const Color(0xFF2A2A35)
-        : Colors.white;
+    final cardBg = isDarkMode ? const Color(0xFF2A2A35) : Colors.white;
     final nameColor = isDarkMode
         ? const Color(0xFF60A5FA)
         : const Color(0xFF2563EB);
@@ -708,7 +737,8 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
                             ),
                           ],
                         ),
-                        if (phoneMasked.isNotEmpty || emailMasked.isNotEmpty) ...[
+                        if (phoneMasked.isNotEmpty ||
+                            emailMasked.isNotEmpty) ...[
                           const SizedBox(height: 3),
                           if (phoneMasked.isNotEmpty)
                             Text(
@@ -853,8 +883,18 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
 
   String _monthName(int m) {
     const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December',
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ];
     return months[m - 1];
   }
@@ -1012,17 +1052,12 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
                       PageRouteBuilder<void>(
                         transitionDuration: Duration.zero,
                         reverseTransitionDuration: Duration.zero,
-                        pageBuilder: (c, a, b) =>
-                            const CandidateSearchScreen(),
+                        pageBuilder: (c, a, b) => const CandidateSearchScreen(),
                         transitionsBuilder: (c, a, b, child) => child,
                       ),
                     );
                   },
-                  icon: const Icon(
-                    Icons.search,
-                    color: Colors.white,
-                    size: 24,
-                  ),
+                  icon: const Icon(Icons.search, color: Colors.white, size: 24),
                 ),
                 // Notification bell
                 ValueListenableBuilder<int>(
@@ -1116,8 +1151,8 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
     final Color activeColor = isPremiumMode
         ? elecomGold
         : isDarkMode
-            ? Colors.white
-            : elecomBlue;
+        ? Colors.white
+        : elecomBlue;
 
     final Color inactiveColor = isDarkMode
         ? const Color(0xFF60A5FA).withValues(alpha: 0.60)
@@ -1280,14 +1315,20 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
                   // Results
                   isPremiumMode
                       ? premiumNavItem(
-                          HugeIcons.strokeRoundedChartBarLine, 'Results', 1)
+                          HugeIcons.strokeRoundedChartBarLine,
+                          'Results',
+                          1,
+                        )
                       : navItem(Icons.bar_chart_rounded, 'Results', 1),
                   // Vote — centre oversized item
                   voteItem,
                   // Receipt
                   isPremiumMode
                       ? premiumNavItem(
-                          HugeIcons.strokeRoundedInvoice03, 'Receipt', 3)
+                          HugeIcons.strokeRoundedInvoice03,
+                          'Receipt',
+                          3,
+                        )
                       : navItem(Icons.receipt_long_rounded, 'Receipt', 3),
                   // Me
                   isPremiumMode
@@ -1575,6 +1616,8 @@ class _StudentDashboardState extends State<StudentDashboard> with RouteAware {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _calendarPollTimer?.cancel();
     _clockTimer?.cancel();
     TutorialReplayBus.unregister();
     elecomRouteObserver.unsubscribe(this);
