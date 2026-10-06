@@ -1,10 +1,14 @@
+import 'dart:async';
 import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../app/app.dart' show elecomRouteObserver;
 import '../../../core/notifications/notification_center_store.dart';
 import '../../../core/session/user_session.dart';
 import '../../../core/utils/toast_service.dart';
@@ -18,13 +22,16 @@ const _premiumInk = Color(0xFF0F172A);
 const _premiumSub = Color(0xFF475569);
 
 class CandidateFilingScreen extends StatefulWidget {
-  const CandidateFilingScreen({super.key});
+  const CandidateFilingScreen({super.key, this.api});
+
+  final ElecomMobileApi? api;
 
   @override
   State<CandidateFilingScreen> createState() => _CandidateFilingScreenState();
 }
 
-class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
+class _CandidateFilingScreenState extends State<CandidateFilingScreen>
+    with RouteAware, WidgetsBindingObserver {
   static const String _addNewPartyValue = '__add_new_party__';
 
   static const List<String> _organizations = [
@@ -97,7 +104,13 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
     'BFPT-4B',
   ];
 
-  final ElecomMobileApi _api = ElecomMobileApi();
+  late final ElecomMobileApi _api;
+  Timer? _statusPollTimer;
+  PageRoute<dynamic>? _filingRoute;
+  bool _appResumed = true;
+  bool _routeVisible = true;
+  bool _statusRequestInFlight = false;
+  int _statusRevision = 0;
   final ImagePicker _picker = ImagePicker();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _studentIdController = TextEditingController();
@@ -129,13 +142,66 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
   @override
   void initState() {
     super.initState();
+    _api = widget.api ?? ElecomMobileApi();
+    WidgetsBinding.instance.addObserver(this);
+    _appResumed =
+        WidgetsBinding.instance.lifecycleState == null ||
+        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
+    _statusPollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      _pollApplicationStatus();
+    });
     _hydrateFromSession();
     _hydrateProfileAndStatus();
     _loadPartyNames();
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute<dynamic> && route != _filingRoute) {
+      elecomRouteObserver.unsubscribe(this);
+      _filingRoute = route;
+      elecomRouteObserver.subscribe(this, route);
+    }
+  }
+
+  @override
+  void didPush() => _routeVisible = true;
+
+  @override
+  void didPushNext() => _routeVisible = false;
+
+  @override
+  void didPopNext() {
+    _routeVisible = true;
+    _pollApplicationStatus();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _appResumed = state == AppLifecycleState.resumed;
+    if (_appResumed) _pollApplicationStatus();
+  }
+
+  void _pollApplicationStatus() {
+    if (!mounted ||
+        !_appResumed ||
+        !_routeVisible ||
+        _filingRoute?.isCurrent == false ||
+        _loadingStatus ||
+        _submitting ||
+        _existingApplication == null) {
+      return;
+    }
+    unawaited(_loadApplicationStatus());
+  }
+
+  @override
   void dispose() {
+    _statusPollTimer?.cancel();
+    elecomRouteObserver.unsubscribe(this);
+    WidgetsBinding.instance.removeObserver(this);
     _studentIdController.dispose();
     _firstNameController.dispose();
     _middleNameController.dispose();
@@ -315,21 +381,27 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
   }
 
   Future<void> _loadApplicationStatus() async {
+    if (_statusRequestInFlight || !mounted) return;
+    _statusRequestInFlight = true;
+    final revision = _statusRevision;
     try {
       final res = await _api.getCandidateApplicationStatus();
       final raw = res['application'];
-      if (!mounted) return;
-      setState(() {
-        _existingApplication = raw is Map<String, dynamic>
-            ? raw
-            : raw is Map
-            ? Map<String, dynamic>.from(raw)
-            : null;
-        _loadingStatus = false;
-      });
+      final application = raw is Map ? Map<String, dynamic>.from(raw) : null;
+      if (!mounted || revision != _statusRevision) return;
+      if (_loadingStatus || !mapEquals(_existingApplication, application)) {
+        setState(() {
+          _existingApplication = application;
+          _loadingStatus = false;
+        });
+      }
     } catch (_) {
-      if (!mounted) return;
-      setState(() => _loadingStatus = false);
+      // Retain the last successful status and retry on the next poll.
+      if (mounted && revision == _statusRevision && _loadingStatus) {
+        setState(() => _loadingStatus = false);
+      }
+    } finally {
+      _statusRequestInFlight = false;
     }
   }
 
@@ -480,6 +552,7 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
       );
       if (!mounted) return;
       setState(() {
+        _statusRevision++;
         _existingApplication = _applicationFromSubmitResponse(res);
         _loadingStatus = false;
       });
@@ -867,6 +940,7 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
                                 return;
                               }
                               setState(() {
+                                _statusRevision++;
                                 _existingApplication = null;
                                 _candidatePhoto = null;
                                 _partyLogo = null;
