@@ -191,8 +191,12 @@ class ElecomMobileApi {
     }
 
     if (res.statusCode >= 400 && decoded['ok'] != true) {
-      final msg = (decoded['error'] ?? decoded['message'] ?? decoded['detail'] ?? 'Request failed')
-          .toString();
+      final msg =
+          (decoded['error'] ??
+                  decoded['message'] ??
+                  decoded['detail'] ??
+                  'Request failed')
+              .toString();
       throw ElecomApiException('Request failed (${res.statusCode}): $msg');
     }
 
@@ -267,6 +271,30 @@ class ElecomMobileApi {
 
   Future<Map<String, dynamic>> getCandidateApplicationStatus() async {
     return _getJson(MobileApiPaths.candidateApplicationStatus);
+  }
+
+  Future<Map<String, dynamic>> submitCandidateRequirements({
+    required Map<String, File> files,
+  }) async {
+    final uri = Uri.parse(MobileApiPaths.candidateApplicationRequirements);
+    final request = http.MultipartRequest('POST', uri)
+      ..headers['Accept'] = 'application/json';
+    for (final entry in files.entries) {
+      request.files.add(
+        await http.MultipartFile.fromPath(entry.key, entry.value.path),
+      );
+    }
+    try {
+      return _decodeStreamed(await ApiClient.httpClient.send(request));
+    } catch (e, stackTrace) {
+      developer.log(
+        'Candidate requirements upload failed to reach $uri',
+        name: 'ElecomMobileApi',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      throw const ElecomApiException('Network error: cannot reach server');
+    }
   }
 
   Future<List<String>> getCandidateApplicationParties() async {

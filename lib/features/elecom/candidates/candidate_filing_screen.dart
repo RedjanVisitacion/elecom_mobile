@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -494,9 +495,7 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      final raw = e is ElecomApiException
-          ? e.message
-          : e.toString();
+      final raw = e is ElecomApiException ? e.message : e.toString();
       // Strip raw HTTP codes from the user-facing message.
       final cleaned = raw
           .replaceFirst(RegExp(r'^Request failed \(\d+\):\s*'), '')
@@ -505,7 +504,9 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
 
       // Give a friendly message for known server-side issues.
       final message = () {
-        if (raw.contains('413') || cleaned.toLowerCase().contains('too large') || cleaned.toLowerCase().contains('invalid json')) {
+        if (raw.contains('413') ||
+            cleaned.toLowerCase().contains('too large') ||
+            cleaned.toLowerCase().contains('invalid json')) {
           return 'Your photo is too large. Please choose a smaller image and try again.';
         }
         if (cleaned.toLowerCase().contains('already submitted') ||
@@ -871,6 +872,7 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
                           _ApplicationStatusCard(
                             application: existingApplication,
                             isPremiumMode: isPremiumMode,
+                            onRequirementsSubmitted: _loadApplicationStatus,
                             onFileAgain: () {
                               setState(() {
                                 _existingApplication = null;
@@ -1164,11 +1166,13 @@ class _ApplicationStatusCard extends StatelessWidget {
     required this.application,
     required this.isPremiumMode,
     required this.onFileAgain,
+    required this.onRequirementsSubmitted,
   });
 
   final Map<String, dynamic> application;
   final bool isPremiumMode;
   final VoidCallback onFileAgain;
+  final Future<void> Function() onRequirementsSubmitted;
 
   @override
   Widget build(BuildContext context) {
@@ -1195,6 +1199,22 @@ class _ApplicationStatusCard extends StatelessWidget {
         title: 'Congratulations!',
         body:
             'ELECOM approved your candidate filing. You are now published as an official candidate.',
+      ),
+      'requirements_pending' => (
+        bg: const Color(0xFFEFF6FF),
+        fg: const Color(0xFF2563EB),
+        icon: Icons.upload_file_rounded,
+        title: 'Initial Filing Approved',
+        body:
+            'Your filing passed the initial review. Submit all follow-up requirements for ELECOM’s final approval before your candidacy is published.',
+      ),
+      'requirements_review' => (
+        bg: const Color(0xFFFFF7ED),
+        fg: const Color(0xFFC2410C),
+        icon: Icons.fact_check_outlined,
+        title: 'Requirements Under Review',
+        body:
+            'Your follow-up requirements were submitted. ELECOM must approve them before you are published as an official candidate.',
       ),
       'rejected' => (
         bg: const Color(0xFFFFF1F2),
@@ -1398,6 +1418,15 @@ class _ApplicationStatusCard extends StatelessWidget {
               label: 'Section',
               value: (application['year_section'] ?? '').toString(),
             ),
+            if (status == 'requirements_pending' ||
+                status == 'requirements_review') ...[
+              const SizedBox(height: 12),
+              _CandidateRequirementsCard(
+                application: application,
+                isPremiumMode: isPremiumMode,
+                onSubmitted: onRequirementsSubmitted,
+              ),
+            ],
             const SizedBox(height: 10),
             if (status == 'rejected') ...[
               Text(
@@ -1434,6 +1463,299 @@ class _ApplicationStatusCard extends StatelessWidget {
                 ),
               ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CandidateRequirementsCard extends StatefulWidget {
+  const _CandidateRequirementsCard({
+    required this.application,
+    required this.isPremiumMode,
+    required this.onSubmitted,
+  });
+
+  final Map<String, dynamic> application;
+  final bool isPremiumMode;
+  final Future<void> Function() onSubmitted;
+
+  @override
+  State<_CandidateRequirementsCard> createState() =>
+      _CandidateRequirementsCardState();
+}
+
+class _CandidateRequirementsCardState
+    extends State<_CandidateRequirementsCard> {
+  File? _photo;
+  File? _enrollment;
+  File? _grades;
+  File? _goodMoral;
+  bool _submitting = false;
+
+  bool _hasServerFile(String key) =>
+      (widget.application[key] ?? '').toString().trim().isNotEmpty;
+
+  bool get _complete =>
+      _hasServerFile('requirements_photo_url') &&
+      _hasServerFile('enrollment_certificate_url') &&
+      _hasServerFile('grades_url') &&
+      _hasServerFile('good_moral_url');
+
+  Future<void> _pickPhoto() async {
+    final result = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+      maxWidth: 1200,
+      maxHeight: 1200,
+    );
+    if (result != null && mounted) setState(() => _photo = File(result.path));
+  }
+
+  Future<void> _pickPdf(String field) async {
+    PlatformFile? result;
+    try {
+      result = await FilePicker.pickFile(
+        type: FileType.custom,
+        allowedExtensions: const ['pdf'],
+      );
+    } on MissingPluginException {
+      if (mounted) {
+        AppToast.warning(
+          context,
+          'PDF picker was just installed. Fully close and reopen the app, then try again.',
+        );
+      }
+      return;
+    }
+    final path = result?.path;
+    if (path == null || !mounted) return;
+    setState(() {
+      final file = File(path);
+      switch (field) {
+        case 'enrollment_certificate':
+          _enrollment = file;
+        case 'grades':
+          _grades = file;
+        case 'good_moral':
+          _goodMoral = file;
+      }
+    });
+  }
+
+  Future<void> _submit() async {
+    final files = <String, File>{};
+    if (_photo case final file?) files['requirements_photo'] = file;
+    if (_enrollment case final file?) files['enrollment_certificate'] = file;
+    if (_grades case final file?) files['grades'] = file;
+    if (_goodMoral case final file?) files['good_moral'] = file;
+    final missing = <String>[
+      if (!_hasServerFile('requirements_photo_url') && _photo == null)
+        '2×2 picture',
+      if (!_hasServerFile('enrollment_certificate_url') && _enrollment == null)
+        'Certificate of Enrollment',
+      if (!_hasServerFile('grades_url') && _grades == null)
+        'grades for the last two consecutive semesters',
+      if (!_hasServerFile('good_moral_url') && _goodMoral == null)
+        'Good Moral Certificate',
+    ];
+    if (missing.isNotEmpty) {
+      AppToast.warning(context, 'Please attach ${missing.join(', ')}.');
+      return;
+    }
+    if (files.isEmpty) return;
+    setState(() => _submitting = true);
+    try {
+      await ElecomMobileApi().submitCandidateRequirements(files: files);
+      await widget.onSubmitted();
+      if (!mounted) return;
+      setState(() {
+        _photo = null;
+        _enrollment = null;
+        _grades = null;
+        _goodMoral = null;
+      });
+      AppToast.success(context, 'Candidate requirements submitted.');
+    } catch (e) {
+      if (!mounted) return;
+      final message = e is ElecomApiException ? e.message : e.toString();
+      AppToast.error(context, message);
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final foreground = widget.isPremiumMode
+        ? _premiumInk
+        : isDark
+        ? Colors.white
+        : _premiumInk;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: _premiumBlue.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _premiumBlue.withValues(alpha: 0.18)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  _complete
+                      ? Icons.task_alt_rounded
+                      : Icons.upload_file_rounded,
+                  color: _complete ? const Color(0xFF15803D) : _premiumBlue,
+                ),
+                const SizedBox(width: 9),
+                Expanded(
+                  child: Text(
+                    _complete
+                        ? 'Requirements complete'
+                        : 'Submit follow-up requirements',
+                    style: TextStyle(
+                      color: foreground,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 5),
+            Text(
+              'Upload a clear 2×2 picture. The remaining documents must be PDF files (maximum 8 MB each).',
+              style: TextStyle(
+                color: foreground.withValues(alpha: 0.70),
+                fontWeight: FontWeight.w600,
+                height: 1.35,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _RequirementPicker(
+              title: '2×2 Picture',
+              note: 'JPG or PNG image',
+              selectedName: _photo?.path.split(Platform.pathSeparator).last,
+              uploaded: _hasServerFile('requirements_photo_url'),
+              onTap: _pickPhoto,
+            ),
+            _RequirementPicker(
+              title: 'Certificate of Enrollment',
+              note: 'PDF only',
+              selectedName: _enrollment?.path
+                  .split(Platform.pathSeparator)
+                  .last,
+              uploaded: _hasServerFile('enrollment_certificate_url'),
+              onTap: () => _pickPdf('enrollment_certificate'),
+            ),
+            _RequirementPicker(
+              title: 'Grades — Last 2 Semesters',
+              note: 'One PDF containing both consecutive semesters',
+              selectedName: _grades?.path.split(Platform.pathSeparator).last,
+              uploaded: _hasServerFile('grades_url'),
+              onTap: () => _pickPdf('grades'),
+            ),
+            _RequirementPicker(
+              title: 'Good Moral Certificate',
+              note: 'PDF only',
+              selectedName: _goodMoral?.path.split(Platform.pathSeparator).last,
+              uploaded: _hasServerFile('good_moral_url'),
+              onTap: () => _pickPdf('good_moral'),
+            ),
+            if (!_complete ||
+                _photo != null ||
+                _enrollment != null ||
+                _grades != null ||
+                _goodMoral != null) ...[
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: _submitting ? null : _submit,
+                  icon: _submitting
+                      ? const SizedBox(
+                          width: 17,
+                          height: 17,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.cloud_upload_outlined),
+                  label: Text(
+                    _submitting ? 'Uploading...' : 'Submit Requirements',
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RequirementPicker extends StatelessWidget {
+  const _RequirementPicker({
+    required this.title,
+    required this.note,
+    required this.selectedName,
+    required this.uploaded,
+    required this.onTap,
+  });
+
+  final String title;
+  final String note;
+  final String? selectedName;
+  final bool uploaded;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final ready = selectedName != null || uploaded;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.78),
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+            child: Row(
+              children: [
+                Icon(
+                  ready
+                      ? Icons.check_circle_rounded
+                      : Icons.attach_file_rounded,
+                  color: ready ? const Color(0xFF15803D) : _premiumBlue,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      Text(
+                        selectedName ??
+                            (uploaded ? 'Uploaded — tap to replace' : note),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right_rounded),
+              ],
+            ),
+          ),
         ),
       ),
     );
