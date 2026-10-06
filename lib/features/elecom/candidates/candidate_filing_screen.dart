@@ -424,7 +424,7 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
       _addingNewParty = false;
       final matching = _matchingPartyName(_partyNameController.text);
       _selectedPartyName = matching;
-      if (matching != null) _partyNameController.text = matching;
+      _partyNameController.text = matching ?? '';
     });
   }
 
@@ -581,7 +581,7 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
         const SizedBox(height: 12),
         if (_loadingParties) const LinearProgressIndicator(),
         if (_addingNewParty)
-          TextFormField(
+          _FilingTextField(
             controller: _partyNameController,
             focusNode: _partyNameFocusNode,
             validator: _partyNameValidator,
@@ -593,21 +593,12 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
             ),
           )
         else ...[
-          DropdownButtonFormField<String>(
-            key: ValueKey(_selectedPartyName),
-            initialValue: _selectedPartyName,
-            isExpanded: true,
+          _FilingSelectField(
+            label: 'Existing Party',
+            value: _selectedPartyName,
+            options: _existingPartyNames,
             validator: (_) => _partyNameValidator(null),
-            items: _existingPartyNames
-                .map(
-                  (party) => DropdownMenuItem(
-                    value: party,
-                    child: Text(party, overflow: TextOverflow.ellipsis),
-                  ),
-                )
-                .toList(),
             onChanged: _loadingParties ? null : _selectPartyName,
-            decoration: const InputDecoration(labelText: 'Existing Party'),
           ),
           if (!_loadingParties && _existingPartyNames.isEmpty)
             Padding(
@@ -618,7 +609,7 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
               ),
             ),
           const SizedBox(height: 12),
-          TextFormField(
+          _FilingTextField(
             controller: _partyCodeController,
             validator: _partyCodeValidator,
             obscureText: true,
@@ -731,8 +722,8 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
                   ? Colors.white.withValues(alpha: 0.04)
                   : const Color(0xFFF8FAFC),
               contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 14,
+                horizontal: 14,
+                vertical: 12,
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
@@ -742,7 +733,7 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
                 borderSide: BorderSide(
                   color: isDark && !isPremiumMode
                       ? Colors.white24
-                      : const Color(0xFFCBD5E1),
+                      : const Color(0xFFE2E8F0),
                 ),
               ),
               focusedBorder: OutlineInputBorder(
@@ -830,7 +821,9 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
                     key: _formKey,
                     child: ListView(
                       physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
+                      keyboardDismissBehavior:
+                          ScrollViewKeyboardDismissBehavior.onDrag,
+                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 120),
                       children: [
                         Text(
                           existingApplication == null
@@ -907,7 +900,7 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
                             isPremiumMode: isPremiumMode,
                             child: Column(
                               children: [
-                                TextFormField(
+                                _FilingTextField(
                                   controller: _studentIdController,
                                   validator: _required,
                                   readOnly: true,
@@ -919,7 +912,7 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
                                 Row(
                                   children: [
                                     Expanded(
-                                      child: TextFormField(
+                                      child: _FilingTextField(
                                         controller: _firstNameController,
                                         validator: _required,
                                         readOnly: true,
@@ -930,7 +923,7 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
                                     ),
                                     const SizedBox(width: 10),
                                     Expanded(
-                                      child: TextFormField(
+                                      child: _FilingTextField(
                                         controller: _lastNameController,
                                         validator: _required,
                                         readOnly: true,
@@ -942,7 +935,7 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
                                   ],
                                 ),
                                 const SizedBox(height: 12),
-                                TextFormField(
+                                _FilingTextField(
                                   controller: _middleNameController,
                                   readOnly: true,
                                   decoration: const InputDecoration(
@@ -954,39 +947,24 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
                                 Row(
                                   children: [
                                     Expanded(
-                                      child: DropdownButtonFormField<String>(
-                                        initialValue: _program,
-                                        dropdownColor:
-                                            formTheme.colorScheme.surface,
-                                        isExpanded: true,
+                                      child: _FilingSelectField(
+                                        label: 'Program',
+                                        value: _program,
+                                        options: _programs,
                                         validator: _required,
-                                        items: _programs
-                                            .map(
-                                              (program) => DropdownMenuItem(
-                                                value: program,
-                                                child: Text(program),
-                                              ),
-                                            )
-                                            .toList(),
                                         onChanged: _accountProgram == null
                                             ? (value) => setState(() {
                                                 _setProgram(value);
                                               })
                                             : null,
-                                        decoration: const InputDecoration(
-                                          labelText: 'Program',
-                                        ),
                                       ),
                                     ),
                                     const SizedBox(width: 10),
                                     Expanded(
-                                      child: DropdownButtonFormField<String>(
-                                        initialValue: _yearSection,
-                                        dropdownColor:
-                                            formTheme.colorScheme.surface,
-                                        isExpanded: true,
-                                        validator: _required,
-                                        items: _yearSections
+                                      child: _FilingSelectField(
+                                        label: 'Year/Section',
+                                        value: _yearSection,
+                                        options: _yearSections
                                             .where(
                                               (section) =>
                                                   _sectionBelongsToProgram(
@@ -994,21 +972,13 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
                                                     _program,
                                                   ),
                                             )
-                                            .map(
-                                              (section) => DropdownMenuItem(
-                                                value: section,
-                                                child: Text(section),
-                                              ),
-                                            )
                                             .toList(),
+                                        validator: _required,
                                         onChanged: _accountYearSection == null
                                             ? (value) => setState(
                                                 () => _yearSection = value,
                                               )
                                             : null,
-                                        decoration: const InputDecoration(
-                                          labelText: 'Year/Section',
-                                        ),
                                       ),
                                     ),
                                   ],
@@ -1023,54 +993,26 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen> {
                             isPremiumMode: isPremiumMode,
                             child: Column(
                               children: [
-                                DropdownButtonFormField<String>(
-                                  initialValue: _organization,
-                                  dropdownColor: formTheme.colorScheme.surface,
-                                  isExpanded: true,
+                                _FilingSelectField(
+                                  label: 'Organization',
+                                  value: _organization,
+                                  options: _availableOrganizations,
                                   validator: _required,
-                                  items: _availableOrganizations
-                                      .map(
-                                        (org) => DropdownMenuItem(
-                                          value: org,
-                                          child: Text(org),
-                                        ),
-                                      )
-                                      .toList(),
                                   onChanged: (value) => setState(() {
                                     _setOrganization(value);
                                   }),
-                                  decoration: const InputDecoration(
-                                    labelText: 'Organization',
-                                    prefixIcon: Icon(
-                                      Icons.account_balance_outlined,
-                                    ),
-                                  ),
                                 ),
                                 const SizedBox(height: 12),
-                                DropdownButtonFormField<String>(
-                                  initialValue: _position,
-                                  dropdownColor: formTheme.colorScheme.surface,
-                                  isExpanded: true,
+                                _FilingSelectField(
+                                  label: 'Position',
+                                  value: _position,
+                                  options: _availablePositions,
                                   validator: _required,
-                                  items: _availablePositions
-                                      .map(
-                                        (position) => DropdownMenuItem(
-                                          value: position,
-                                          child: Text(position),
-                                        ),
-                                      )
-                                      .toList(),
                                   onChanged: (value) =>
                                       setState(() => _position = value),
-                                  decoration: const InputDecoration(
-                                    labelText: 'Position',
-                                    prefixIcon: Icon(
-                                      Icons.workspace_premium_outlined,
-                                    ),
-                                  ),
                                 ),
                                 const SizedBox(height: 12),
-                                TextFormField(
+                                _FilingTextField(
                                   controller: _platformController,
                                   validator: _required,
                                   minLines: 3,
@@ -1790,14 +1732,15 @@ class _Section extends StatelessWidget {
     children: [
       Text(
         title,
-        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
           color: isPremiumMode
               ? _premiumSub
               : Theme.of(context).colorScheme.onSurfaceVariant,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
+          fontSize: 16,
         ),
       ),
-      const SizedBox(height: 10),
+      const SizedBox(height: 12),
       child,
     ],
   );
@@ -1988,4 +1931,205 @@ class _MiniImagePicker extends StatelessWidget {
       ],
     );
   }
+}
+
+TextStyle _filingValueStyle(BuildContext context) => TextStyle(
+  fontSize: 14,
+  color:
+      Theme.of(context).brightness == Brightness.dark &&
+          !themeNotifier.isPremiumMode
+      ? const Color(0xFFE2E8F0)
+      : const Color(0xFF1E293B),
+);
+
+class _FilingFieldLabel extends StatelessWidget {
+  const _FilingFieldLabel({required this.label, required this.child});
+  final String label;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color:
+              Theme.of(context).brightness == Brightness.dark &&
+                  !themeNotifier.isPremiumMode
+              ? const Color(0xFF94A3B8)
+              : const Color(0xFF64748B),
+        ),
+      ),
+      const SizedBox(height: 6),
+      child,
+    ],
+  );
+}
+
+class _FilingTextField extends StatelessWidget {
+  const _FilingTextField({
+    required this.controller,
+    required this.decoration,
+    this.validator,
+    this.focusNode,
+    this.textInputAction,
+    this.readOnly = false,
+    this.obscureText = false,
+    this.enableSuggestions = true,
+    this.autocorrect = true,
+    this.minLines,
+    this.maxLines = 1,
+  });
+  final TextEditingController controller;
+  final InputDecoration decoration;
+  final FormFieldValidator<String>? validator;
+  final FocusNode? focusNode;
+  final TextInputAction? textInputAction;
+  final bool readOnly;
+  final bool obscureText;
+  final bool enableSuggestions;
+  final bool autocorrect;
+  final int? minLines;
+  final int? maxLines;
+
+  @override
+  Widget build(BuildContext context) => _FilingFieldLabel(
+    label: decoration.labelText!,
+    child: TextFormField(
+      controller: controller,
+      validator: validator,
+      focusNode: focusNode,
+      readOnly: readOnly,
+      obscureText: obscureText,
+      enableSuggestions: enableSuggestions,
+      autocorrect: autocorrect,
+      textInputAction: textInputAction,
+      minLines: minLines,
+      maxLines: maxLines,
+      style: _filingValueStyle(context),
+      scrollPadding: const EdgeInsets.only(bottom: 120),
+      decoration: InputDecoration(
+        hintText: decoration.hintText,
+        helperText: decoration.helperText,
+        helperMaxLines: decoration.helperMaxLines,
+        helperStyle: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+      ),
+    ),
+  );
+}
+
+class _FilingSelectField extends StatelessWidget {
+  const _FilingSelectField({
+    required this.label,
+    required this.value,
+    required this.options,
+    required this.onChanged,
+    this.validator,
+  });
+  final String label;
+  final String? value;
+  final List<String> options;
+  final ValueChanged<String?>? onChanged;
+  final FormFieldValidator<String>? validator;
+
+  Future<String?> _choose(BuildContext context) {
+    FocusScope.of(context).unfocus();
+    return showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (context) => SafeArea(
+        top: false,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(context).height * 0.65,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                child: Text(
+                  label,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  padding: const EdgeInsets.only(bottom: 16),
+                  itemCount: options.length,
+                  itemBuilder: (context, index) => ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 4,
+                    ),
+                    title: Text(
+                      options[index],
+                      style: _filingValueStyle(context),
+                    ),
+                    trailing: options[index] == value
+                        ? const Icon(Icons.check)
+                        : null,
+                    onTap: () => Navigator.pop(context, options[index]),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => _FilingFieldLabel(
+    label: label,
+    child: FormField<String>(
+      key: ValueKey('$label:$value'),
+      initialValue: value,
+      validator: validator,
+      builder: (field) => Semantics(
+        button: true,
+        enabled: onChanged != null,
+        label: label,
+        value: value,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: onChanged == null || options.isEmpty
+              ? null
+              : () async {
+                  final selected = await _choose(context);
+                  if (!context.mounted || selected == null) return;
+                  field.didChange(selected);
+                  onChanged!(selected);
+                },
+          child: InputDecorator(
+            isEmpty: value == null,
+            decoration: InputDecoration(
+              enabled: onChanged != null,
+              errorText: field.errorText,
+              suffixIcon: Icon(
+                onChanged == null ? Icons.lock_outline : Icons.expand_more,
+                size: 18,
+              ),
+              suffixIconConstraints: const BoxConstraints(
+                minWidth: 32,
+                minHeight: 24,
+              ),
+            ),
+            child: Text(
+              value ?? 'Select',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: _filingValueStyle(context),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
 }
