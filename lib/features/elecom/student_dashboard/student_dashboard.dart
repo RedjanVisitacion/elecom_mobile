@@ -66,7 +66,7 @@ class _StudentDashboardState extends State<StudentDashboard>
   Map<String, dynamic>? _ledgerSummary;
   bool _loadingLedger = false;
   int _totalVoters = 0;
-  int? _castVotes;
+  int _totalCandidates = 0;
   bool? _hasVoted;
   List<Map<String, dynamic>> _calendarEvents = <Map<String, dynamic>>[];
   Timer? _calendarPollTimer;
@@ -426,7 +426,7 @@ class _StudentDashboardState extends State<StudentDashboard>
       if (!mounted) return;
       setState(() {
         _totalVoters = (metrics['total_voters'] as num?)?.toInt() ?? 0;
-        _castVotes = (metrics['total_cast_votes'] as num?)?.toInt();
+        _totalCandidates = (metrics['total_candidates'] as num?)?.toInt() ?? 0;
       });
     } catch (_) {
       // silently ignore; stats stay at 0
@@ -628,15 +628,7 @@ class _StudentDashboardState extends State<StudentDashboard>
                 ? _PremiumDashboardBackground(
                     child: Stack(
                       children: [
-                        Padding(
-                          padding: EdgeInsets.only(
-                            bottom:
-                                _currentIndex == 0 && _assistantVisibleOnHome
-                                ? 112
-                                : 0,
-                          ),
-                          child: _dashboardTabs(context),
-                        ),
+                        _dashboardTabs(context),
                         if (_currentIndex == 0)
                           _AnimatedPremiumAssistantBubble(
                             visible: _assistantVisibleOnHome,
@@ -662,6 +654,7 @@ class _StudentDashboardState extends State<StudentDashboard>
   // and voter stats (Total Voters / Already Voted).
   // ---------------------------------------------------------------------------
   Widget _buildInfoCard(BuildContext context) {
+    final isPremiumMode = themeNotifier.isPremiumMode;
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     final cardBg = isDarkMode ? const Color(0xFF2A2A35) : Colors.white;
@@ -669,8 +662,8 @@ class _StudentDashboardState extends State<StudentDashboard>
         ? const Color(0xFF60A5FA)
         : const Color(0xFF2563EB);
     final subColor = isDarkMode
-        ? const Color(0xFFCBD5E1)
-        : const Color(0xFF2D3748);
+        ? const Color(0xFF60A5FA).withValues(alpha: 0.70)
+        : const Color(0xFF2563EB).withValues(alpha: 0.60);
     final dividerColor = isDarkMode
         ? const Color(0xFF60A5FA).withValues(alpha: 0.25)
         : const Color(0xFF2563EB).withValues(alpha: 0.18);
@@ -805,17 +798,29 @@ class _StudentDashboardState extends State<StudentDashboard>
                                   iconColor: isDarkMode
                                       ? const Color(0xFF60A5FA)
                                       : const Color(0xFF2563EB),
-                                  value: _castVotes != null && _totalVoters > 0
-                                      ? '${(100 * _castVotes! / _totalVoters).toStringAsFixed(1)}%'
+                                  value: _totalVoters > 0
+                                      ? _totalVoters.toString()
                                       : '—',
-                                  label: 'Voter Turnout',
+                                  label: 'Total Voters',
                                   nameColor: nameColor,
                                   subColor: subColor,
                                 ),
                               ),
                               VerticalDivider(color: dividerColor, width: 1),
                               Expanded(
-                                child: _ballotStatusTile(nameColor, subColor),
+                                child: _statTile(
+                                  context: context,
+                                  icon: Iconsax.profile_2user,
+                                  iconColor: isDarkMode
+                                      ? const Color(0xFF60A5FA)
+                                      : const Color(0xFF2563EB),
+                                  value: _totalCandidates > 0
+                                      ? _totalCandidates.toString()
+                                      : '—',
+                                  label: 'Total Candidates',
+                                  nameColor: nameColor,
+                                  subColor: subColor,
+                                ),
                               ),
                             ],
                           ),
@@ -841,9 +846,11 @@ class _StudentDashboardState extends State<StudentDashboard>
     required Color nameColor,
     required Color subColor,
   }) {
-    final progress = _castVotes != null && _totalVoters > 0
-        ? (_castVotes! / _totalVoters).clamp(0.0, 1.0)
-        : 0.0;
+    // Parse value for progress arc (cap at reasonable max for visual fill)
+    final intVal = int.tryParse(value) ?? 0;
+    // Use a soft fill — cap at 2000 for voters, 100 for candidates
+    final maxVal = label.contains('Voter') ? 2000.0 : 100.0;
+    final progress = intVal > 0 ? (intVal / maxVal).clamp(0.0, 1.0) : 0.0;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -890,88 +897,7 @@ class _StudentDashboardState extends State<StudentDashboard>
             fontWeight: FontWeight.w600,
           ),
         ),
-        Text(
-          _castVotes != null && _totalVoters > 0
-              ? '${_formatCount(_castVotes!)} / ${_formatCount(_totalVoters)} Voted'
-              : 'Turnout unavailable',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: subColor, fontSize: 10),
-        ),
       ],
-    );
-  }
-
-  String _formatCount(int count) => count.toString().replaceAllMapped(
-    RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
-    (match) => '${match[1]},',
-  );
-
-  Widget _ballotStatusTile(Color accent, Color ink) {
-    final voted = _hasVoted;
-    return Padding(
-      padding: const EdgeInsets.only(left: 8),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            'Voting Status',
-            style: TextStyle(
-              color: ink,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Icon(
-            voted == true
-                ? Icons.check_circle_outline
-                : Icons.how_to_vote_outlined,
-            size: 22,
-            color: accent,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            voted == null
-                ? 'Status unavailable'
-                : voted
-                ? 'Ballot Submitted'
-                : 'Not Voted Yet',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: ink,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 4),
-          SizedBox(
-            height: 48,
-            child: FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF2563EB),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                textStyle: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              onPressed: voted == null
-                  ? _loadBallotStatus
-                  : voted
-                  ? () => _handleBottomNavTap(3)
-                  : _openElectionForVoting,
-              child: Text(
-                voted == null
-                    ? 'Retry'
-                    : voted
-                    ? 'View Receipt'
-                    : 'Cast Vote',
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -1785,13 +1711,12 @@ class _SlidingCardStackState extends State<_SlidingCardStack> {
 
   // Single card height shared by BOTH slides.
   // Must be >= the countdown card's natural content height to prevent overflow.
-  double get _cardH =>
-      280.0 * math.max(1.0, MediaQuery.textScalerOf(context).scale(12) / 12);
+  static const double _cardH = 235.0;
 
   @override
   Widget build(BuildContext context) {
     // stackH = banner overlap (140) + card height + dots area (12)
-    final double stackH = 140 + _cardH + 12;
+    const double stackH = 140 + _cardH + 12;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
