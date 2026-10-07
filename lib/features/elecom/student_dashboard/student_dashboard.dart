@@ -663,12 +663,11 @@ class _StudentDashboardState extends State<StudentDashboard>
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     final cardBg = isDarkMode ? const Color(0xFF2A2A35) : Colors.white;
-    final nameColor = isDarkMode
-        ? const Color(0xFF60A5FA)
-        : const Color(0xFF2563EB);
+    final nameColor = isDarkMode ? Colors.white : const Color(0xFF2563EB);
     final subColor = isDarkMode
-        ? const Color(0xFF60A5FA).withValues(alpha: 0.70)
+        ? const Color(0xFFE2E8F0)
         : const Color(0xFF2563EB).withValues(alpha: 0.60);
+    final contactColor = isDarkMode ? Colors.white : subColor;
     final dividerColor = isDarkMode
         ? const Color(0xFF60A5FA).withValues(alpha: 0.25)
         : const Color(0xFF2563EB).withValues(alpha: 0.18);
@@ -769,7 +768,7 @@ class _StudentDashboardState extends State<StudentDashboard>
                             Text(
                               phoneMasked,
                               style: TextStyle(
-                                color: subColor,
+                                color: contactColor,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -780,7 +779,7 @@ class _StudentDashboardState extends State<StudentDashboard>
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                color: subColor,
+                                color: contactColor,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
                               ),

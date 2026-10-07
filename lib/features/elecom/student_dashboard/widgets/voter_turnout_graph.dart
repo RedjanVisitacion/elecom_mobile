@@ -24,7 +24,7 @@ class VoterTurnoutGraph extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final blue = isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB);
-    final ink = isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569);
+    final ink = isDark ? const Color(0xFFE2E8F0) : const Color(0xFF475569);
     final available = castVotes != null && voters > 0;
     final percentage = available ? 100 * castVotes! / voters : null;
     return Semantics(
