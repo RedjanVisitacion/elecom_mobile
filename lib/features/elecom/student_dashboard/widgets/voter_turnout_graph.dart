@@ -67,6 +67,7 @@ class VoterTurnoutGraph extends StatelessWidget {
             child: _AnimatedMountain(
               progress: available ? (castVotes! / voters).clamp(0.0, 1.0) : 0,
               color: isDark ? const Color(0xFFFACC15) : const Color(0xFFD9A514),
+              progressColor: blue,
               animate: animate,
             ),
           ),
@@ -94,10 +95,12 @@ class _AnimatedMountain extends StatefulWidget {
   const _AnimatedMountain({
     required this.progress,
     required this.color,
+    required this.progressColor,
     required this.animate,
   });
   final double progress;
   final Color color;
+  final Color progressColor;
   final bool animate;
 
   @override
@@ -152,6 +155,7 @@ class _AnimatedMountainState extends State<_AnimatedMountain>
           painter: _MountainProgressPainter(
             progress: progress,
             color: widget.color,
+            progressColor: widget.progressColor,
             shimmer: _shimmer,
             animate: widget.animate && !_reduceMotion,
           ),
@@ -165,6 +169,7 @@ class _MountainProgressPainter extends CustomPainter {
   _MountainProgressPainter({
     required this.progress,
     required this.color,
+    required this.progressColor,
     required this.shimmer,
     required this.animate,
   }) : super(repaint: shimmer);
@@ -172,6 +177,7 @@ class _MountainProgressPainter extends CustomPainter {
   final bool animate;
   final double progress;
   final Color color;
+  final Color progressColor;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -370,11 +376,22 @@ class _MountainProgressPainter extends CustomPainter {
     // Only this filled portion encodes turnout; never invent peaks from data.
     canvas.save();
     canvas.clipRect(Rect.fromLTWH(0, 0, size.width * progress, size.height));
-    canvas.drawPath(mountain, fill(0.7));
+    canvas.drawPath(
+      mountain,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            progressColor.withValues(alpha: 0.65),
+            progressColor.withValues(alpha: 0.2),
+          ],
+        ).createShader(Offset.zero & size),
+    );
     canvas.drawPath(
       top,
       Paint()
-        ..color = color
+        ..color = progressColor
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.3
         ..strokeJoin = StrokeJoin.round,
@@ -392,7 +409,7 @@ class _MountainProgressPainter extends CustomPainter {
         Offset(0, size.height - 1),
         Offset(size.width * progress, size.height - 1),
         Paint()
-          ..color = color
+          ..color = progressColor
           ..strokeWidth = 2,
       );
     }
@@ -402,5 +419,6 @@ class _MountainProgressPainter extends CustomPainter {
   bool shouldRepaint(_MountainProgressPainter oldDelegate) =>
       oldDelegate.progress != progress ||
       oldDelegate.color != color ||
+      oldDelegate.progressColor != progressColor ||
       oldDelegate.animate != animate;
 }
