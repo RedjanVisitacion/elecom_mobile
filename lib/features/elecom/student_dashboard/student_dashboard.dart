@@ -6,7 +6,6 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:iconsax_flutter/iconsax_flutter.dart';
 import 'package:lottie/lottie.dart';
 
 import '../../../app/app.dart';
@@ -28,6 +27,7 @@ import '../results/results_screen.dart';
 import 'utils/theme_notifier.dart';
 import 'widgets/candidate_application_promo.dart';
 import 'widgets/calendar_events_card.dart';
+import 'widgets/voter_turnout_graph.dart';
 import 'widgets/election_home_countdown.dart';
 import 'widgets/election_transparency_card.dart';
 import 'widgets/home_candidates_strip.dart';
@@ -66,7 +66,8 @@ class _StudentDashboardState extends State<StudentDashboard>
   Map<String, dynamic>? _ledgerSummary;
   bool _loadingLedger = false;
   int _totalVoters = 0;
-  int _totalCandidates = 0;
+  int? _castVotes;
+  bool _loadingElectionMetrics = false;
   bool? _hasVoted;
   List<Map<String, dynamic>> _calendarEvents = <Map<String, dynamic>>[];
   Timer? _calendarPollTimer;
@@ -203,6 +204,7 @@ class _StudentDashboardState extends State<StudentDashboard>
     _calendarPollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
       if (_appResumed && _dashboardRouteVisible && _currentIndex == 0) {
         unawaited(_loadCalendarEvents());
+        unawaited(_loadElectionMetrics());
       }
     });
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -418,6 +420,8 @@ class _StudentDashboardState extends State<StudentDashboard>
   }
 
   Future<void> _loadElectionMetrics() async {
+    if (_loadingElectionMetrics) return;
+    _loadingElectionMetrics = true;
     try {
       final res = await _api.getElectionWindow();
       final metrics = res['metrics'] is Map<String, dynamic>
@@ -426,10 +430,12 @@ class _StudentDashboardState extends State<StudentDashboard>
       if (!mounted) return;
       setState(() {
         _totalVoters = (metrics['total_voters'] as num?)?.toInt() ?? 0;
-        _totalCandidates = (metrics['total_candidates'] as num?)?.toInt() ?? 0;
+        _castVotes = (metrics['total_cast_votes'] as num?)?.toInt();
       });
     } catch (_) {
-      // silently ignore; stats stay at 0
+      // Retain the last successful turnout when offline.
+    } finally {
+      _loadingElectionMetrics = false;
     }
   }
 
@@ -654,7 +660,6 @@ class _StudentDashboardState extends State<StudentDashboard>
   // and voter stats (Total Voters / Already Voted).
   // ---------------------------------------------------------------------------
   Widget _buildInfoCard(BuildContext context) {
-    final isPremiumMode = themeNotifier.isPremiumMode;
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     final cardBg = isDarkMode ? const Color(0xFF2A2A35) : Colors.white;
@@ -783,49 +788,19 @@ class _StudentDashboardState extends State<StudentDashboard>
                         ],
                       ],
                     ),
-                    // Divider + stats
-                    Column(
-                      children: [
-                        Divider(color: dividerColor, height: 1),
-                        const SizedBox(height: 8),
-                        IntrinsicHeight(
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: _statTile(
-                                  context: context,
-                                  icon: Iconsax.people,
-                                  iconColor: isDarkMode
-                                      ? const Color(0xFF60A5FA)
-                                      : const Color(0xFF2563EB),
-                                  value: _totalVoters > 0
-                                      ? _totalVoters.toString()
-                                      : '—',
-                                  label: 'Total Voters',
-                                  nameColor: nameColor,
-                                  subColor: subColor,
-                                ),
-                              ),
-                              VerticalDivider(color: dividerColor, width: 1),
-                              Expanded(
-                                child: _statTile(
-                                  context: context,
-                                  icon: Iconsax.profile_2user,
-                                  iconColor: isDarkMode
-                                      ? const Color(0xFF60A5FA)
-                                      : const Color(0xFF2563EB),
-                                  value: _totalCandidates > 0
-                                      ? _totalCandidates.toString()
-                                      : '—',
-                                  label: 'Total Candidates',
-                                  nameColor: nameColor,
-                                  subColor: subColor,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                    const SizedBox(height: 8),
+                    Divider(color: dividerColor, height: 1),
+                    const SizedBox(height: 6),
+                    Expanded(
+                      child: VoterTurnoutGraph(
+                        voters: _totalVoters,
+                        castVotes: _castVotes,
+                        animate:
+                            _appResumed &&
+                            _dashboardRouteVisible &&
+                            _currentIndex == 0,
+                        isDark: isDarkMode,
+                      ),
                     ),
                   ],
                 ),
@@ -834,70 +809,6 @@ class _StudentDashboardState extends State<StudentDashboard>
           ],
         ),
       ),
-    );
-  }
-
-  Widget _statTile({
-    required BuildContext context,
-    required IconData icon,
-    required Color iconColor,
-    required String value,
-    required String label,
-    required Color nameColor,
-    required Color subColor,
-  }) {
-    // Parse value for progress arc (cap at reasonable max for visual fill)
-    final intVal = int.tryParse(value) ?? 0;
-    // Use a soft fill — cap at 2000 for voters, 100 for candidates
-    final maxVal = label.contains('Voter') ? 2000.0 : 100.0;
-    final progress = intVal > 0 ? (intVal / maxVal).clamp(0.0, 1.0) : 0.0;
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SizedBox(
-          width: 60,
-          height: 60,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              CustomPaint(
-                size: const Size(60, 60),
-                painter: _ArcPainter(
-                  progress: progress,
-                  color: iconColor,
-                  trackColor: iconColor.withValues(alpha: 0.12),
-                ),
-              ),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(icon, color: iconColor, size: 14),
-                  const SizedBox(height: 1),
-                  Text(
-                    value,
-                    style: TextStyle(
-                      color: nameColor,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 13,
-                      height: 1.0,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            color: subColor,
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
     );
   }
 
@@ -2138,58 +2049,4 @@ class _PremiumAssistantBubble extends StatelessWidget {
       ),
     );
   }
-}
-
-// ---------------------------------------------------------------------------
-// Arc painter for the analytics-style stat tile circles
-// ---------------------------------------------------------------------------
-class _ArcPainter extends CustomPainter {
-  const _ArcPainter({
-    required this.progress,
-    required this.color,
-    required this.trackColor,
-  });
-
-  final double progress;
-  final Color color;
-  final Color trackColor;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    const strokeWidth = 6.0;
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = (size.width - strokeWidth) / 2;
-
-    final trackPaint = Paint()
-      ..color = trackColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round;
-
-    final arcPaint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round;
-
-    // Full track circle
-    canvas.drawCircle(center, radius, trackPaint);
-
-    // Progress arc — starts from top (-π/2), sweeps clockwise
-    if (progress > 0) {
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        -3.14159 / 2,
-        2 * 3.14159 * progress,
-        false,
-        arcPaint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(_ArcPainter old) =>
-      old.progress != progress ||
-      old.color != color ||
-      old.trackColor != trackColor;
 }
