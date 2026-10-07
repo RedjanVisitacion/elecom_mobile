@@ -56,6 +56,7 @@ class _StudentDashboardState extends State<StudentDashboard>
   final GlobalKey<RefreshIndicatorState> _homeRefreshKey =
       GlobalKey<RefreshIndicatorState>();
   final ScrollController _homeScrollController = ScrollController();
+  bool _showBackToTop = false;
   int _currentIndex = 0;
   int _resultsScreenVersion = 0;
   int _homeCountdownVersion = 0;
@@ -80,6 +81,31 @@ class _StudentDashboardState extends State<StudentDashboard>
   bool _assistantVisibleOnHome = EleVotePreferences.enabledNotifier.value;
   int _assistantAnimationNonce = 0;
   PageRoute<dynamic>? _dashboardRoute;
+
+  void _onHomeScroll() {
+    if (!mounted || !_homeScrollController.hasClients) return;
+    final position = _homeScrollController.position;
+    final show =
+        position.pixels > math.max(240.0, position.viewportDimension * 0.6);
+    if (show != _showBackToTop) {
+      setState(() => _showBackToTop = show);
+    }
+  }
+
+  void _scrollHomeToTop() {
+    if (!_homeScrollController.hasClients) return;
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _homeScrollController.jumpTo(0);
+    } else {
+      unawaited(
+        _homeScrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 450),
+          curve: Curves.easeOutCubic,
+        ),
+      );
+    }
+  }
 
   void _onReplayDashboardTutorial() {
     if (!mounted) return;
@@ -184,6 +210,7 @@ class _StudentDashboardState extends State<StudentDashboard>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _homeScrollController.addListener(_onHomeScroll);
     _appResumed =
         WidgetsBinding.instance.lifecycleState == null ||
         WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
@@ -644,6 +671,37 @@ class _StudentDashboardState extends State<StudentDashboard>
                     ),
                   )
                 : _dashboardTabs(context),
+            floatingActionButton: _currentIndex == 0 && _showBackToTop
+                ? Padding(
+                    padding: const EdgeInsets.only(bottom: 24),
+                    child: IconButton(
+                      tooltip: 'Back to top',
+                      padding: const EdgeInsets.all(10),
+                      constraints: const BoxConstraints(
+                        minWidth: 64,
+                        minHeight: 64,
+                      ),
+                      onPressed: _scrollHomeToTop,
+                      icon: Icon(
+                        Icons.keyboard_double_arrow_up_rounded,
+                        color: shouldUseDarkMode && !shouldUsePremiumMode
+                            ? Colors.white
+                            : const Color(0xFF2563EB),
+                        size: 42,
+                        shadows: [
+                          Shadow(
+                            color: shouldUseDarkMode && !shouldUsePremiumMode
+                                ? Colors.black54
+                                : Colors.white,
+                            blurRadius: 6,
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : null,
+            floatingActionButtonLocation:
+                FloatingActionButtonLocation.centerFloat,
             bottomNavigationBar: _buildBottomNav(
               context: context,
               isPremiumMode: shouldUsePremiumMode,
@@ -1534,6 +1592,8 @@ class _StudentDashboardState extends State<StudentDashboard>
                             },
                           ),
                         ),
+                        // Clearance for the centered back-to-top arrow and EleVote.
+                        const SizedBox(height: 112),
                       ],
                     ),
                   ),
@@ -1556,6 +1616,7 @@ class _StudentDashboardState extends State<StudentDashboard>
     EleVotePreferences.enabledNotifier.removeListener(
       _handleAssistantPreferenceChanged,
     );
+    _homeScrollController.removeListener(_onHomeScroll);
     _homeScrollController.dispose();
     super.dispose();
   }
