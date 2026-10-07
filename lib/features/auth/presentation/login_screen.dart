@@ -1,9 +1,5 @@
 import 'dart:async';
-
-import 'package:animate_do/animate_do.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/notifications/notification_center_store.dart';
@@ -13,40 +9,30 @@ import '../../elecom/data/elecom_mobile_api.dart';
 import '../../elecom/face/face_enrollment_screen.dart';
 import '../../elecom/presentation/elecom_dashboard.dart';
 import '../../elecom/profile/elecom_terms_conditions_screen.dart';
-import '../presentation/forgot_password_screen.dart';
+import 'forgot_password_screen.dart';
 import '../state/login_view_model.dart';
 
-// ─── Web-matched color palette ────────────────────────────────────────────────
-const _kNavy = Color(0xFF0F1F3D);
-const _kNavyLight = Color(0xFF1A2F55);
-const _kGold = Color(0xFFF59E0B);
-const _kGoldLight = Color(0xFFFACC15);
-const _kWhite = Colors.white;
-const _kBgLight = Color(0xFFF8FAFC);
-const _kTextDark = Color(0xFF0F1F3D);
-const _kTextMuted = Color(0xFF64748B);
-const _kBorder = Color(0xFFCBD5E1);
-// ──────────────────────────────────────────────────────────────────────────────
+const _navy = Color(0xFF0D1B3E);
+const _inputInk = Color(0xFF1E293B);
+const _muted = Color(0xFF64748B);
+const _border = Color(0xFFCBD5E1);
+const _gold = Color(0xFFFACC15);
+const _goldFocus = Color(0xFFF59E0B);
+const _primary = Color(0xFF1D4ED8);
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
-
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen>
-    with TickerProviderStateMixin {
+class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _studentIdController = TextEditingController();
   final _passwordController = TextEditingController();
-  late final AnimationController _shimmerController;
-  bool _buttonPressed = false;
+  final ElecomMobileApi _mobileApi = ElecomMobileApi();
   bool _loginTutorialScheduled = false;
   Timer? _validationTimer;
-
-  final ElecomMobileApi _mobileApi = ElecomMobileApi();
-
   Future<void> _submit() async {
     final vm = context.read<LoginViewModel>();
     final ok = _formKey.currentState?.validate() ?? false;
@@ -97,18 +83,6 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _shimmerController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2200),
-    )..repeat();
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => _maybeStartLoginTutorial(),
-    );
-  }
-
   Future<void> _maybeStartLoginTutorial() async {
     if (!mounted || _loginTutorialScheduled) return;
     if (!await TutorialPrefs.shouldShowLoginTutorial()) return;
@@ -118,255 +92,356 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _maybeStartLoginTutorial(),
+    );
+  }
+
+  @override
   void dispose() {
     _validationTimer?.cancel();
-    _shimmerController.dispose();
     _studentIdController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
+  Future<void> _openTerms() async {
+    final accepted = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      isDismissible: false,
+      enableDrag: false,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const FractionallySizedBox(
+        heightFactor: 0.94,
+        child: ClipRRect(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          child: ElecomTermsConditionsScreen(requireAgreement: true),
+        ),
+      ),
+    );
+    if (!mounted) return;
+    context.read<LoginViewModel>().setAcceptedTerms(accepted == true);
+  }
 
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<LoginViewModel>();
-
     return Theme(
       data: ThemeData(
         useMaterial3: true,
         brightness: Brightness.light,
-        scaffoldBackgroundColor: _kBgLight,
-        checkboxTheme: const CheckboxThemeData(
-          checkColor: WidgetStatePropertyAll<Color>(_kWhite),
-        ),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: _primary,
+        ).copyWith(primary: _primary),
+        scaffoldBackgroundColor: const Color(0xFFF8FAFC),
       ),
       child: Scaffold(
-        backgroundColor: _kBgLight,
-        // resizeToAvoidBottomInset pushes the whole body up when keyboard opens
         resizeToAvoidBottomInset: true,
         body: Stack(
-          fit: StackFit.expand,
           children: [
-            const _WebBackdrop(),
+            if (MediaQuery.viewInsetsOf(context).bottom == 0)
+              const Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: _CampusFooter(),
+              ),
             SafeArea(
+              bottom: false,
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  final w = constraints.maxWidth;
-                  final h = constraints.maxHeight;
-                  final compact = h < 680;
-                  final hPad = (w * 0.07).clamp(20.0, 32.0);
-                  final topPad = compact ? 56.0 : h * 0.13;
-                  final fieldH = compact ? 46.0 : 50.0;
-                  final btnH = compact ? 48.0 : 52.0;
-                  final fs = compact ? 13.0 : 14.0;
-
-                  // Outer Column: scrollable content + pinned footer
-                  return Column(
-                    children: [
-                      Expanded(
-                        child: SingleChildScrollView(
-                          physics: const BouncingScrollPhysics(),
-                          padding: EdgeInsets.fromLTRB(hPad, topPad, hPad, 16.0),
-                          child: Center(
-                            child: ConstrainedBox(
-                              constraints: const BoxConstraints(maxWidth: 420),
-                              child: Form(
-                                key: _formKey,
-                                child: _WebFormCard(
-                                  compact: compact,
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                                    children: [
-                                      // ── Logo with glow ──
-                                      FadeIn(
-                                        duration: const Duration(milliseconds: 600),
-                                        child: Center(
+                  return SingleChildScrollView(
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: constraints.maxHeight,
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Padding(
+                            padding: EdgeInsets.fromLTRB(
+                              24,
+                              MediaQuery.viewInsetsOf(context).bottom == 0 &&
+                                      constraints.maxHeight >= 600
+                                  ? 68
+                                  : 24,
+                              24,
+                              12,
+                            ),
+                            child: Center(
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  maxWidth: 420,
+                                ),
+                                child: Form(
+                                  key: _formKey,
+                                  child: AutofillGroup(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
+                                      children: [
+                                        Semantics(
+                                          label: 'USTP Oroquieta and ELECOM',
+                                          image: true,
                                           child: Image.asset(
                                             'assets/USTP_ELECOM_ICON_NOBG.png',
-                                            width: compact ? 120.0 : 136.0,
-                                            height: compact ? 120.0 : 136.0,
+                                            height: 132,
                                             fit: BoxFit.contain,
+                                            excludeFromSemantics: true,
                                           ),
                                         ),
-                                      ),
-                                      SizedBox(height: compact ? 0.0 : 2.0),
-
-                                      // Student ID field
-                                      SlideInUp(
-                                        duration: const Duration(milliseconds: 520),
-                                        delay: const Duration(milliseconds: 80),
-                                        from: 14,
-                                        child: _WebInputField(
-                                          key: ElecomTutorialKeys.loginStudentId,
-                                          controller: _studentIdController,
-                                          hintText: 'Enter your student ID',
-                                          icon: Icons.badge_outlined,
-                                          height: fieldH,
-                                          fontSize: fs,
-                                          keyboardType: TextInputType.text,
-                                          validator: (v) {
-                                            if (v == null || v.trim().isEmpty) {
-                                              return 'Please enter your student ID';
-                                            }
-                                            return null;
-                                          },
+                                        const SizedBox(height: 8),
+                                        const Text(
+                                          'LOGIN',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            color: _navy,
+                                            fontSize: 26,
+                                            fontWeight: FontWeight.w800,
+                                            letterSpacing: 1.2,
+                                          ),
                                         ),
-                                      ),
-                                      SizedBox(height: compact ? 12.0 : 14.0),
-
-                                      // Password field
-                                      SlideInUp(
-                                        duration: const Duration(milliseconds: 540),
-                                        delay: const Duration(milliseconds: 140),
-                                        from: 14,
-                                        child: _WebInputField(
+                                        const SizedBox(height: 24),
+                                        _LoginInput(
+                                          key:
+                                              ElecomTutorialKeys.loginStudentId,
+                                          label: 'Student ID',
+                                          hint: 'Enter your Student ID',
+                                          controller: _studentIdController,
+                                          icon: Icons.badge_outlined,
+                                          enabled: !vm.isLoading,
+                                          autofillHints: const [
+                                            AutofillHints.username,
+                                          ],
+                                          action: TextInputAction.next,
+                                          validator: (value) =>
+                                              value == null ||
+                                                  value.trim().isEmpty
+                                              ? 'Please enter your student ID'
+                                              : null,
+                                        ),
+                                        const SizedBox(height: 16),
+                                        _LoginInput(
                                           key: ElecomTutorialKeys.loginPassword,
+                                          label: 'Password',
+                                          hint: 'Enter your Password',
                                           controller: _passwordController,
-                                          hintText: 'Enter your password',
                                           icon: Icons.lock_outline_rounded,
-                                          height: fieldH,
-                                          fontSize: fs,
-                                          obscureText: vm.obscurePassword,
-                                          validator: (v) {
-                                            if (v == null || v.isEmpty) {
-                                              return 'Please enter your password';
-                                            }
-                                            return null;
-                                          },
+                                          enabled: !vm.isLoading,
+                                          obscure: vm.obscurePassword,
+                                          autofillHints: const [
+                                            AutofillHints.password,
+                                          ],
+                                          action: TextInputAction.done,
+                                          onSubmitted: vm.isLoading
+                                              ? null
+                                              : (_) => _submit(),
+                                          validator: (value) =>
+                                              value == null || value.isEmpty
+                                              ? 'Please enter your password'
+                                              : null,
                                           suffix: IconButton(
-                                            visualDensity: VisualDensity.compact,
-                                            onPressed: () => vm.togglePasswordVisibility(),
-                                            icon: AnimatedSwitcher(
-                                              duration: const Duration(milliseconds: 180),
-                                              child: Icon(
-                                                vm.obscurePassword
-                                                    ? Icons.visibility_off_outlined
-                                                    : Icons.visibility_outlined,
-                                                key: ValueKey(vm.obscurePassword),
-                                                color: _kTextMuted,
-                                                size: 18,
-                                              ),
+                                            tooltip: vm.obscurePassword
+                                                ? 'Show password'
+                                                : 'Hide password',
+                                            onPressed: vm.isLoading
+                                                ? null
+                                                : vm.togglePasswordVisibility,
+                                            icon: Icon(
+                                              vm.obscurePassword
+                                                  ? Icons
+                                                        .visibility_off_outlined
+                                                  : Icons.visibility_outlined,
+                                              color: _muted,
+                                              size: 22,
                                             ),
                                           ),
                                         ),
-                                      ),
-                                      SizedBox(height: compact ? 14.0 : 16.0),
-
-                                      // Terms row
-                                      FadeInUp(
-                                        duration: const Duration(milliseconds: 540),
-                                        delay: const Duration(milliseconds: 200),
-                                        from: 8,
-                                        child: _WebTermsRow(
-                                          compact: compact,
-                                          accepted: vm.acceptedTerms,
-                                          onToggle: () => context.read<LoginViewModel>().toggleAcceptedTerms(),
-                                          onViewTerms: () async {
-                                            final accepted = await showModalBottomSheet<bool>(
-                                              context: context,
-                                              isScrollControlled: true,
-                                              isDismissible: false,
-                                              enableDrag: false,
-                                              backgroundColor: Colors.transparent,
-                                              builder: (ctx) => FractionallySizedBox(
-                                                heightFactor: 0.94,
-                                                child: ClipRRect(
-                                                  borderRadius: const BorderRadius.vertical(
-                                                    top: Radius.circular(20),
+                                        const SizedBox(height: 12),
+                                        Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.center,
+                                          children: [
+                                            Checkbox(
+                                              semanticLabel:
+                                                  'Accept Terms and Conditions',
+                                              value: vm.acceptedTerms,
+                                              onChanged: vm.isLoading
+                                                  ? null
+                                                  : (value) =>
+                                                        vm.setAcceptedTerms(
+                                                          value ?? false,
+                                                        ),
+                                              activeColor: _navy,
+                                              side: const BorderSide(
+                                                color: _muted,
+                                              ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(4),
+                                              ),
+                                            ),
+                                            Expanded(
+                                              child: Wrap(
+                                                crossAxisAlignment:
+                                                    WrapCrossAlignment.center,
+                                                children: [
+                                                  const Text(
+                                                    'I accept the ',
+                                                    style: TextStyle(
+                                                      color: _inputInk,
+                                                      fontSize: 12,
+                                                    ),
                                                   ),
-                                                  child: const ElecomTermsConditionsScreen(
-                                                    requireAgreement: true,
+                                                  TextButton(
+                                                    onPressed: vm.isLoading
+                                                        ? null
+                                                        : _openTerms,
+                                                    style: TextButton.styleFrom(
+                                                      foregroundColor: _navy,
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 2,
+                                                          ),
+                                                      minimumSize: const Size(
+                                                        48,
+                                                        48,
+                                                      ),
+                                                    ),
+                                                    child: const Text(
+                                                      'Terms and Conditions',
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        decoration:
+                                                            TextDecoration
+                                                                .underline,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 12),
+                                        FilledButton(
+                                          key: ElecomTutorialKeys.loginSubmit,
+                                          onPressed:
+                                              vm.isLoading || !vm.acceptedTerms
+                                              ? null
+                                              : _submit,
+                                          style:
+                                              FilledButton.styleFrom(
+                                                backgroundColor: _gold,
+                                                foregroundColor: _navy,
+                                                disabledBackgroundColor:
+                                                    _border,
+                                                disabledForegroundColor: _muted,
+                                                minimumSize: const Size(
+                                                  double.infinity,
+                                                  52,
+                                                ),
+                                                elevation: 2,
+                                                shadowColor: _navy.withValues(
+                                                  alpha: 0.18,
+                                                ),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 20,
+                                                      vertical: 14,
+                                                    ),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                ),
+                                              ).copyWith(
+                                                elevation:
+                                                    WidgetStateProperty.resolveWith(
+                                                      (states) {
+                                                        if (states.contains(
+                                                          WidgetState.disabled,
+                                                        )) {
+                                                          return 0;
+                                                        }
+                                                        if (states.contains(
+                                                          WidgetState.pressed,
+                                                        )) {
+                                                          return 1;
+                                                        }
+                                                        if (states.contains(
+                                                          WidgetState.hovered,
+                                                        )) {
+                                                          return 3;
+                                                        }
+                                                        return 2;
+                                                      },
+                                                    ),
+                                              ),
+                                          child: vm.isLoading
+                                              ? const SizedBox(
+                                                  width: 22,
+                                                  height: 22,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                        strokeWidth: 2,
+                                                        color: _navy,
+                                                      ),
+                                                )
+                                              : const Text(
+                                                  'Sign In',
+                                                  style: TextStyle(
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.w700,
                                                   ),
                                                 ),
-                                              ),
-                                            );
-                                            if (!context.mounted) return;
-                                            context.read<LoginViewModel>().setAcceptedTerms(accepted == true);
-                                          },
                                         ),
-                                      ),
-                                      SizedBox(height: compact ? 14.0 : 16.0),
-
-                                      // Sign In button
-                                      FadeInUp(
-                                        duration: const Duration(milliseconds: 560),
-                                        delay: const Duration(milliseconds: 280),
-                                        from: 10,
-                                        child: _WebSignInButton(
-                                          key: ElecomTutorialKeys.loginSubmit,
-                                          height: btnH,
-                                          isLoading: vm.isLoading,
-                                          isPressed: _buttonPressed,
-                                          shimmerController: _shimmerController,
-                                          onTapDown: () => setState(() => _buttonPressed = true),
-                                          onTapCancel: () => setState(() => _buttonPressed = false),
-                                          onTapUp: () => setState(() => _buttonPressed = false),
-                                          onPressed: vm.isLoading ? null : (vm.acceptedTerms ? _submit : null),
-                                        ),
-                                      ),
-
-                                      // Divider below Sign In
-                                      SizedBox(height: compact ? 10.0 : 12.0),
-                                      Divider(
-                                        color: _kBorder.withValues(alpha: 0.7),
-                                        thickness: 1,
-                                        height: 1,
-                                      ),
-                                      SizedBox(height: compact ? 2.0 : 4.0),
-
-                                      // Forgot password
-                                      FadeInUp(
-                                        duration: const Duration(milliseconds: 520),
-                                        delay: const Duration(milliseconds: 340),
-                                        from: 6,
-                                        child: TextButton(
-                                          key: ElecomTutorialKeys.loginForgot,
-                                          style: TextButton.styleFrom(
-                                            visualDensity: VisualDensity.compact,
-                                            minimumSize: const Size(0, 36),
-                                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                          ),
-                                          onPressed: () {
-                                            Navigator.of(context).push(
-                                              MaterialPageRoute(
-                                                builder: (_) => const ForgotPasswordScreen(),
+                                        const SizedBox(height: 8),
+                                        Center(
+                                          child: TextButton(
+                                            key: ElecomTutorialKeys.loginForgot,
+                                            onPressed: vm.isLoading
+                                                ? null
+                                                : () => Navigator.of(context).push(
+                                                    MaterialPageRoute(
+                                                      builder: (_) =>
+                                                          const ForgotPasswordScreen(),
+                                                    ),
+                                                  ),
+                                            style: TextButton.styleFrom(
+                                              foregroundColor: _primary,
+                                              minimumSize: const Size(48, 48),
+                                            ),
+                                            child: const Text(
+                                              'Forgot Password?',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w600,
                                               ),
-                                            );
-                                          },
-                                          child: Text(
-                                            'Forgot Password?',
-                                            style: GoogleFonts.poppins(
-                                              color: _kNavyLight,
-                                              fontWeight: FontWeight.w700,
-                                              fontSize: compact ? 11.5 : 12.5,
-                                              letterSpacing: 0.2,
                                             ),
                                           ),
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                      ),
-
-                      // ── Footer: always at bottom, keyboard pushes it away ──
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Text(
-                          '© 2026 USTP Oroquieta Electoral Commission',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.poppins(
-                            color: _kTextMuted.withValues(alpha: 0.7),
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w400,
+                          SizedBox(
+                            height: MediaQuery.viewInsetsOf(context).bottom == 0
+                                ? 180 + MediaQuery.viewPaddingOf(context).bottom
+                                : 24,
                           ),
-                        ),
+                        ],
                       ),
-                    ],
+                    ),
                   );
                 },
               ),
@@ -378,429 +453,136 @@ class _LoginScreenState extends State<LoginScreen>
   }
 }
 
-// ─── Background ───────────────────────────────────────────────────────────────
-
-class _WebBackdrop extends StatelessWidget {
-  const _WebBackdrop();
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        // Light gradient base matching web left panel feel
-        const DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Color(0xFFFFFFFF),
-                Color(0xFFF4F8FF),
-                Color(0xFFEAF0FB),
-                Color(0xFFDDE7F5),
-              ],
-              stops: [0, 0.35, 0.70, 1],
-            ),
-          ),
-        ),
-        // Subtle navy top accent strip (like web header area)
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 5,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [_kNavy, _kNavyLight, _kGold],
-              ),
-            ),
-          ),
-        ),
-        // Soft gold glow bottom-right — removed
-        // Soft navy glow top-left — removed
-      ],
-    );
-  }
-}
-
-// ─── Form Card ────────────────────────────────────────────────────────────────
-
-class _WebFormCard extends StatelessWidget {
-  const _WebFormCard({required this.compact, required this.child});
-
-  final bool compact;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: compact ? 4.0 : 8.0,
-          ),
-          child: child,
-        )
-        .animate()
-        .fadeIn(duration: 600.ms, delay: 120.ms)
-        .slideY(begin: 0.04, end: 0, duration: 600.ms, curve: Curves.easeOutCubic);
-  }
-}
-
-// ─── Input Field ──────────────────────────────────────────────────────────────
-
-class _WebInputField extends StatefulWidget {
-  const _WebInputField({
+class _LoginInput extends StatelessWidget {
+  const _LoginInput({
     super.key,
+    required this.label,
+    required this.hint,
     required this.controller,
-    required this.hintText,
+    required this.icon,
     required this.validator,
-    required this.height,
-    required this.fontSize,
-    this.icon,
-    this.keyboardType,
-    this.obscureText = false,
+    required this.enabled,
+    required this.autofillHints,
+    required this.action,
+    this.obscure = false,
     this.suffix,
+    this.onSubmitted,
   });
-
+  final String label;
+  final String hint;
   final TextEditingController controller;
-  final String hintText;
+  final IconData icon;
   final String? Function(String?) validator;
-  final double height;
-  final double fontSize;
-  final IconData? icon;
-  final TextInputType? keyboardType;
-  final bool obscureText;
+  final bool enabled;
+  final Iterable<String> autofillHints;
+  final TextInputAction action;
+  final bool obscure;
   final Widget? suffix;
-
-  @override
-  State<_WebInputField> createState() => _WebInputFieldState();
-}
-
-class _WebInputFieldState extends State<_WebInputField> {
-  final FocusNode _focusNode = FocusNode();
-
-  @override
-  void initState() {
-    super.initState();
-    _focusNode.addListener(() => setState(() {}));
-  }
-
-  @override
-  void dispose() {
-    _focusNode.dispose();
-    super.dispose();
-  }
+  final ValueChanged<String>? onSubmitted;
 
   @override
   Widget build(BuildContext context) {
-    return TextFormField(
-      focusNode: _focusNode,
-      controller: widget.controller,
-      keyboardType: widget.keyboardType,
-      obscureText: widget.obscureText,
-      validator: widget.validator,
-      cursorColor: _kGold,
-      style: GoogleFonts.poppins(
-        color: _kTextDark,
-        fontWeight: FontWeight.w500,
-        fontSize: widget.fontSize,
-      ),
-      decoration: InputDecoration(
-        prefixIcon: widget.icon == null
-            ? null
-            : Icon(
-                widget.icon,
-                color: _kGold,
-                size: 18,
-              ),
-        prefixIconConstraints:
-            const BoxConstraints(minWidth: 40, minHeight: 40),
-        hintText: widget.hintText,
-        filled: false,
-        hintStyle: GoogleFonts.poppins(
-          color: _kTextMuted.withValues(alpha: 0.65),
-          fontWeight: FontWeight.w400,
-          fontSize: widget.fontSize,
-        ),
-        contentPadding: const EdgeInsets.fromLTRB(0, 10, 8, 10),
-        suffixIcon: widget.suffix,
-        // Underline-only style matching the web
-        enabledBorder: UnderlineInputBorder(
-          borderSide: BorderSide(
-            color: _kBorder,
-            width: 1.2,
+    UnderlineInputBorder border(Color color, [double width = 1.2]) =>
+        UnderlineInputBorder(
+          borderSide: BorderSide(color: color, width: width),
+        );
+    return Semantics(
+      label: label,
+      child: TextFormField(
+        controller: controller,
+        enabled: enabled,
+        obscureText: obscure,
+        autofillHints: autofillHints,
+        textInputAction: action,
+        onFieldSubmitted: onSubmitted,
+        validator: validator,
+        autocorrect: false,
+        enableSuggestions: !obscure,
+        cursorColor: _goldFocus,
+        style: const TextStyle(color: _inputInk, fontSize: 14, height: 1.5),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: const TextStyle(color: _muted, fontSize: 14),
+          filled: false,
+          prefixIcon: Icon(icon, color: _muted, size: 22),
+          suffixIcon: suffix,
+          prefixIconConstraints: const BoxConstraints(
+            minWidth: 48,
+            minHeight: 52,
           ),
-        ),
-        focusedBorder: UnderlineInputBorder(
-          borderSide: BorderSide(
-            color: _kGold,
-            width: 1.8,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 15,
           ),
-        ),
-        errorBorder: const UnderlineInputBorder(
-          borderSide: BorderSide(
-            color: Color(0xFFDC2626),
-            width: 1.2,
-          ),
-        ),
-        focusedErrorBorder: const UnderlineInputBorder(
-          borderSide: BorderSide(
-            color: Color(0xFFDC2626),
-            width: 1.8,
-          ),
-        ),
-        errorStyle: GoogleFonts.poppins(
-          color: const Color(0xFFDC2626),
-          fontWeight: FontWeight.w600,
-          fontSize: 10,
-          height: 1.2,
+          border: border(_border),
+          enabledBorder: border(_border),
+          disabledBorder: border(_border),
+          focusedBorder: border(_goldFocus, 1.8),
+          errorBorder: border(const Color(0xFFDC2626)),
+          focusedErrorBorder: border(const Color(0xFFDC2626), 2),
+          errorMaxLines: 2,
         ),
       ),
     );
   }
 }
 
-// ─── Sign In Button ───────────────────────────────────────────────────────────
-
-class _WebSignInButton extends StatelessWidget {
-  const _WebSignInButton({
-    super.key,
-    required this.height,
-    required this.isLoading,
-    required this.isPressed,
-    required this.shimmerController,
-    required this.onTapDown,
-    required this.onTapCancel,
-    required this.onTapUp,
-    required this.onPressed,
-  });
-
-  final double height;
-  final bool isLoading;
-  final bool isPressed;
-  final AnimationController shimmerController;
-  final VoidCallback onTapDown;
-  final VoidCallback onTapCancel;
-  final VoidCallback onTapUp;
-  final VoidCallback? onPressed;
+class _CampusFooter extends StatelessWidget {
+  const _CampusFooter();
 
   @override
   Widget build(BuildContext context) {
-    final disabled = onPressed == null && !isLoading;
-
-    return AnimatedBuilder(
-      animation: shimmerController,
-      builder: (context, _) {
-        final shimmerX = -1.2 + shimmerController.value * 2.4;
-        return AnimatedScale(
-          scale: isPressed ? 0.975 : 1.0,
-          duration: const Duration(milliseconds: 120),
-          curve: Curves.easeOutCubic,
-          child: AnimatedOpacity(
-            opacity: disabled ? 0.35 : 1.0,
-            duration: const Duration(milliseconds: 200),
-            child: GestureDetector(
-              onTapDown: disabled ? null : (_) => onTapDown(),
-              onTapCancel: disabled ? null : onTapCancel,
-              onTapUp: disabled ? null : (_) => onTapUp(),
-              child: Container(
-                height: height,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                  gradient: LinearGradient(
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                    colors: disabled
-                        ? [_kBorder, _kBorder, _kBorder]
-                        : [const Color(0xFFE8920A), _kGold, _kGoldLight, _kGold, const Color(0xFFE8920A)],
-                    stops: disabled ? const [0, 0.5, 1] : const [0, 0.25, 0.5, 0.75, 1],
-                  ),
-                  boxShadow: disabled
-                      ? null
-                      : [
-                          BoxShadow(
-                            color: _kGold.withValues(alpha: 0.55),
-                            blurRadius: 18,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
-                ),
-                child: Stack(
-                  children: [
-                    // Shimmer sweep (only when enabled)
-                    if (!disabled)
-                      Positioned.fill(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: Transform.translate(
-                            offset: Offset(shimmerX * 280, 0),
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    _kWhite.withValues(alpha: 0),
-                                    _kWhite.withValues(alpha: 0.3),
-                                    _kWhite.withValues(alpha: 0),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    // Button content
-                    Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(10),
-                        onTap: onPressed,
-                        child: SizedBox(
-                          height: height,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              if (!isLoading) ...[
-                                Icon(
-                                  Icons.shield_outlined,
-                                  color: disabled ? _kTextMuted : _kNavy,
-                                  size: 18,
-                                ),
-                                const SizedBox(width: 8),
-                              ],
-                              isLoading
-                                  ? SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2.2,
-                                        valueColor: AlwaysStoppedAnimation<Color>(_kNavy),
-                                      ),
-                                    )
-                                  : Text(
-                                      'Sign In',
-                                      style: GoogleFonts.poppins(
-                                        color: disabled ? _kTextMuted : _kNavy,
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 15.5,
-                                      ),
-                                    ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+    final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
+    return SizedBox(
+      key: const ValueKey('login-campus-footer'),
+      height: 180 + bottomInset,
+      width: double.infinity,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          ExcludeSemantics(
+            child: ColorFiltered(
+              colorFilter: const ColorFilter.mode(
+                Color(0x140D1B3E),
+                BlendMode.srcATop,
+              ),
+              child: Image.asset(
+                'assets/USTP PICS/USTP_Oroquieta_Campus_Entrance-removebg-preview (1).png',
+                fit: BoxFit.cover,
+                alignment: Alignment.bottomCenter,
+                cacheWidth: 1000,
+              ),
+            ),
+          ),
+          // A soft wash keeps the slate copyright readable over the facade.
+          const Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: 80,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0x00FFFFFF), Color(0xF2FFFFFF)],
                 ),
               ),
             ),
           ),
-        );
-      },
-    );
-  }
-}
-
-// ─── Terms Row ────────────────────────────────────────────────────────────────
-
-class _WebTermsRow extends StatelessWidget {
-  const _WebTermsRow({
-    required this.compact,
-    required this.accepted,
-    required this.onToggle,
-    required this.onViewTerms,
-  });
-
-  final bool compact;
-  final bool accepted;
-  final VoidCallback onToggle;
-  final VoidCallback onViewTerms;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        const double fs = 12.0;
-        const double boxSize = 17.0;
-        const double iconSize = 11.5;
-
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // Checkbox — tap only toggles accepted state
-            GestureDetector(
-              onTap: onToggle,
-              behavior: HitTestBehavior.opaque,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                width: boxSize,
-                height: boxSize,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(4),
-                  color: accepted ? _kNavy : _kWhite,
-                  border: Border.all(
-                    color: accepted ? _kNavy : _kBorder,
-                    width: 1.5,
-                  ),
-                  boxShadow: accepted
-                      ? [
-                          BoxShadow(
-                            color: _kNavy.withValues(alpha: 0.2),
-                            blurRadius: 6,
-                          ),
-                        ]
-                      : null,
-                ),
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 140),
-                  child: accepted
-                      ? const Icon(
-                          Icons.check_rounded,
-                          key: ValueKey('checked'),
-                          size: iconSize,
-                          color: _kWhite,
-                        )
-                      : const SizedBox(key: ValueKey('unchecked')),
-                ),
-              ),
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: 12 + bottomInset,
+            child: const Text(
+              '© 2026 USTP Oroquieta Electoral Commission',
+              key: ValueKey('login-copyright'),
+              textAlign: TextAlign.center,
+              style: TextStyle(color: _inputInk, fontSize: 11, height: 1.5),
             ),
-            const SizedBox(width: 8),
-            // Text — "Accept the " is plain, "Terms and Conditions" navigates
-            Expanded(
-              child: RichText(
-                text: TextSpan(
-                  style: GoogleFonts.poppins(
-                    color: _kTextMuted,
-                    fontWeight: FontWeight.w400,
-                    fontSize: fs,
-                    height: 1.4,
-                  ),
-                  children: [
-                    const TextSpan(text: 'Accept the '),
-                    WidgetSpan(
-                      alignment: PlaceholderAlignment.middle,
-                      child: GestureDetector(
-                        onTap: onViewTerms,
-                        child: Text(
-                          'Terms and Conditions',
-                          style: GoogleFonts.poppins(
-                            color: _kNavy,
-                            fontWeight: FontWeight.w700,
-                            fontSize: fs,
-                            height: 1.4,
-                            decoration: TextDecoration.underline,
-                            decorationColor: _kNavy,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        );
-      },
+          ),
+        ],
+      ),
     );
   }
 }
