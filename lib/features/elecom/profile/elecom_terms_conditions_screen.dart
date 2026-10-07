@@ -121,7 +121,7 @@ class _ElecomTermsConditionsScreenState
       child: Scaffold(
         backgroundColor: _tBgLight,
         appBar: AppBar(
-          automaticallyImplyLeading: false,
+          automaticallyImplyLeading: !widget.requireAgreement,
           backgroundColor: _tWhite,
           foregroundColor: _tNavy,
           elevation: 0,
