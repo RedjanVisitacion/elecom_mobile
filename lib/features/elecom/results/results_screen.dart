@@ -182,6 +182,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
     required Color sub,
     required Color card,
     required Color border,
+    bool mobile = false,
   }) {
     final turnout = _m(_analytics, 'turnout');
     final prog = _analytics['participation_by_program'] is Map
@@ -245,20 +246,21 @@ class _ResultsScreenState extends State<ResultsScreen> {
                   ],
                 ),
               ),
-              IconButton(
-                onPressed: () =>
-                    setState(() => _analyticsExpanded = !_analyticsExpanded),
-                icon: Icon(
-                  _analyticsExpanded ? Icons.expand_less : Icons.expand_more,
-                  color: sub,
+              if (!mobile)
+                IconButton(
+                  onPressed: () =>
+                      setState(() => _analyticsExpanded = !_analyticsExpanded),
+                  icon: Icon(
+                    _analyticsExpanded ? Icons.expand_less : Icons.expand_more,
+                    color: sub,
+                  ),
+                  tooltip: _analyticsExpanded ? 'Collapse' : 'Expand',
                 ),
-                tooltip: _analyticsExpanded ? 'Collapse' : 'Expand',
-              ),
             ],
           ),
           AnimatedCrossFade(
             duration: const Duration(milliseconds: 180),
-            crossFadeState: _analyticsExpanded
+            crossFadeState: (mobile || _analyticsExpanded)
                 ? CrossFadeState.showSecond
                 : CrossFadeState.showFirst,
             firstChild: const SizedBox(width: double.infinity, height: 0),
@@ -298,42 +300,49 @@ class _ResultsScreenState extends State<ResultsScreen> {
                   ],
                 ),
                 const SizedBox(height: 6),
-                // Completion
-                _rowCard(
-                  icon: Icons.checklist_rounded,
-                  premiumIcon: HugeIcons.strokeRoundedCheckList,
-                  isPremiumMode: isPremiumMode,
-                  title: 'Position Participation',
-                  fg: fg,
-                  sub: sub,
-                  border: border,
-                  rows: [
-                    _kv('Most Voted', _s(completion, 'most_voted_position')),
-                    _kv('Least Voted', _s(completion, 'least_voted_position')),
-                    _kv(
-                      'Skipped Positions',
-                      '${_toInt(completion['skipped_positions'])} (${_s(completion, 'skipped_positions_percentage', fallback: '0')}%)',
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                // Peak time
-                _peakVotingCard(
-                  icon: Icons.schedule_rounded,
-                  premiumIcon: HugeIcons.strokeRoundedClock01,
-                  isPremiumMode: isPremiumMode,
-                  title: 'Voting Trend',
-                  value: _s(peak, 'label', fallback: 'Not enough data yet'),
-                  note: _toInt(peak['votes_submitted']) > 0
-                      ? '${_toInt(peak['votes_submitted'])} votes submitted'
-                      : _s(peak, 'note', fallback: 'Not enough data yet'),
-                  subtitle: 'Votes submitted over time',
-                  trend: peak['trend'],
-                  hasEnoughData: peak['has_enough_data'] == true,
-                  fg: fg,
-                  sub: sub,
-                  border: border,
-                ),
+                if (!mobile) ...[
+                  // Completion
+                  _rowCard(
+                    icon: Icons.checklist_rounded,
+                    premiumIcon: HugeIcons.strokeRoundedCheckList,
+                    isPremiumMode: isPremiumMode,
+                    title: 'Position Participation',
+                    fg: fg,
+                    sub: sub,
+                    border: border,
+                    rows: [
+                      _kv('Most Voted', _s(completion, 'most_voted_position')),
+                      _kv(
+                        'Least Voted',
+                        _s(completion, 'least_voted_position'),
+                      ),
+                      _kv(
+                        'Skipped Positions',
+                        '${_toInt(completion['skipped_positions'])} (${_s(completion, 'skipped_positions_percentage', fallback: '0')}%)',
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                ],
+                if (!mobile || peak['has_enough_data'] == true) ...[
+                  // Peak time
+                  _peakVotingCard(
+                    icon: Icons.schedule_rounded,
+                    premiumIcon: HugeIcons.strokeRoundedClock01,
+                    isPremiumMode: isPremiumMode,
+                    title: 'Voting Trend',
+                    value: _s(peak, 'label', fallback: 'Not enough data yet'),
+                    note: _toInt(peak['votes_submitted']) > 0
+                        ? '${_toInt(peak['votes_submitted'])} votes submitted'
+                        : _s(peak, 'note', fallback: 'Not enough data yet'),
+                    subtitle: 'Votes submitted over time',
+                    trend: peak['trend'],
+                    hasEnoughData: peak['has_enough_data'] == true,
+                    fg: fg,
+                    sub: sub,
+                    border: border,
+                  ),
+                ],
               ],
             ),
           ),
@@ -852,23 +861,30 @@ class _ResultsScreenState extends State<ResultsScreen> {
         border: Border.all(color: stroke, width: 1.5),
       ),
       padding: const EdgeInsets.all(1),
-      child: CircleAvatar(
-        radius: 14,
-        backgroundColor: isDark ? Colors.white12 : const Color(0xFFEAF1FF),
-        backgroundImage: photo != null ? NetworkImage(photo) : null,
-        onBackgroundImageError: photo != null
-            ? (exception, stackTrace) {}
-            : null,
-        child: photo == null
-            ? Icon(
-                Icons.person,
-                size: 13,
-                color: isDark ? Colors.white54 : Colors.black54,
-              )
-            : null,
+      child: ClipOval(
+        child: SizedBox.square(
+          dimension: 28,
+          child: photo == null
+              ? _defaultAvatar(isDark)
+              : Image.network(
+                  photo,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) =>
+                      _defaultAvatar(isDark),
+                ),
+        ),
       ),
     );
   }
+
+  Widget _defaultAvatar(bool isDark) => ColoredBox(
+    color: isDark ? const Color(0xFF334155) : const Color(0xFFEAF1FF),
+    child: Icon(
+      Icons.person_rounded,
+      size: 22,
+      color: isDark ? Colors.white70 : const Color(0xFF64748B),
+    ),
+  );
 
   Color _orgColor(String org) {
     switch (org.toUpperCase().trim()) {
@@ -1180,6 +1196,142 @@ class _ResultsScreenState extends State<ResultsScreen> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final maxW = math.min(constraints.maxWidth, 560.0);
+            final isMobile = constraints.maxWidth <= 768;
+            final overviewCard = Container(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+              decoration: BoxDecoration(
+                color: card,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: border),
+                boxShadow: isPremiumMode
+                    ? [
+                        BoxShadow(
+                          color: _premiumBlue.withValues(alpha: 0.10),
+                          blurRadius: 22,
+                          offset: const Offset(0, 10),
+                        ),
+                      ]
+                    : null,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      if (isPremiumMode) ...[
+                        HugeIcon(
+                          icon: HugeIcons.strokeRoundedPieChart,
+                          color: _premiumBlue,
+                          size: 18,
+                          strokeWidth: 1.9,
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      Expanded(
+                        child: Text(
+                          'Overall Vote Distribution',
+                          style: TextStyle(
+                            color: fg,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  if (orgEntries.isEmpty)
+                    Text(
+                      'No votes recorded yet.',
+                      style: TextStyle(color: sub, fontSize: 13),
+                    )
+                  else ...[
+                    Center(
+                      child: SizedBox(
+                        width: 148,
+                        height: 148,
+                        child: TweenAnimationBuilder<double>(
+                          key: ValueKey('donut_$_chartAnimSeed'),
+                          duration: const Duration(milliseconds: 650),
+                          curve: Curves.easeOutCubic,
+                          tween: Tween<double>(begin: 0, end: 1),
+                          builder: (context, t, _) => Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              CustomPaint(
+                                size: const Size(148, 148),
+                                painter: _DonutChartPainter(
+                                  values: orgEntries
+                                      .map((e) => _toInt(e.value).toDouble())
+                                      .toList(),
+                                  colors: orgEntries
+                                      .map((e) => _orgColor(e.key))
+                                      .toList(),
+                                  trackColor: isDark
+                                      ? Colors.white12
+                                      : Colors.black12,
+                                  progress: t,
+                                  strokeWidth: 16,
+                                ),
+                              ),
+                              Opacity(
+                                opacity: t,
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      '$totalVotes',
+                                      style: TextStyle(
+                                        color: fg,
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 26,
+                                      ),
+                                    ),
+                                    Text(
+                                      'Total Votes',
+                                      style: TextStyle(
+                                        color: sub,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    LayoutBuilder(
+                      builder: (context, legConstraints) {
+                        final w = legConstraints.maxWidth.isFinite
+                            ? legConstraints.maxWidth
+                            : 320.0;
+                        final half = math.max((w - 8) / 2, 120.0);
+                        return Wrap(
+                          alignment: WrapAlignment.start,
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: orgEntries
+                              .map(
+                                (e) => _LegendChip(
+                                  label: '${e.key}  ·  ${_toInt(e.value)}',
+                                  color: _orgColor(e.key),
+                                  textColor: fg,
+                                  borderColor: border,
+                                  maxChipWidth: half,
+                                ),
+                              )
+                              .toList(),
+                        );
+                      },
+                    ),
+                  ],
+                ],
+              ),
+            );
             return ListView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: EdgeInsets.fromLTRB(
@@ -1229,162 +1381,113 @@ class _ResultsScreenState extends State<ResultsScreen> {
                         ),
                         const SizedBox(height: 14),
 
-                        /// Overview card (compact donut)
-                        Container(
-                          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-                          decoration: BoxDecoration(
-                            color: card,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: border),
-                            boxShadow: isPremiumMode
-                                ? [
-                                    BoxShadow(
-                                      color: _premiumBlue.withValues(
-                                        alpha: 0.10,
-                                      ),
-                                      blurRadius: 22,
-                                      offset: const Offset(0, 10),
-                                    ),
-                                  ]
-                                : null,
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  if (isPremiumMode) ...[
-                                    HugeIcon(
-                                      icon: HugeIcons.strokeRoundedPieChart,
-                                      color: _premiumBlue,
-                                      size: 18,
-                                      strokeWidth: 1.9,
-                                    ),
-                                    const SizedBox(width: 8),
-                                  ],
-                                  Expanded(
-                                    child: Text(
-                                      'Overall Vote Distribution',
-                                      style: TextStyle(
-                                        color: fg,
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 15,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 10),
-                              if (orgEntries.isEmpty)
-                                Text(
-                                  'No votes recorded yet.',
-                                  style: TextStyle(color: sub, fontSize: 13),
-                                )
-                              else ...[
-                                Center(
-                                  child: SizedBox(
-                                    width: 148,
-                                    height: 148,
-                                    child: TweenAnimationBuilder<double>(
-                                      key: ValueKey('donut_$_chartAnimSeed'),
-                                      duration: const Duration(
-                                        milliseconds: 650,
-                                      ),
-                                      curve: Curves.easeOutCubic,
-                                      tween: Tween<double>(begin: 0, end: 1),
-                                      builder: (context, t, _) => Stack(
-                                        alignment: Alignment.center,
-                                        children: [
-                                          CustomPaint(
-                                            size: const Size(148, 148),
-                                            painter: _DonutChartPainter(
-                                              values: orgEntries
-                                                  .map(
-                                                    (e) => _toInt(
-                                                      e.value,
-                                                    ).toDouble(),
-                                                  )
-                                                  .toList(),
-                                              colors: orgEntries
-                                                  .map((e) => _orgColor(e.key))
-                                                  .toList(),
-                                              trackColor: isDark
-                                                  ? Colors.white12
-                                                  : Colors.black12,
-                                              progress: t,
-                                              strokeWidth: 16,
-                                            ),
-                                          ),
-                                          Opacity(
-                                            opacity: t,
-                                            child: Column(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Text(
-                                                  '$totalVotes',
-                                                  style: TextStyle(
-                                                    color: fg,
-                                                    fontWeight: FontWeight.w900,
-                                                    fontSize: 26,
-                                                  ),
-                                                ),
-                                                Text(
-                                                  'Total Votes',
-                                                  style: TextStyle(
-                                                    color: sub,
-                                                    fontWeight: FontWeight.w700,
-                                                    fontSize: 11,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
+                        if (isMobile)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: card,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: border),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    '$totalVotes total votes',
+                                    style: TextStyle(
+                                      color: fg,
+                                      fontWeight: FontWeight.w800,
                                     ),
                                   ),
                                 ),
-                                const SizedBox(height: 12),
-                                LayoutBuilder(
-                                  builder: (context, legConstraints) {
-                                    final w = legConstraints.maxWidth.isFinite
-                                        ? legConstraints.maxWidth
-                                        : 320.0;
-                                    final half = math.max((w - 8) / 2, 120.0);
-                                    return Wrap(
-                                      alignment: WrapAlignment.start,
-                                      spacing: 8,
-                                      runSpacing: 8,
-                                      children: orgEntries
-                                          .map(
-                                            (e) => _LegendChip(
-                                              label:
-                                                  '${e.key}  ·  ${_toInt(e.value)}',
-                                              color: _orgColor(e.key),
-                                              textColor: fg,
-                                              borderColor: border,
-                                              maxChipWidth: half,
-                                            ),
-                                          )
-                                          .toList(),
-                                    );
-                                  },
+                                TextButton.icon(
+                                  icon: const Icon(
+                                    Icons.insights_rounded,
+                                    size: 18,
+                                  ),
+                                  label: const Text('View Analytics'),
+                                  onPressed: () => showModalBottomSheet<void>(
+                                    context: context,
+                                    isScrollControlled: true,
+                                    showDragHandle: true,
+                                    backgroundColor: card,
+                                    builder: (sheetContext) => SafeArea(
+                                      child: SizedBox(
+                                        height:
+                                            MediaQuery.sizeOf(
+                                              sheetContext,
+                                            ).height *
+                                            0.8,
+                                        child: SingleChildScrollView(
+                                          padding: const EdgeInsets.fromLTRB(
+                                            16,
+                                            0,
+                                            16,
+                                            24,
+                                          ),
+                                          child: Column(
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: Text(
+                                                      'Results Analytics',
+                                                      style: TextStyle(
+                                                        color: fg,
+                                                        fontWeight:
+                                                            FontWeight.w800,
+                                                        fontSize: 18,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  IconButton(
+                                                    tooltip: 'Close analytics',
+                                                    onPressed: () =>
+                                                        Navigator.pop(
+                                                          sheetContext,
+                                                        ),
+                                                    icon: const Icon(
+                                                      Icons.close,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              overviewCard,
+                                              const SizedBox(height: 12),
+                                              _analyticsSection(
+                                                isDark: isDark,
+                                                isPremiumMode: isPremiumMode,
+                                                fg: fg,
+                                                sub: sub,
+                                                card: card,
+                                                border: border,
+                                                mobile: true,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ],
-                            ],
+                            ),
+                          )
+                        else ...[
+                          overviewCard,
+                          const SizedBox(height: 12),
+                          _analyticsSection(
+                            isDark: isDark,
+                            isPremiumMode: isPremiumMode,
+                            fg: fg,
+                            sub: sub,
+                            card: card,
+                            border: border,
                           ),
-                        ),
-
-                        /// Election analytics (privacy-safe summaries)
-                        const SizedBox(height: 12),
-                        _analyticsSection(
-                          isDark: isDark,
-                          isPremiumMode: isPremiumMode,
-                          fg: fg,
-                          sub: sub,
-                          card: card,
-                          border: border,
-                        ),
+                        ],
 
                         /// Organization filters
                         const SizedBox(height: 12),
@@ -1467,7 +1570,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
                           ),
                         ),
 
-                        if (showVotesByPosition) ...[
+                        if (!isMobile && showVotesByPosition) ...[
                           const SizedBox(height: 8),
                           Container(
                             padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
@@ -1779,8 +1882,8 @@ class _ResultsScreenState extends State<ResultsScreen> {
                                                 'rep',
                                               );
                                           return Padding(
-                                            padding: const EdgeInsets.only(
-                                              bottom: 16,
+                                            padding: EdgeInsets.only(
+                                              bottom: isMobile ? 10 : 16,
                                             ),
                                             child: Column(
                                               crossAxisAlignment:
@@ -1795,7 +1898,9 @@ class _ResultsScreenState extends State<ResultsScreen> {
                                                     letterSpacing: 0.1,
                                                   ),
                                                 ),
-                                                const SizedBox(height: 8),
+                                                SizedBox(
+                                                  height: isMobile ? 4 : 8,
+                                                ),
                                                 ...candidates.asMap().entries.map((
                                                   candidateEntry,
                                                 ) {
@@ -1837,7 +1942,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
                                                                       .length -
                                                                   1
                                                           ? 0
-                                                          : 10,
+                                                          : (isMobile ? 6 : 10),
                                                     ),
                                                     child: Column(
                                                       crossAxisAlignment:
