@@ -66,7 +66,7 @@ class VoterTurnoutGraph extends StatelessWidget {
           Expanded(
             child: _AnimatedMountain(
               progress: available ? (castVotes! / voters).clamp(0.0, 1.0) : 0,
-              color: blue,
+              color: isDark ? const Color(0xFFFACC15) : const Color(0xFFD9A514),
               animate: animate,
             ),
           ),
@@ -178,14 +178,28 @@ class _MountainProgressPainter extends CustomPainter {
     if (size.isEmpty) return;
     final top = Path()..moveTo(0, size.height * 0.9);
     const peaks = <Offset>[
-      Offset(0.10, 0.68),
-      Offset(0.18, 0.78),
-      Offset(0.32, 0.25),
-      Offset(0.43, 0.55),
-      Offset(0.57, 0.08),
-      Offset(0.70, 0.48),
+      Offset(0.07, 0.76),
+      Offset(0.11, 0.64),
+      Offset(0.16, 0.72),
+      Offset(0.20, 0.59),
+      Offset(0.24, 0.44),
+      Offset(0.28, 0.38),
+      Offset(0.32, 0.23),
+      Offset(0.36, 0.35),
+      Offset(0.39, 0.40),
+      Offset(0.44, 0.56),
+      Offset(0.49, 0.34),
+      Offset(0.53, 0.26),
+      Offset(0.57, 0.10),
+      Offset(0.61, 0.24),
+      Offset(0.64, 0.28),
+      Offset(0.69, 0.48),
+      Offset(0.74, 0.38),
       Offset(0.79, 0.30),
-      Offset(0.91, 0.72),
+      Offset(0.83, 0.43),
+      Offset(0.86, 0.49),
+      Offset(0.90, 0.68),
+      Offset(0.96, 0.82),
       Offset(1, 0.9),
     ];
     for (final peak in peaks) {
@@ -204,13 +218,125 @@ class _MountainProgressPainter extends CustomPainter {
           color.withValues(alpha: opacity * 0.2),
         ],
       ).createShader(Offset.zero & size);
-    canvas.drawPath(mountain, fill(0.22));
+    Offset point(double x, double y) => Offset(size.width * x, size.height * y);
+    Path polygon(List<Offset> vertices) {
+      final path = Path()..moveTo(vertices.first.dx, vertices.first.dy);
+      for (final vertex in vertices.skip(1)) {
+        path.lineTo(vertex.dx, vertex.dy);
+      }
+      return path..close();
+    }
+
+    // A distant ridge gives depth without competing with the progress scale.
+    final distant = polygon([
+      point(0, 1),
+      point(0.12, 0.83),
+      point(0.22, 0.33),
+      point(0.29, 0.53),
+      point(0.39, 0.16),
+      point(0.48, 0.44),
+      point(0.65, 0.22),
+      point(0.74, 0.57),
+      point(0.85, 0.39),
+      point(1, 0.89),
+      point(1, 1),
+    ]);
+    canvas.drawPath(distant, fill(0.12));
+    canvas.drawPath(mountain, fill(0.28));
+    canvas.save();
+    canvas.clipPath(mountain);
+    // Asymmetric shaded slopes distinguish the major summits.
+    for (final face in [
+      [
+        point(0.32, 0.23),
+        point(0.36, 0.65),
+        point(0.47, 0.95),
+        point(0.44, 0.56),
+      ],
+      [
+        point(0.57, 0.10),
+        point(0.61, 0.53),
+        point(0.72, 0.95),
+        point(0.69, 0.48),
+      ],
+      [
+        point(0.79, 0.30),
+        point(0.82, 0.67),
+        point(0.96, 0.95),
+        point(0.90, 0.68),
+      ],
+    ]) {
+      canvas.drawPath(polygon(face), fill(0.23));
+    }
+    final ridgePaint = Paint()
+      ..color = color.withValues(alpha: 0.35)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8
+      ..strokeJoin = StrokeJoin.round;
+    for (final ridge in [
+      [
+        point(0.32, 0.23),
+        point(0.30, 0.49),
+        point(0.34, 0.65),
+        point(0.28, 0.83),
+      ],
+      [
+        point(0.57, 0.10),
+        point(0.54, 0.42),
+        point(0.58, 0.58),
+        point(0.51, 0.85),
+      ],
+      [
+        point(0.79, 0.30),
+        point(0.77, 0.53),
+        point(0.80, 0.70),
+        point(0.75, 0.87),
+      ],
+    ]) {
+      final path = Path()..moveTo(ridge.first.dx, ridge.first.dy);
+      for (final vertex in ridge.skip(1)) {
+        path.lineTo(vertex.dx, vertex.dy);
+      }
+      canvas.drawPath(path, ridgePaint);
+    }
+    // Fine foothill contours keep detail legible at this compact height.
+    for (var i = 0; i < 3; i++) {
+      final y = 0.78 + i * 0.07;
+      final contour = Path()
+        ..moveTo(0, size.height * y)
+        ..quadraticBezierTo(
+          size.width * 0.18,
+          size.height * (y - 0.12),
+          size.width * 0.34,
+          size.height * y,
+        )
+        ..quadraticBezierTo(
+          size.width * 0.52,
+          size.height * (y - 0.13),
+          size.width * 0.70,
+          size.height * y,
+        )
+        ..quadraticBezierTo(
+          size.width * 0.85,
+          size.height * (y - 0.07),
+          size.width,
+          size.height * (y + 0.03),
+        );
+      canvas.drawPath(
+        contour,
+        Paint()
+          ..color = color.withValues(alpha: 0.13)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 0.6,
+      );
+    }
+    canvas.restore();
     canvas.drawPath(
       top,
       Paint()
         ..color = color.withValues(alpha: 0.45)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2
+        ..strokeWidth = 1.3
         ..strokeJoin = StrokeJoin.round,
     );
     if (animate) {
@@ -250,7 +376,7 @@ class _MountainProgressPainter extends CustomPainter {
       Paint()
         ..color = color
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2
+        ..strokeWidth = 1.3
         ..strokeJoin = StrokeJoin.round,
     );
     canvas.restore();
