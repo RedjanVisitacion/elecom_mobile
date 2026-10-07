@@ -147,7 +147,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 bottom: 0,
                 left: 0,
                 right: 0,
-                child: _CampusFooter(),
+                child: _LoginEntrance(
+                  duration: Duration(milliseconds: 900),
+                  rise: 0,
+                  child: _CampusFooter(),
+                ),
               ),
             SafeArea(
               bottom: false,
@@ -173,261 +177,272 @@ class _LoginScreenState extends State<LoginScreen> {
                               24,
                               12,
                             ),
-                            child: Center(
-                              child: ConstrainedBox(
-                                constraints: const BoxConstraints(
-                                  maxWidth: 420,
-                                ),
-                                child: Form(
-                                  key: _formKey,
-                                  child: AutofillGroup(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.stretch,
-                                      children: [
-                                        Semantics(
-                                          label: 'USTP Oroquieta and ELECOM',
-                                          image: true,
-                                          child: Image.asset(
-                                            'assets/USTP_ELECOM_ICON_NOBG.png',
-                                            height: 132,
-                                            fit: BoxFit.contain,
-                                            excludeFromSemantics: true,
+                            child: _LoginEntrance(
+                              child: Center(
+                                child: ConstrainedBox(
+                                  constraints: const BoxConstraints(
+                                    maxWidth: 420,
+                                  ),
+                                  child: Form(
+                                    key: _formKey,
+                                    child: AutofillGroup(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
+                                        children: [
+                                          Semantics(
+                                            label: 'USTP Oroquieta and ELECOM',
+                                            image: true,
+                                            child: Image.asset(
+                                              'assets/USTP_ELECOM_ICON_NOBG.png',
+                                              height: 132,
+                                              fit: BoxFit.contain,
+                                              excludeFromSemantics: true,
+                                            ),
                                           ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        const Text(
-                                          'LOGIN',
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                            color: _navy,
-                                            fontSize: 26,
-                                            fontWeight: FontWeight.w800,
-                                            letterSpacing: 1.2,
+                                          const SizedBox(height: 8),
+                                          const Text(
+                                            'LOGIN',
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              color: _navy,
+                                              fontSize: 26,
+                                              fontWeight: FontWeight.w800,
+                                              letterSpacing: 1.2,
+                                            ),
                                           ),
-                                        ),
-                                        const SizedBox(height: 24),
-                                        _LoginInput(
-                                          key:
-                                              ElecomTutorialKeys.loginStudentId,
-                                          label: 'Student ID',
-                                          hint: 'Enter your Student ID',
-                                          controller: _studentIdController,
-                                          icon: Icons.badge_outlined,
-                                          enabled: !vm.isLoading,
-                                          autofillHints: const [
-                                            AutofillHints.username,
-                                          ],
-                                          action: TextInputAction.next,
-                                          validator: (value) =>
-                                              value == null ||
-                                                  value.trim().isEmpty
-                                              ? 'Please enter your student ID'
-                                              : null,
-                                        ),
-                                        const SizedBox(height: 16),
-                                        _LoginInput(
-                                          key: ElecomTutorialKeys.loginPassword,
-                                          label: 'Password',
-                                          hint: 'Enter your Password',
-                                          controller: _passwordController,
-                                          icon: Icons.lock_outline_rounded,
-                                          enabled: !vm.isLoading,
-                                          obscure: vm.obscurePassword,
-                                          autofillHints: const [
-                                            AutofillHints.password,
-                                          ],
-                                          action: TextInputAction.done,
-                                          onSubmitted: vm.isLoading
-                                              ? null
-                                              : (_) => _submit(),
-                                          validator: (value) =>
-                                              value == null || value.isEmpty
-                                              ? 'Please enter your password'
-                                              : null,
-                                          suffix: IconButton(
-                                            tooltip: vm.obscurePassword
-                                                ? 'Show password'
-                                                : 'Hide password',
-                                            onPressed: vm.isLoading
+                                          const SizedBox(height: 24),
+                                          _LoginInput(
+                                            key: ElecomTutorialKeys
+                                                .loginStudentId,
+                                            label: 'Student ID',
+                                            hint: 'Enter your Student ID',
+                                            controller: _studentIdController,
+                                            icon: Icons.badge_outlined,
+                                            enabled: !vm.isLoading,
+                                            autofillHints: const [
+                                              AutofillHints.username,
+                                            ],
+                                            action: TextInputAction.next,
+                                            validator: (value) =>
+                                                value == null ||
+                                                    value.trim().isEmpty
+                                                ? 'Please enter your student ID'
+                                                : null,
+                                          ),
+                                          const SizedBox(height: 16),
+                                          _LoginInput(
+                                            key: ElecomTutorialKeys
+                                                .loginPassword,
+                                            label: 'Password',
+                                            hint: 'Enter your Password',
+                                            controller: _passwordController,
+                                            icon: Icons.lock_outline_rounded,
+                                            enabled: !vm.isLoading,
+                                            obscure: vm.obscurePassword,
+                                            autofillHints: const [
+                                              AutofillHints.password,
+                                            ],
+                                            action: TextInputAction.done,
+                                            onSubmitted: vm.isLoading
                                                 ? null
-                                                : vm.togglePasswordVisibility,
-                                            icon: Icon(
-                                              vm.obscurePassword
-                                                  ? Icons
-                                                        .visibility_off_outlined
-                                                  : Icons.visibility_outlined,
-                                              color: _muted,
-                                              size: 22,
+                                                : (_) => _submit(),
+                                            validator: (value) =>
+                                                value == null || value.isEmpty
+                                                ? 'Please enter your password'
+                                                : null,
+                                            suffix: IconButton(
+                                              tooltip: vm.obscurePassword
+                                                  ? 'Show password'
+                                                  : 'Hide password',
+                                              onPressed: vm.isLoading
+                                                  ? null
+                                                  : vm.togglePasswordVisibility,
+                                              icon: Icon(
+                                                vm.obscurePassword
+                                                    ? Icons
+                                                          .visibility_off_outlined
+                                                    : Icons.visibility_outlined,
+                                                color: _muted,
+                                                size: 22,
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                        const SizedBox(height: 12),
-                                        Row(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.center,
-                                          children: [
-                                            Checkbox(
-                                              semanticLabel:
-                                                  'Accept Terms and Conditions',
-                                              value: vm.acceptedTerms,
-                                              onChanged: vm.isLoading
-                                                  ? null
-                                                  : (value) =>
-                                                        vm.setAcceptedTerms(
-                                                          value ?? false,
-                                                        ),
-                                              activeColor: _navy,
-                                              side: const BorderSide(
-                                                color: _muted,
-                                              ),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(4),
-                                              ),
-                                            ),
-                                            Expanded(
-                                              child: Wrap(
-                                                crossAxisAlignment:
-                                                    WrapCrossAlignment.center,
-                                                children: [
-                                                  const Text(
-                                                    'I accept the ',
-                                                    style: TextStyle(
-                                                      color: _inputInk,
-                                                      fontSize: 12,
-                                                    ),
-                                                  ),
-                                                  TextButton(
-                                                    onPressed: vm.isLoading
-                                                        ? null
-                                                        : _openTerms,
-                                                    style: TextButton.styleFrom(
-                                                      foregroundColor: _navy,
-                                                      padding:
-                                                          const EdgeInsets.symmetric(
-                                                            horizontal: 2,
+                                          const SizedBox(height: 12),
+                                          Row(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.center,
+                                            children: [
+                                              Checkbox(
+                                                semanticLabel:
+                                                    'Accept Terms and Conditions',
+                                                value: vm.acceptedTerms,
+                                                onChanged: vm.isLoading
+                                                    ? null
+                                                    : (value) =>
+                                                          vm.setAcceptedTerms(
+                                                            value ?? false,
                                                           ),
-                                                      minimumSize: const Size(
-                                                        48,
-                                                        48,
-                                                      ),
-                                                    ),
-                                                    child: const Text(
-                                                      'Terms and Conditions',
-                                                      style: TextStyle(
-                                                        fontSize: 12,
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                        decoration:
-                                                            TextDecoration
-                                                                .underline,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 12),
-                                        FilledButton(
-                                          key: ElecomTutorialKeys.loginSubmit,
-                                          onPressed:
-                                              vm.isLoading || !vm.acceptedTerms
-                                              ? null
-                                              : _submit,
-                                          style:
-                                              FilledButton.styleFrom(
-                                                backgroundColor: _gold,
-                                                foregroundColor: _navy,
-                                                disabledBackgroundColor:
-                                                    _border,
-                                                disabledForegroundColor: _muted,
-                                                minimumSize: const Size(
-                                                  double.infinity,
-                                                  52,
+                                                activeColor: _navy,
+                                                side: const BorderSide(
+                                                  color: _muted,
                                                 ),
-                                                elevation: 2,
-                                                shadowColor: _navy.withValues(
-                                                  alpha: 0.18,
-                                                ),
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 20,
-                                                      vertical: 14,
-                                                    ),
                                                 shape: RoundedRectangleBorder(
                                                   borderRadius:
-                                                      BorderRadius.circular(12),
+                                                      BorderRadius.circular(4),
                                                 ),
-                                              ).copyWith(
-                                                elevation:
-                                                    WidgetStateProperty.resolveWith(
-                                                      (states) {
-                                                        if (states.contains(
-                                                          WidgetState.disabled,
-                                                        )) {
-                                                          return 0;
-                                                        }
-                                                        if (states.contains(
-                                                          WidgetState.pressed,
-                                                        )) {
-                                                          return 1;
-                                                        }
-                                                        if (states.contains(
-                                                          WidgetState.hovered,
-                                                        )) {
-                                                          return 3;
-                                                        }
-                                                        return 2;
-                                                      },
-                                                    ),
                                               ),
-                                          child: vm.isLoading
-                                              ? const SizedBox(
-                                                  width: 22,
-                                                  height: 22,
-                                                  child:
-                                                      CircularProgressIndicator(
-                                                        strokeWidth: 2,
-                                                        color: _navy,
+                                              Expanded(
+                                                child: Wrap(
+                                                  crossAxisAlignment:
+                                                      WrapCrossAlignment.center,
+                                                  children: [
+                                                    const Text(
+                                                      'I accept the ',
+                                                      style: TextStyle(
+                                                        color: _inputInk,
+                                                        fontSize: 12,
                                                       ),
-                                                )
-                                              : const Text(
-                                                  'Sign In',
-                                                  style: TextStyle(
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.w700,
-                                                  ),
+                                                    ),
+                                                    TextButton(
+                                                      onPressed: vm.isLoading
+                                                          ? null
+                                                          : _openTerms,
+                                                      style: TextButton.styleFrom(
+                                                        foregroundColor: _navy,
+                                                        padding:
+                                                            const EdgeInsets.symmetric(
+                                                              horizontal: 2,
+                                                            ),
+                                                        minimumSize: const Size(
+                                                          48,
+                                                          48,
+                                                        ),
+                                                      ),
+                                                      child: const Text(
+                                                        'Terms and Conditions',
+                                                        style: TextStyle(
+                                                          fontSize: 12,
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                          decoration:
+                                                              TextDecoration
+                                                                  .underline,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Center(
-                                          child: TextButton(
-                                            key: ElecomTutorialKeys.loginForgot,
-                                            onPressed: vm.isLoading
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 12),
+                                          FilledButton(
+                                            key: ElecomTutorialKeys.loginSubmit,
+                                            onPressed:
+                                                vm.isLoading ||
+                                                    !vm.acceptedTerms
                                                 ? null
-                                                : () => Navigator.of(context).push(
-                                                    MaterialPageRoute(
-                                                      builder: (_) =>
-                                                          const ForgotPasswordScreen(),
+                                                : _submit,
+                                            style:
+                                                FilledButton.styleFrom(
+                                                  backgroundColor: _gold,
+                                                  foregroundColor: _navy,
+                                                  disabledBackgroundColor:
+                                                      _border,
+                                                  disabledForegroundColor:
+                                                      _muted,
+                                                  minimumSize: const Size(
+                                                    double.infinity,
+                                                    52,
+                                                  ),
+                                                  elevation: 2,
+                                                  shadowColor: _navy.withValues(
+                                                    alpha: 0.18,
+                                                  ),
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 20,
+                                                        vertical: 14,
+                                                      ),
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          12,
+                                                        ),
+                                                  ),
+                                                ).copyWith(
+                                                  elevation:
+                                                      WidgetStateProperty.resolveWith(
+                                                        (states) {
+                                                          if (states.contains(
+                                                            WidgetState
+                                                                .disabled,
+                                                          )) {
+                                                            return 0;
+                                                          }
+                                                          if (states.contains(
+                                                            WidgetState.pressed,
+                                                          )) {
+                                                            return 1;
+                                                          }
+                                                          if (states.contains(
+                                                            WidgetState.hovered,
+                                                          )) {
+                                                            return 3;
+                                                          }
+                                                          return 2;
+                                                        },
+                                                      ),
+                                                ),
+                                            child: vm.isLoading
+                                                ? const SizedBox(
+                                                    width: 22,
+                                                    height: 22,
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                          strokeWidth: 2,
+                                                          color: _navy,
+                                                        ),
+                                                  )
+                                                : const Text(
+                                                    'Sign In',
+                                                    style: TextStyle(
+                                                      fontSize: 16,
+                                                      fontWeight:
+                                                          FontWeight.w700,
                                                     ),
                                                   ),
-                                            style: TextButton.styleFrom(
-                                              foregroundColor: _primary,
-                                              minimumSize: const Size(48, 48),
-                                            ),
-                                            child: const Text(
-                                              'Forgot Password?',
-                                              style: TextStyle(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w600,
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Center(
+                                            child: TextButton(
+                                              key: ElecomTutorialKeys
+                                                  .loginForgot,
+                                              onPressed: vm.isLoading
+                                                  ? null
+                                                  : () => Navigator.of(context)
+                                                        .push(
+                                                          MaterialPageRoute(
+                                                            builder: (_) =>
+                                                                const ForgotPasswordScreen(),
+                                                          ),
+                                                        ),
+                                              style: TextButton.styleFrom(
+                                                foregroundColor: _primary,
+                                                minimumSize: const Size(48, 48),
+                                              ),
+                                              child: const Text(
+                                                'Forgot Password?',
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
                                               ),
                                             ),
                                           ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -447,6 +462,40 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// Runs once per mounted section; ordinary form rebuilds retain progress.
+class _LoginEntrance extends StatelessWidget {
+  const _LoginEntrance({
+    required this.child,
+    this.duration = const Duration(milliseconds: 650),
+    this.rise = 18,
+  });
+
+  final Widget child;
+  final Duration duration;
+  final double rise;
+
+  @override
+  Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: reduceMotion ? Duration.zero : duration,
+      curve: Curves.easeOutCubic,
+      child: child,
+      builder: (context, progress, child) => IgnorePointer(
+        ignoring: progress < 1,
+        child: Opacity(
+          opacity: progress,
+          child: Transform.translate(
+            offset: Offset(0, reduceMotion ? 0 : rise * (1 - progress)),
+            child: child,
+          ),
         ),
       ),
     );
