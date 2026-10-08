@@ -31,6 +31,10 @@ class ElecomMobileApi {
     return _getJson(MobileApiPaths.accountProfile);
   }
 
+  Future<Map<String, dynamic>> getCandidateCertificateSettings() async {
+    return _getJson(MobileApiPaths.candidateCertificateSettings);
+  }
+
   Future<Map<String, dynamic>> submitAppRating({
     required int rating,
     required String label,

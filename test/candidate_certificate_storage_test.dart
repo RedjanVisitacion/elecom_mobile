@@ -10,6 +10,25 @@ import 'package:http/testing.dart';
 void main() {
   final pdf = Uint8List.fromList(ascii.encode('%PDF-1.7\nCOC\n%%EOF'));
 
+  test('loads the admin certificate settings for mobile preview', () async {
+    final client = MockClient((request) async {
+      expect(
+        request.url.path,
+        '/api/mobile/certificate-of-candidacy/settings/',
+      );
+      return http.Response(
+        '{"ok":true,"forms":{"usg":{"academic_year":"2025 - 2026","chairperson_name":"Sample Chairperson"}},"date_source":"initial_approval"}',
+        200,
+      );
+    });
+    addTearDown(client.close);
+    final settings = await ElecomMobileApi(
+      client: client,
+    ).getCandidateCertificateSettings();
+    expect(settings['forms']['usg']['academic_year'], '2025 - 2026');
+    expect(settings['date_source'], 'initial_approval');
+  });
+
   test('filing sends completed PDF together with candidate details', () async {
     final directory = await Directory.systemTemp.createTemp('coc_storage_');
     addTearDown(() => directory.delete(recursive: true));

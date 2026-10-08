@@ -50,16 +50,19 @@ Future<Uint8List> buildCandidateCertificate({
     double y,
     double width, {
     double height = 11,
+    bool whiteBackground = false,
+    pw.Alignment alignment = pw.Alignment.centerLeft,
   }) => pw.Positioned(
     left: x,
     top: y,
-    child: pw.SizedBox(
+    child: pw.Container(
       width: width,
       height: height,
+      color: whiteBackground ? PdfColors.white : null,
       child: text.trim().isEmpty
           ? pw.SizedBox()
           : pw.FittedBox(
-              alignment: pw.Alignment.centerLeft,
+              alignment: alignment,
               fit: pw.BoxFit.scaleDown,
               child: pw.Text(
                 text.replaceAll('–', '-').replaceAll('—', '-'),
@@ -74,6 +77,23 @@ Future<Uint8List> buildCandidateCertificate({
       build: (_) => pw.Stack(
         children: [
           pw.Positioned.fill(child: pw.Image(background, fit: pw.BoxFit.fill)),
+          if ((fields['academic_year'] ?? '').isNotEmpty)
+            value(
+              'Academic Year ${fields['academic_year']}',
+              department ? 185.66 : 205.37,
+              department ? 580.5 : 556.8,
+              department ? 126.5 : 107.2,
+              whiteBackground: true,
+            ),
+          if ((fields['chairperson_name'] ?? '').isNotEmpty)
+            value(
+              fields['chairperson_name']!,
+              department ? 350 : 365,
+              department ? 737 : 782,
+              department ? 172 : 185,
+              whiteBackground: true,
+              alignment: pw.Alignment.center,
+            ),
           pw.Positioned(
             left: 433,
             top: 109,

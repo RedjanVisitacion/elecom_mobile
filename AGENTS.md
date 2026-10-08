@@ -274,6 +274,13 @@ sudo systemctl restart gunicorn
 
 ## Candidate Filing — Follow-up Documents and Rejection Rules
 
+### COC administration
+
+- Web page: `F:\elecom_web\frontend\org_elecom\elecom_admin\elecom_certificate_of_candidacy.html`; its link follows Candidate Files in all admin sidebars.
+- `candidate_certificate_settings` stores per-election USG/department academic year and chairperson settings. `candidate_certificate_issuances` stores the approved PDF, frozen settings, and initial approval timestamp. Migration `elecom_auth.0009` creates both tables; install `pypdf` and `reportlab` from the backend requirements.
+- Initial approval dates the COC in Philippine time and saves the issued edition while retaining the original archive. Final approval and later settings changes must not modify the issued PDF. Do not infer older initial approval dates from `reviewed_at`, which may have been overwritten by final review.
+- Mobile previews load settings from `/api/mobile/certificate-of-candidacy/settings/`; filed certificate views download the server edition to avoid displaying an outdated local copy. Deployment steps: `docs/coc-admin-settings.md`.
+
 ### Filing stages
 
 - Initial filing: `pending`. Initial approval changes it to `requirements_pending`; the candidate is not yet published.

@@ -322,11 +322,31 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
     return true;
   }
 
-  Future<Uint8List> _createCertificate() async => buildCandidateCertificate(
-    fields: _filingFields(),
-    photo: await _candidatePhoto!.readAsBytes(),
-    signature: _signature!,
-  );
+  Future<Map<String, String>> _certificateSettingsFields(
+    String? organization,
+  ) async {
+    final response = await _api.getCandidateCertificateSettings();
+    final forms = response['forms'];
+    final kind = candidateCertificateUsesDepartmentForm(organization)
+        ? 'department'
+        : 'usg';
+    final config = forms is Map ? forms[kind] : null;
+    if (config is! Map) return {};
+    return {
+      'academic_year': (config['academic_year'] ?? '').toString(),
+      'chairperson_name': (config['chairperson_name'] ?? '').toString(),
+    };
+  }
+
+  Future<Uint8List> _createCertificate() async {
+    final fields = _filingFields();
+    fields.addAll(await _certificateSettingsFields(fields['organization']));
+    return buildCandidateCertificate(
+      fields: fields,
+      photo: await _candidatePhoto!.readAsBytes(),
+      signature: _signature!,
+    );
+  }
 
   Future<void> _previewCertificate({
     Uint8List? saved,
@@ -338,11 +358,9 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
     }
     setState(() => _preparingCertificate = true);
     try {
-      final bytes =
-          saved ??
-          (applicationId == null
-              ? await _createCertificate()
-              : await _api.getCandidateCertificate(applicationId));
+      final bytes = applicationId != null
+          ? await _api.getCandidateCertificate(applicationId)
+          : saved ?? await _createCertificate();
       if (!mounted) return;
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
@@ -1191,6 +1209,7 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
           'Certificate storage is not ready on the server. Please contact ELECOM before submitting.',
         );
       }
+      fields.addAll(await _certificateSettingsFields(fields['organization']));
       final certificate = await buildCandidateCertificate(
         fields: fields,
         photo: await photo.readAsBytes(),

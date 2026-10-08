@@ -26,6 +26,8 @@ void main() {
         fields: {
           'student_id': '2026000001',
           'organization': 'USG',
+          'academic_year': '2025 - 2026',
+          'chairperson_name': 'Sample COMELEC Chairperson',
           'first_name': 'Sample',
           'middle_name': 'M.',
           'last_name': 'Candidate',
@@ -99,6 +101,8 @@ void main() {
       final result = await buildCandidateCertificate(
         fields: {
           'organization': 'SITE',
+          'academic_year': '2025 - 2026',
+          'chairperson_name': 'Sample COMELEC Chairperson',
           'student_id': '2026000001',
           'first_name': 'Sample',
           'middle_name': 'M.',
