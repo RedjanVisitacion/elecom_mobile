@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -33,7 +34,27 @@ Future<Uint8List> buildCandidateCertificate({
         ? 'assets/forms/department_certificate_of_candidacy.png'
         : 'assets/forms/certificate_of_candidacy.png',
   );
-  final background = pw.MemoryImage(template.buffer.asUint8List());
+  return compute(_buildCandidateCertificate, (
+    fields: fields,
+    photo: photo,
+    signature: signature,
+    template: template.buffer.asUint8List(),
+    department: department,
+  ));
+}
+
+Future<Uint8List> _buildCandidateCertificate(
+  ({
+    Map<String, String> fields,
+    Uint8List photo,
+    Uint8List signature,
+    Uint8List template,
+    bool department,
+  })
+  input,
+) async {
+  final (:fields, :photo, :signature, :template, :department) = input;
+  final background = pw.MemoryImage(template);
   final document = pw.Document(
     deflate: zlib.encode,
     title: 'Certificate of Candidacy',

@@ -326,7 +326,9 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
   Future<Map<String, String>> _certificateSettingsFields(
     String? organization,
   ) async {
-    final response = await _api.getCandidateCertificateSettings();
+    final response = await _api.getCandidateCertificateSettings().timeout(
+      const Duration(seconds: 15),
+    );
     final forms = response['forms'];
     final kind = candidateCertificateUsesDepartmentForm(organization)
         ? 'department'
@@ -359,14 +361,18 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
     }
     setState(() => _preparingCertificate = true);
     try {
-      final bytes = applicationId != null
-          ? await _api.getCandidateCertificate(applicationId)
-          : saved ?? await _createCertificate();
       if (!mounted) return;
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => CandidateCertificatePreviewScreen(
-            bytes: bytes,
+            bytes: Uint8List(0),
+            loadCertificate: () => applicationId != null
+                ? _api
+                      .getCandidateCertificate(applicationId)
+                      .timeout(const Duration(seconds: 20))
+                : saved != null
+                ? Future.value(saved)
+                : _createCertificate(),
             fileName: candidateCertificateFileName(
               organization: applicationId != null
                   ? '${_existingApplication?['organization'] ?? _organization ?? ''}'
@@ -874,10 +880,19 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
   }
 
   Future<void> _hydrateProfileAndStatus() async {
+    final statusRequest = _loadApplicationStatus();
+    final nameControllers = [
+      _firstNameController,
+      _middleNameController,
+      _lastNameController,
+    ];
+    final initialNames = nameControllers
+        .map((controller) => controller.text)
+        .toList();
     final initialEmail = _certificateControllers['email']!.text;
     final initialPhone = _certificateControllers['contact_number']!.text;
     try {
-      final res = await _api.getProfile();
+      final res = await _api.getProfile().timeout(const Duration(seconds: 15));
       final data = res['data'];
       if (data is Map<String, dynamic>) {
         UserSession.setFromResponse(data);
@@ -887,7 +902,15 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
       UserSession.setFromResponse(res);
       if (mounted) {
         setState(() {
+          final editedNames = <int, String>{
+            for (var i = 0; i < nameControllers.length; i++)
+              if (nameControllers[i].text != initialNames[i])
+                i: nameControllers[i].text,
+          };
           _hydrateFromSession();
+          for (final edit in editedNames.entries) {
+            nameControllers[edit.key].text = edit.value;
+          }
           // Only prefill untouched empty fields; preserve candidate corrections.
           if (initialEmail.isEmpty &&
               _certificateControllers['email']!.text == initialEmail) {
@@ -915,7 +938,7 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
     } catch (_) {
       // Keep the locally persisted session values if profile refresh fails.
     }
-    await _loadApplicationStatus();
+    await statusRequest;
   }
 
   String _profileContact(Map<String, dynamic> profile, List<String> keys) {
@@ -1051,7 +1074,9 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
     _statusRequestInFlight = true;
     final revision = _statusRevision;
     try {
-      final res = await _api.getCandidateApplicationStatus();
+      final res = await _api.getCandidateApplicationStatus().timeout(
+        const Duration(seconds: 15),
+      );
       final raw = res['application'];
       final application = raw is Map ? Map<String, dynamic>.from(raw) : null;
       if (!mounted || revision != _statusRevision) return;
