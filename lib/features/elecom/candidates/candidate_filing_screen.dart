@@ -328,13 +328,21 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
     signature: _signature!,
   );
 
-  Future<void> _previewCertificate({Uint8List? saved}) async {
-    if (_preparingCertificate || (saved == null && !_validateCertificate())) {
+  Future<void> _previewCertificate({
+    Uint8List? saved,
+    String? applicationId,
+  }) async {
+    if (_preparingCertificate ||
+        (saved == null && applicationId == null && !_validateCertificate())) {
       return;
     }
     setState(() => _preparingCertificate = true);
     try {
-      final bytes = saved ?? await _createCertificate();
+      final bytes =
+          saved ??
+          (applicationId == null
+              ? await _createCertificate()
+              : await _api.getCandidateCertificate(applicationId));
       if (!mounted) return;
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
@@ -1015,6 +1023,25 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
       final raw = res['application'];
       final application = raw is Map ? Map<String, dynamic>.from(raw) : null;
       if (!mounted || revision != _statusRevision) return;
+      final applicationId = application?['id']?.toString();
+      if (applicationId != null &&
+          application?['certificate_available'] == false &&
+          _savedCertificateApplicationId == applicationId &&
+          _savedCertificate != null) {
+        try {
+          final archived = await _api.archiveCandidateCertificate(
+            applicationId,
+            _savedCertificate!,
+          );
+          if (archived['certificate_available'] == true) {
+            application!['certificate_available'] = true;
+            application['certificate_sha256'] = archived['certificate_sha256'];
+          }
+        } catch (error) {
+          debugPrint('Certificate archival retry pending: $error');
+        }
+        if (!mounted || revision != _statusRevision) return;
+      }
       if (_loadingStatus || !mapEquals(_existingApplication, application)) {
         setState(() {
           _existingApplication = application;
@@ -1158,6 +1185,12 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
 
     setState(() => _submitting = true);
     try {
+      final storage = await _api.getCandidateApplicationStatus();
+      if (storage['certificate_storage_ready'] != true) {
+        throw const ElecomApiException(
+          'Certificate storage is not ready on the server. Please contact ELECOM before submitting.',
+        );
+      }
       final certificate = await buildCandidateCertificate(
         fields: fields,
         photo: await photo.readAsBytes(),
@@ -1165,6 +1198,7 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
       );
       final res = await _api.submitCandidateApplication(
         candidatePhoto: photo,
+        certificatePdf: certificate,
         partyLogo: partyLogo,
         fields: fields,
       );
@@ -1177,7 +1211,7 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
         _savedCertificateApplicationId = _existingApplication?['id']
             ?.toString();
       });
-      // A local copy remains available even while the server uses the old contract.
+      // Keep an offline copy in addition to the authoritative server archive.
       try {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString(
@@ -1585,14 +1619,24 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
                               });
                             },
                           ),
-                          if (_savedCertificate != null &&
-                              _savedCertificateApplicationId != null &&
-                              _savedCertificateApplicationId ==
-                                  existingApplication['id']?.toString()) ...[
+                          if (existingApplication['certificate_available'] ==
+                                  true ||
+                              (_savedCertificate != null &&
+                                  _savedCertificateApplicationId != null &&
+                                  _savedCertificateApplicationId ==
+                                      existingApplication['id']
+                                          ?.toString())) ...[
                             const SizedBox(height: 12),
                             OutlinedButton.icon(
-                              onPressed: () =>
-                                  _previewCertificate(saved: _savedCertificate),
+                              onPressed: () => _previewCertificate(
+                                saved:
+                                    _savedCertificateApplicationId ==
+                                        existingApplication['id']?.toString()
+                                    ? _savedCertificate
+                                    : null,
+                                applicationId: existingApplication['id']
+                                    ?.toString(),
+                              ),
                               icon: const Icon(Icons.picture_as_pdf_outlined),
                               label: const Text('View / Save Certificate'),
                             ),

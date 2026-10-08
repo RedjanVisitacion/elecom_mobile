@@ -13,14 +13,25 @@ int candidateAge(DateTime birthDate, DateTime today) {
   return age;
 }
 
-/// Coordinates follow the supplied 8.5 x 14 inch COMELEC form.
+/// USG uses the legal-size form; department organizations use the letter-size form.
+bool candidateCertificateUsesDepartmentForm(String? organization) => const [
+  'SITE',
+  'PAFE',
+  'AFPROTECHS',
+].contains(organization?.trim().toUpperCase());
+
 Future<Uint8List> buildCandidateCertificate({
   required Map<String, String> fields,
   required Uint8List photo,
   required Uint8List signature,
 }) async {
+  final department = candidateCertificateUsesDepartmentForm(
+    fields['organization'],
+  );
   final template = await rootBundle.load(
-    'assets/forms/certificate_of_candidacy.png',
+    department
+        ? 'assets/forms/department_certificate_of_candidacy.png'
+        : 'assets/forms/certificate_of_candidacy.png',
   );
   final background = pw.MemoryImage(template.buffer.asUint8List());
   final document = pw.Document(
@@ -59,7 +70,7 @@ Future<Uint8List> buildCandidateCertificate({
   );
   document.addPage(
     pw.Page(
-      pageFormat: const PdfPageFormat(612, 1008, marginAll: 0),
+      pageFormat: PdfPageFormat(612, department ? 792 : 1008, marginAll: 0),
       build: (_) => pw.Stack(
         children: [
           pw.Positioned.fill(child: pw.Image(background, fit: pw.BoxFit.fill)),
@@ -78,38 +89,48 @@ Future<Uint8List> buildCandidateCertificate({
               ),
             ),
           ),
-          value(fields['student_id'] ?? '', 496, 258, 75),
-          value(fullName, 177, 271, 393),
+          value(fields['student_id'] ?? '', 500, department ? 264 : 258, 75),
+          value(fullName, 180, department ? 278 : 271, 393),
           value(
             fields['curriculum_program'] ?? fields['program'] ?? '',
-            177,
-            284,
+            180,
+            department ? 292 : 284,
             393,
           ),
-          value(fields['major'] ?? '', 177, 297, 393),
-          value(fields['gender'] ?? '', 108, 336, 119),
-          value(fields['date_of_birth'] ?? '', 313, 336, 146),
-          value(fields['age'] ?? '', 499, 336, 72),
-          value(fields['contact_number'] ?? '', 108, 352, 119),
-          value(fields['email'] ?? '', 313, 352, 258),
-          value(fields['address'] ?? '', 108, 365, 463),
+          value(fields['major'] ?? '', 180, department ? 306 : 297, 393),
+          value(fields['gender'] ?? '', 112, department ? 348 : 336, 119),
+          value(
+            fields['date_of_birth'] ?? '',
+            316,
+            department ? 348 : 336,
+            146,
+          ),
+          value(fields['age'] ?? '', 502, department ? 348 : 336, 72),
+          value(
+            fields['contact_number'] ?? '',
+            112,
+            department ? 364 : 352,
+            119,
+          ),
+          value(fields['email'] ?? '', 316, department ? 364 : 352, 258),
+          value(fields['address'] ?? '', 112, department ? 378 : 365, 463),
           for (var i = 0; i < 3; i++) ...[
             value(
               fields['affiliation_${i}_organization'] ?? '',
               32,
-              419 + i * 13.2,
+              department ? 434 + i * 14.16 : 419 + i * 13.2,
               258,
             ),
             value(
               fields['affiliation_${i}_years'] ?? '',
               300,
-              419 + i * 13.2,
+              department ? 434 + i * 14.16 : 419 + i * 13.2,
               130,
             ),
             value(
               fields['affiliation_${i}_position'] ?? '',
               441,
-              419 + i * 13.2,
+              department ? 434 + i * 14.16 : 419 + i * 13.2,
               130,
             ),
           ],
@@ -117,21 +138,29 @@ Future<Uint8List> buildCandidateCertificate({
             fields['candidate_type'] == 'Independent'
                 ? 'Independent'
                 : fields['party_name'] ?? '',
-            159,
-            497,
+            163,
+            department ? 518 : 497,
             412,
           ),
-          value(fields['position'] ?? '', 159, 510, 412),
-          value(fields['position'] ?? '', 194, 568, 218, height: 10),
+          value(fields['position'] ?? '', 163, department ? 532 : 510, 412),
+          value(
+            fields['position'] ?? '',
+            department ? 214 : 154,
+            department ? 592 : 568,
+            department ? 64 : 224,
+            height: 10,
+          ),
           pw.Positioned(
             left: 221,
-            top: 614,
+            top: department ? 643 : 614,
             child: pw.SizedBox(
               width: 170,
-              height: 29,
-              child: pw.Image(
-                pw.MemoryImage(signature),
-                fit: pw.BoxFit.contain,
+              height: department ? 18 : 29,
+              child: pw.Center(
+                child: pw.Image(
+                  pw.MemoryImage(signature),
+                  fit: pw.BoxFit.contain,
+                ),
               ),
             ),
           ),

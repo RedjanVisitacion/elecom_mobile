@@ -14,6 +14,8 @@ class MobileApiPaths {
       '$base/candidate-applications/submit/';
   static String get candidateApplicationStatus =>
       '$base/candidate-applications/status/';
+  static String candidateCertificate(String applicationId) =>
+      '$base/candidate-applications/${Uri.encodeComponent(applicationId)}/certificate/';
   static String get candidateApplicationRequirements =>
       '$base/candidate-applications/requirements/';
   static String get candidateApplicationParties =>

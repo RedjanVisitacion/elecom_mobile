@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:developer' as developer;
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
@@ -241,6 +242,7 @@ class ElecomMobileApi {
   Future<Map<String, dynamic>> submitCandidateApplication({
     required Map<String, String> fields,
     required File candidatePhoto,
+    required Uint8List certificatePdf,
     File? partyLogo,
   }) async {
     final uri = Uri.parse(MobileApiPaths.candidateApplicationSubmit);
@@ -253,6 +255,20 @@ class ElecomMobileApi {
           candidatePhoto.path,
         ),
       );
+
+    if (certificatePdf.isEmpty ||
+        certificatePdf.length > candidateRequirementMaxBytes) {
+      throw const ElecomApiException(
+        'Certificate must be no larger than 8 MB.',
+      );
+    }
+    request.files.add(
+      http.MultipartFile.fromBytes(
+        'certificate_pdf',
+        certificatePdf,
+        filename: 'certificate_of_candidacy.pdf',
+      ),
+    );
 
     if (partyLogo != null) {
       request.files.add(
@@ -277,6 +293,41 @@ class ElecomMobileApi {
 
   Future<Map<String, dynamic>> getCandidateApplicationStatus() async {
     return _getJson(MobileApiPaths.candidateApplicationStatus);
+  }
+
+  Future<Uint8List> getCandidateCertificate(String applicationId) async {
+    final response = await _client.get(
+      Uri.parse(MobileApiPaths.candidateCertificate(applicationId)),
+      headers: {'Accept': 'application/pdf'},
+    );
+    if (response.statusCode != 200 ||
+        !response.headers['content-type'].toString().startsWith(
+          'application/pdf',
+        ) ||
+        String.fromCharCodes(response.bodyBytes.take(5)) != '%PDF-') {
+      throw const ElecomApiException(
+        'Could not load your saved certificate. Please try again.',
+      );
+    }
+    return response.bodyBytes;
+  }
+
+  Future<Map<String, dynamic>> archiveCandidateCertificate(
+    String applicationId,
+    Uint8List pdf,
+  ) async {
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse(MobileApiPaths.candidateCertificate(applicationId)),
+    )..headers['Accept'] = 'application/json';
+    request.files.add(
+      http.MultipartFile.fromBytes(
+        'certificate_pdf',
+        pdf,
+        filename: 'certificate_of_candidacy.pdf',
+      ),
+    );
+    return _decodeStreamed(await _client.send(request));
   }
 
   Future<Map<String, dynamic>> submitCandidateRequirements({

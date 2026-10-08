@@ -25,6 +25,7 @@ void main() {
       final result = await buildCandidateCertificate(
         fields: {
           'student_id': '2026000001',
+          'organization': 'USG',
           'first_name': 'Sample',
           'middle_name': 'M.',
           'last_name': 'Candidate',
@@ -50,6 +51,10 @@ void main() {
       );
       expect(String.fromCharCodes(result.take(5)), '%PDF-');
       expect(result.length, greaterThan(10000));
+      expect(
+        String.fromCharCodes(result),
+        matches(RegExp(r'/MediaBox\s*\[\s*0\s+0\s+612\s+1008\s*\]')),
+      );
       // Optional artifact for inspecting the actual rendered template alignment.
       if (Platform.environment['EXPORT_CERTIFICATE_PREVIEW'] == '1') {
         await File(
@@ -76,6 +81,58 @@ void main() {
     );
     expect(String.fromCharCodes(result.take(5)), '%PDF-');
   });
+
+  test('department organizations select the department form', () {
+    for (final organization in ['SITE', 'PAFE', 'AFPROTECHS', ' site ']) {
+      expect(candidateCertificateUsesDepartmentForm(organization), isTrue);
+    }
+    expect(candidateCertificateUsesDepartmentForm('USG'), isFalse);
+    expect(candidateCertificateUsesDepartmentForm(null), isFalse);
+  });
+
+  test(
+    'department certificate uses letter size and the department layout',
+    () async {
+      final image = base64Decode(
+        'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAFElEQVR4nGN4RiJgGNUwqmH4agAA0PCyH/oS3CQAAAAASUVORK5CYII=',
+      );
+      final result = await buildCandidateCertificate(
+        fields: {
+          'organization': 'SITE',
+          'student_id': '2026000001',
+          'first_name': 'Sample',
+          'middle_name': 'M.',
+          'last_name': 'Candidate',
+          'curriculum_program': 'Bachelor of Science in Information Technology',
+          'major': 'N/A',
+          'gender': 'Female',
+          'date_of_birth': '2005-07-09',
+          'age': '21',
+          'contact_number': '09123456789',
+          'email': 'candidate@example.com',
+          'address': 'Oroquieta City, Misamis Occidental',
+          'candidate_type': 'Independent',
+          'position': 'Public Information Officer',
+          'affiliation_0_organization':
+              'Society of Information Technology Enthusiasts (SITE)',
+          'affiliation_0_years': '2023–2026',
+          'affiliation_0_position': 'Member',
+        },
+        photo: image,
+        signature: image,
+      );
+      expect(String.fromCharCodes(result.take(5)), '%PDF-');
+      expect(
+        String.fromCharCodes(result),
+        matches(RegExp(r'/MediaBox\s*\[\s*0\s+0\s+612\s+792\s*\]')),
+      );
+      if (Platform.environment['EXPORT_CERTIFICATE_PREVIEW'] == '1') {
+        await File(
+          '.dart_tool/department-certificate-preview.pdf',
+        ).writeAsBytes(result);
+      }
+    },
+  );
 
   testWidgets('signature requires a stroke and Clear removes it', (
     tester,
