@@ -1,13 +1,18 @@
 # Certificate of Candidacy settings
 
 The web admin sidebar has **Certificate of Candidacy** after **Candidate Files**.
-For the current election, save the academic year and COMELEC chairperson separately
-for USG and the department form (SITE, PAFE, and AFPROTECHS). Preview shows the
-saved form with the name above the chairperson label. The sworn date remains blank
+For the current election, the academic year and COMELEC chairperson are shared
+by USG and the department form (SITE, PAFE, and AFPROTECHS). Editing either side
+updates both previews. Either Save button stores both forms atomically. Existing
+USG settings take precedence when loading older separate settings; department
+settings are the fallback if USG settings have never been saved. Drag the academic-year
+slider to choose the start year; the end year is automatically the next year.
+Inline previews update while editing, before saving, with the name above the
+chairperson label. The sworn date remains blank
 until initial filing approval.
 
 Initial approval creates a separate approved PDF with that day's date in Philippine
-time and Oroquieta City. Final approval and later settings changes do not change it.
+time and USTP Oroquieta Campus. Final approval and later settings changes do not change it.
 Mobile and web certificate downloads return this approved edition. The original
 signed submission stays in `candidate_application_certificates`.
 
