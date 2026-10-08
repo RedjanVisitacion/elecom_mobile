@@ -1,7 +1,7 @@
 # Certificate of Candidacy settings
 
 The web admin sidebar has **Certificate of Candidacy** after **Candidate Files**.
-For the current election, the academic year and COMELEC chairperson are shared
+For the current election, the academic year and ELECOM chairperson are shared
 by USG and the department form (SITE, PAFE, and AFPROTECHS). Editing either side
 updates both previews. Either Save button stores both forms atomically. Existing
 USG settings take precedence when loading older separate settings; department
@@ -13,7 +13,7 @@ until initial filing approval.
 
 Initial approval creates a separate approved PDF with that day's date in Philippine
 time and USTP Oroquieta Campus. The original and initial editions remain unchanged.
-Final approval creates an additional edition with the COMELEC chairperson signature
+Final approval creates an additional edition with the ELECOM chairperson signature
 over the chairperson name. Mobile and web downloads return this signed edition
 only when the filing status is `approved`. Later settings changes do not change it. The original
 signed submission stays in `candidate_application_certificates`.
