@@ -2180,7 +2180,6 @@ class _CandidateRequirementsCard extends StatefulWidget {
 
 class _CandidateRequirementsCardState
     extends State<_CandidateRequirementsCard> {
-  File? _photo;
   File? _enrollment;
   File? _grades;
   File? _goodMoral;
@@ -2190,20 +2189,9 @@ class _CandidateRequirementsCardState
       (widget.application[key] ?? '').toString().trim().isNotEmpty;
 
   bool get _complete =>
-      _hasServerFile('requirements_photo_url') &&
       _hasServerFile('enrollment_certificate_url') &&
       _hasServerFile('grades_url') &&
       _hasServerFile('good_moral_url');
-
-  Future<void> _pickPhoto() async {
-    final result = await ImagePicker().pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 85,
-      maxWidth: 1200,
-      maxHeight: 1200,
-    );
-    if (result != null && mounted) setState(() => _photo = File(result.path));
-  }
 
   Future<void> _pickPdf(String field) async {
     PlatformFile? result;
@@ -2238,13 +2226,10 @@ class _CandidateRequirementsCardState
 
   Future<void> _submit() async {
     final files = <String, File>{};
-    if (_photo case final file?) files['requirements_photo'] = file;
     if (_enrollment case final file?) files['enrollment_certificate'] = file;
     if (_grades case final file?) files['grades'] = file;
     if (_goodMoral case final file?) files['good_moral'] = file;
     final missing = <String>[
-      if (!_hasServerFile('requirements_photo_url') && _photo == null)
-        '2×2 picture',
       if (!_hasServerFile('enrollment_certificate_url') && _enrollment == null)
         'Certificate of Enrollment',
       if (!_hasServerFile('grades_url') && _grades == null)
@@ -2263,7 +2248,6 @@ class _CandidateRequirementsCardState
       await widget.onSubmitted();
       if (!mounted) return;
       setState(() {
-        _photo = null;
         _enrollment = null;
         _grades = null;
         _goodMoral = null;
@@ -2322,7 +2306,7 @@ class _CandidateRequirementsCardState
             ),
             const SizedBox(height: 5),
             Text(
-              'Upload a clear 2×2 picture. The remaining documents must be PDF files (maximum 8 MB each).',
+              'Upload the three supporting documents as PDF files (maximum 8 MB each). Your photo is already included in the COC.',
               style: TextStyle(
                 color: foreground.withValues(alpha: 0.70),
                 fontWeight: FontWeight.w600,
@@ -2330,13 +2314,6 @@ class _CandidateRequirementsCardState
               ),
             ),
             const SizedBox(height: 12),
-            _RequirementPicker(
-              title: '2×2 Picture',
-              note: 'JPG or PNG image',
-              selectedName: _photo?.path.split(Platform.pathSeparator).last,
-              uploaded: _hasServerFile('requirements_photo_url'),
-              onTap: _pickPhoto,
-            ),
             _RequirementPicker(
               title: 'Certificate of Enrollment',
               note: 'PDF only',
@@ -2361,7 +2338,6 @@ class _CandidateRequirementsCardState
               onTap: () => _pickPdf('good_moral'),
             ),
             if (!_complete ||
-                _photo != null ||
                 _enrollment != null ||
                 _grades != null ||
                 _goodMoral != null) ...[

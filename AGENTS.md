@@ -277,7 +277,7 @@ sudo systemctl restart gunicorn
 ### Filing stages
 
 - Initial filing: `pending`. Initial approval changes it to `requirements_pending`; the candidate is not yet published.
-- Follow-up submission: a 2x2 photo, Certificate of Enrollment, grades for the last two consecutive semesters, and Good Moral Certificate. Once all four are saved, the status becomes `requirements_review` and `requirements_submitted_at` is recorded.
+- Follow-up submission: Certificate of Enrollment, grades for the last two consecutive semesters, and Good Moral Certificate. Once all three PDFs are saved, the status becomes `requirements_review` and `requirements_submitted_at` is recorded. The 2x2 photo is already included in the initial COC; no duplicate photo upload is required.
 - Final approval publishes the candidate and changes the status to `approved`.
 - Both rejection stages use `rejected`, but their refiling rules differ:
   - **Initial filing rejected:** corrections and **File Again** are allowed.
@@ -293,8 +293,8 @@ sudo systemctl restart gunicorn
 
 ### Upload failures: 413 and SQL errors
 
-- Mobile `submitCandidateRequirements` sends all four attachments in **one multipart POST** to `/api/mobile/candidate-applications/requirements/`.
-- Each file must be non-empty and at most **8 MiB**. The combined request can approach **32 MiB**, plus multipart overhead. The app validates sizes before sending; Django retains per-file validation.
+- Mobile `submitCandidateRequirements` sends the three PDFs in **one multipart POST** to `/api/mobile/candidate-applications/requirements/`. Older clients may still send a separate photo, which remains accepted for compatibility.
+- Each file must be non-empty and at most **8 MiB**. The combined request can approach **24 MiB**, plus multipart overhead (32 MiB for older clients). The app validates sizes before sending; Django retains per-file validation.
 - An HTML **413** response means an upload-size rejection, not invalid document JSON. Preserve the specific upload error and backend validation errors; do not relabel response-decoding errors as network failures.
 - Nginx configuration is separate from the Git repository. In `/etc/nginx/sites-available/elecom`, set `client_max_body_size 40m;` inside the **HTTPS server block with `listen 443 ssl`**. Putting it only in the port 80 redirect block does not affect HTTPS uploads. Check for smaller location-level overrides.
 - Validate and apply with `sudo nginx -t && sudo systemctl reload nginx`. Full steps are in `docs/candidate-requirements-server-fix.md`.

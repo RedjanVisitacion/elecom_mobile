@@ -1,8 +1,10 @@
 # Candidate requirements upload deployment
 
-The mobile app submits one photo and three PDFs in one multipart request.
-Each file can be up to 8 MiB, so allow 40 MiB for the request including its
-multipart overhead. Django continues to enforce the 8 MiB per-file limit.
+The mobile app submits three PDFs in one multipart request: enrollment,
+grades for the last two consecutive semesters, and good moral certificate.
+The photo is already in the initial COC. Each file can be up to 8 MiB.
+Keep the existing 40 MiB request limit for compatibility with older clients;
+Django continues to enforce the 8 MiB per-file limit.
 
 On the production server, inspect the effective configuration:
 
@@ -38,8 +40,8 @@ Only pull after the backend fix has been committed and pushed. Install the
 updated mobile APK for the size validation and readable upload errors.
 
 Verify with an authenticated candidate whose status is `requirements_pending`:
-submit a photo and three valid PDFs (including a combined upload over 1 MiB),
-confirm HTTP 200, confirm all four files are available to the admin, and confirm
+submit three valid PDFs (including a combined upload over 1 MiB),
+confirm HTTP 200, confirm all three PDFs are available to the admin, and confirm
 the application moves to `requirements_review`. A file over 8 MiB must be rejected
 by the app before upload. A proxy HTTP 413 must show an upload-size message.
 
