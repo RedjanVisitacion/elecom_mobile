@@ -8,7 +8,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:printing/printing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../app/app.dart' show elecomRouteObserver;
@@ -19,7 +18,9 @@ import '../data/elecom_mobile_api.dart';
 import '../data/candidate_application_policy.dart';
 import '../student_dashboard/utils/theme_notifier.dart';
 import 'candidate_certificate.dart';
+import 'candidate_certificate_preview_screen.dart';
 import 'candidate_signature_screen.dart';
+import 'candidate_filing_theme.dart';
 
 const _premiumBlue = Color(0xFF2563EB);
 const _premiumAccentBlue = Color(0xFF60A5FA);
@@ -364,16 +365,23 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
       if (!mounted) return;
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) => Scaffold(
-            appBar: AppBar(title: const Text('Certificate of Candidacy')),
-            body: PdfPreview(
-              build: (_) async => bytes,
-              pdfFileName:
-                  'certificate_of_candidacy_${_studentIdController.text.trim()}.pdf',
-              canChangePageFormat: false,
-              canChangeOrientation: false,
-              allowPrinting: true,
-              allowSharing: true,
+          builder: (_) => CandidateCertificatePreviewScreen(
+            bytes: bytes,
+            fileName: candidateCertificateFileName(
+              organization: applicationId != null
+                  ? '${_existingApplication?['organization'] ?? _organization ?? ''}'
+                  : _organization ?? '',
+              candidateName: applicationId != null
+                  ? [
+                      _existingApplication?['first_name'],
+                      _existingApplication?['middle_name'],
+                      _existingApplication?['last_name'],
+                    ].whereType<String>().join(' ')
+                  : [
+                      _firstNameController.text,
+                      _middleNameController.text,
+                      _lastNameController.text,
+                    ].join(' '),
             ),
           ),
         ),
@@ -396,6 +404,7 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
     final date = await showDatePicker(
       context: context,
       initialDate: _birthDate ?? DateTime(now.year - 18, now.month, now.day),
+      builder: (context, child) => CandidateFilingStyle(child: child!),
       firstDate: DateTime(1900),
       lastDate: DateTime(now.year, now.month, now.day),
     );
@@ -588,45 +597,50 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
     final selected = await showModalBottomSheet<RangeValues>(
       context: context,
       showDragHandle: true,
-      builder: (context) => StatefulBuilder(
-        builder: (context, updateSheet) => SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'Year/s of Membership',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'From ${range.start.round()} to ${range.end.round()}',
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Drag the handles to select your start and end year.',
-                ),
-                RangeSlider(
-                  values: range,
-                  min: firstYear.toDouble(),
-                  max: currentYear.toDouble(),
-                  divisions: currentYear > firstYear
-                      ? currentYear - firstYear
-                      : null,
-                  labels: RangeLabels(
-                    range.start.round().toString(),
-                    range.end.round().toString(),
+      backgroundColor: candidateFilingTheme(
+        Theme.of(context),
+      ).colorScheme.surface,
+      builder: (context) => CandidateFilingStyle(
+        child: StatefulBuilder(
+          builder: (context, updateSheet) => SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Year/s of Membership',
+                    style: Theme.of(context).textTheme.titleMedium,
                   ),
-                  onChanged: (value) => updateSheet(() => range = value),
-                ),
-                FilledButton(
-                  onPressed: () => Navigator.pop(context, range),
-                  child: const Text('Use these years'),
-                ),
-              ],
+                  const SizedBox(height: 16),
+                  Text(
+                    'From ${range.start.round()} to ${range.end.round()}',
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Drag the handles to select your start and end year.',
+                  ),
+                  RangeSlider(
+                    values: range,
+                    min: firstYear.toDouble(),
+                    max: currentYear.toDouble(),
+                    divisions: currentYear > firstYear
+                        ? currentYear - firstYear
+                        : null,
+                    labels: RangeLabels(
+                      range.start.round().toString(),
+                      range.end.round().toString(),
+                    ),
+                    onChanged: (value) => updateSheet(() => range = value),
+                  ),
+                  FilledButton(
+                    onPressed: () => Navigator.pop(context, range),
+                    child: const Text('Use these years'),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -1399,7 +1413,7 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
             ? Colors.white
             : const Color(0xFF0F172A);
         final existingApplication = _existingApplication;
-        final baseTheme = Theme.of(context);
+        final baseTheme = candidateFilingTheme(Theme.of(context));
         final formTheme = isPremiumMode
             ? baseTheme.copyWith(
                 colorScheme: baseTheme.colorScheme.copyWith(

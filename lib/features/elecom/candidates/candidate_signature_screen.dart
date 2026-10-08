@@ -3,6 +3,8 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 
+import 'candidate_filing_theme.dart';
+
 /// Captures handwritten ink on a fixed white canvas for the certificate.
 class CandidateSignatureScreen extends StatefulWidget {
   const CandidateSignatureScreen({super.key});
@@ -58,62 +60,65 @@ class _CandidateSignatureScreenState extends State<CandidateSignatureScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Candidate Signature')),
-    body: Padding(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Text(
-            'Sign inside the box using your finger. Your signature will appear on your Certificate of Candidacy.',
-          ),
-          const SizedBox(height: 20),
-          AspectRatio(
-            aspectRatio: 2.5,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                _canvasSize = constraints.biggest;
-                return Container(
-                  clipBehavior: Clip.hardEdge,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(color: Colors.grey),
-                  ),
-                  child: GestureDetector(
-                    onPanStart: _saving
-                        ? null
-                        : (details) => setState(
-                            () => _strokes.add([_clamp(details.localPosition)]),
-                          ),
-                    onPanUpdate: _saving
-                        ? null
-                        : (details) => setState(
-                            () => _strokes.last.add(
-                              _clamp(details.localPosition),
-                            ),
-                          ),
-                    child: CustomPaint(
-                      key: const ValueKey('candidate-signature-canvas'),
-                      painter: _InkPainter(_strokes),
-                      size: Size.infinite,
-                    ),
-                  ),
-                );
-              },
+  Widget build(BuildContext context) => CandidateFilingStyle(
+    child: Scaffold(
+      appBar: AppBar(title: const Text('Candidate Signature')),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Sign inside the box using your finger. Your signature will appear on your Certificate of Candidacy.',
             ),
-          ),
-          const SizedBox(height: 16),
-          TextButton.icon(
-            onPressed: _saving ? null : () => setState(_strokes.clear),
-            icon: const Icon(Icons.clear),
-            label: const Text('Clear Signature'),
-          ),
-          FilledButton(
-            onPressed: _hasInk && !_saving ? _save : null,
-            child: Text(_saving ? 'Saving...' : 'Use Signature'),
-          ),
-        ],
+            const SizedBox(height: 20),
+            AspectRatio(
+              aspectRatio: 2.5,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  _canvasSize = constraints.biggest;
+                  return Container(
+                    clipBehavior: Clip.hardEdge,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border.all(color: Colors.grey),
+                    ),
+                    child: GestureDetector(
+                      onPanStart: _saving
+                          ? null
+                          : (details) => setState(
+                              () =>
+                                  _strokes.add([_clamp(details.localPosition)]),
+                            ),
+                      onPanUpdate: _saving
+                          ? null
+                          : (details) => setState(
+                              () => _strokes.last.add(
+                                _clamp(details.localPosition),
+                              ),
+                            ),
+                      child: CustomPaint(
+                        key: const ValueKey('candidate-signature-canvas'),
+                        painter: _InkPainter(_strokes),
+                        size: Size.infinite,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextButton.icon(
+              onPressed: _saving ? null : () => setState(_strokes.clear),
+              icon: const Icon(Icons.clear),
+              label: const Text('Clear Signature'),
+            ),
+            FilledButton(
+              onPressed: _hasInk && !_saving ? _save : null,
+              child: Text(_saving ? 'Saving...' : 'Use Signature'),
+            ),
+          ],
+        ),
       ),
     ),
   );
