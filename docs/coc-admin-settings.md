@@ -12,12 +12,23 @@ chairperson label. The sworn date remains blank
 until initial filing approval.
 
 Initial approval creates a separate approved PDF with that day's date in Philippine
-time and USTP Oroquieta Campus. Final approval and later settings changes do not change it.
-Mobile and web certificate downloads return this approved edition. The original
+time and USTP Oroquieta Campus. The original and initial editions remain unchanged.
+Final approval creates an additional edition with the COMELEC chairperson signature
+over the chairperson name. Mobile and web downloads return this signed edition
+only when the filing status is `approved`. Later settings changes do not change it. The original
 signed submission stays in `candidate_application_certificates`.
 
-The new database tables are `candidate_certificate_settings` and
-`candidate_certificate_issuances`. Full database backups include these tables and
+Draw the shared chairperson signature on the management page, or upload a PNG
+up to 1 MiB. White backgrounds are removed for an overlay that leaves the printed
+name visible. Click **Save for both forms** to save it. Management previews show
+its final placement, but the chairperson signature is absent from candidate COCs
+until final approval. Save the signature before approving supporting documents.
+The saved chairperson must match the name frozen on the candidate's initial COC.
+
+The database tables are `candidate_certificate_settings`,
+`candidate_certificate_issuances`, and `candidate_certificate_finalizations`.
+Migration `elecom_auth.0010` adds the settings signature column and finalizations.
+Full database backups include these tables and
 the PDFs. Settings belong to the election and must be configured again for a new
 election. Older approvals do not have a recorded initial approval date and are
 not retroactively dated.

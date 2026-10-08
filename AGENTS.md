@@ -280,6 +280,7 @@ sudo systemctl restart gunicorn
 - `candidate_certificate_settings` stores per-election USG/department academic year and chairperson settings. `candidate_certificate_issuances` stores the approved PDF, frozen settings, and initial approval timestamp. Migration `elecom_auth.0009` creates both tables; install `pypdf` and `reportlab` from the backend requirements.
 - Initial approval dates the COC in Philippine time and saves the issued edition while retaining the original archive. Final approval and later settings changes must not modify the issued PDF. Do not infer older initial approval dates from `reviewed_at`, which may have been overwritten by final review.
 - Mobile previews load settings from `/api/mobile/certificate-of-candidacy/settings/`; filed certificate views download the server edition to avoid displaying an outdated local copy. Deployment steps: `docs/coc-admin-settings.md`.
+- Chairperson signatures are drawn/uploaded once on COC Management and saved for both forms in `candidate_certificate_settings.chairperson_signature_bytes` (migration `elecom_auth.0010`). Admin placement previews may show the signature, but initial candidate COCs must not contain it. Final approval saves an immutable additional PDF in `candidate_certificate_finalizations`; certificate downloads select it only for status `approved`. Original and initial editions remain unchanged. Do not expose reusable signature bytes through mobile settings responses.
 
 ### Filing stages
 
