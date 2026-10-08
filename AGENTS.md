@@ -282,6 +282,82 @@ sudo systemctl restart gunicorn
 - Mobile previews load settings from `/api/mobile/certificate-of-candidacy/settings/`; filed certificate views download the server edition to avoid displaying an outdated local copy. Deployment steps: `docs/coc-admin-settings.md`.
 - Chairperson signatures are drawn/uploaded once on COC Management and saved for both forms in `candidate_certificate_settings.chairperson_signature_bytes` (migration `elecom_auth.0010`). Admin placement previews may show the signature, but initial candidate COCs must not contain it. Final approval saves an immutable additional PDF in `candidate_certificate_finalizations`; certificate downloads select it only for status `approved`. Original and initial editions remain unchanged. Do not expose reusable signature bytes through mobile settings responses.
 
+### Shared COC management and templates
+
+- The web screen heading is **Certificate of Candidacy Management**; the sidebar label stays **Certificate of Candidacy**. COC chairperson labels and current templates use **ELECOM**, replacing COMELEC. Keep historical legal references outside this feature unchanged unless requested.
+- Academic year and chairperson settings are shared by USG and department forms. Editing either card mirrors the other, and **Save for both forms** saves both rows. The canonical settings lookup prefers the USG row, with the department row as fallback.
+- Academic year uses a start-year slider; end year is automatically start + 1. Admin live previews update after a short debounce without saving settings. Explicit save applies changes to future issuances. Abort stale preview requests and revoke replaced PDF blob URLs.
+- The sworn date comes from **initial filing approval**, in Philippine time, rather than submission or final approval. The sworn location is **USTP Oroquieta Campus**. Final approval adds the chairperson signature without changing the initial date.
+- Admin settings/template endpoints: `/api/admin/certificate-of-candidacy/settings/` and `/api/admin/certificate-of-candidacy/template/<usg|department>/`. Draft previews with signatures use CSRF-protected POST bodies; do not put reusable signature data in query strings.
+- The shared chairperson signature can be drawn or uploaded as PNG. Backend normalization removes white background, crops visible ink, and rejects blank/invalid/oversized images. Final approval requires a saved signature belonging to the chairperson frozen on the initial COC. Changing the name must not silently sign an earlier edition with someone else's signature.
+- Main backend modules: `F:\elecom_web\backend\core\candidate_certificates.py` (original archive/download), `coc_management.py` (settings, templates, initial issuance), and `coc_chairperson_signatures.py` (signature normalization and final edition).
+- Mobile source templates are `assets/forms/certificate_of_candidacy.pdf` and `.png` (USG, 612 x 1008 points), and `assets/forms/department_certificate_of_candidacy.pdf` and `.png` (department, 612 x 792 points). Backend PDF copies are under `F:\elecom_web\backend\core\forms\`. Update PDF and rendered PNG together, plus the matching backend PDF. Flutter uses the PNG background; admin previews use the PDF.
+- The department template is selected for SITE, PAFE, and AFPROTECHS. The backend also accepts the historical AFPRO alias. Check existing organization mappings before extending this list.
+- Inspect replacement PDFs for filled sample names, IDs, personal details, signatures, layout changes, and branding before installing them. The USG PDF supplied on 2026-10-09 contained sample candidate details and still said COMELEC; the user explicitly chose to update the existing blank USG form to ELECOM instead. Do not install that filled sample as a reusable template.
+- PDF field positions are fixed coordinates in `candidate_certificate.dart`; backend year/date/name and chairperson signature overlays have their own coordinates. Check both form sizes after a template change. Never overwrite previously archived original, initial, or final editions just to apply a new format.
+- Initial admin filing review and Candidate Files expose the candidate's COC through the protected certificate endpoint. COC archives are read-only in Candidate Files. Mobile filed COCs load the authoritative server edition, not an older local original.
+
+### Mobile filing fields, theme, PDF download, and printing
+
+- Memberships start with one optional row. Add further rows only when requested, up to the three rows available on the COC. No membership is required. Club/organization choices use spelled-out names with **Others** for manual entry. Membership positions use organization-specific choices with **Others**; membership years use a start/end `RangeSlider`.
+- Curriculum program is selected from the campus program dropdown rather than manually typed. Current choices cover BSIT, BTLED, and BFPT; verify against the handbook before changing the list. Program and year/section account restrictions remain in place.
+- Profile email and phone prefill the candidate contact fields but remain editable. Preserve candidate corrections when a delayed profile refresh returns.
+- `lib/features/elecom/candidates/candidate_filing_theme.dart` provides `candidateFilingTheme` and `CandidateFilingStyle`. Use dashboard blue `0xFF2563EB` in light mode and `0xFF60A5FA` in dark mode, inherited app typography, and consistent app bar titles. Do not reintroduce brown controls.
+- A `Theme` inside the filing form does not automatically style callbacks using the State's outer context or separately pushed routes. Apply filing style explicitly to the membership sheet, date picker, signature screen, and certificate/print routes. Preserve a white signature canvas with black ink even in dark mode.
+- `printing`'s toolbar reads `ThemeData.primaryColor` and `primaryIconTheme`, not only `colorScheme.primary`. Set both in the filing theme to keep the toolbar blue with readable icons.
+- `candidate_certificate_preview_screen.dart` owns certificate display, downloading, loading/retry UI, and print navigation. Set `PdfPreview.canDebug: false`: the unwanted bottom switch was the package's debug switch.
+- Download uses the existing **file_picker 13.x static API**: `FilePicker.saveFile(fileName: ..., bytes: ..., mimeType: 'application/pdf')`. It opens the native save dialog and writes the actual displayed PDF to the selected location. Cancel is not a failure. Avoid old `FilePicker.platform` examples or app-private storage presented as a user download.
+- `candidateCertificateFileName` produces names such as `SITE_Certificate_of_Candidacy_Von_Joshua_Peje.pdf`, including organization and full candidate name. It removes unsafe path characters and normalizes whitespace. Print and share use the same filename. For filed applications, use the application record's candidate name and organization.
+- The print action opens an in-app **Print Certificate** preview with an explicit back arrow and **Open device print options** button. Printing uses the same PDF bytes with `Printing.layoutPdf(..., dynamicLayout: false)`. Android owns its printer dialog: return using the device's Back or Cancel control. Do not promise an app-managed back arrow inside that native dialog.
+
+### Filing and certificate loading
+
+- `_hydrateProfileAndStatus` starts filing status and profile requests in parallel; status must not wait for the profile response. Preserve edits to name and contact fields made while the profile refresh is pending.
+- Profile, filing status, and certificate settings requests in this flow have 15-second waits; server PDF downloads have a 20-second wait. These limit UI waiting and do not guarantee network speed. Keep server-side duplicate/rejection enforcement intact.
+- Opening **View / Save Certificate** pushes the certificate route immediately, before awaiting PDF generation/download. Its app bar Back button remains usable during loading, and failures show **Try again**. Ignore async completions after disposal.
+- `buildCandidateCertificate` loads the PNG asset on the main isolate, then calls `compute` with fields/photo/signature/template bytes. `_buildCandidateCertificate` builds/compresses the PDF on a worker isolate. Keep `rootBundle` and UI context out of that worker.
+- Certificate and print previews render at 96 DPI to reduce rasterization work on the RMX3261. Printing, sharing, and downloading still use the original PDF bytes; changing preview DPI does not change the saved PDF.
+- Application status continues to poll every 3 seconds only while resumed and the filing route is visible, with an in-flight guard. Preserve the authoritative server-edition rule when optimizing preview loading; an approved signed edition must not be replaced with a cached pre-approval copy.
+
+### Repair after manually deleted database tables
+
+- `DROP TABLE ... CASCADE` can remove the application table and its COC foreign-key constraints while leaving orphaned COC rows. Prefer deliberate test-record cleanup to dropping tables. Normal `migrate` does not recreate deleted tables when their migrations are already recorded as applied.
+- `F:\elecom_web\backend\core\candidate_filing_schema.py` provides `ensure_candidate_filing_schema`. COC settings/template endpoints and `ensure_certificate_table` check and repair the five filing/COC tables: `candidate_applications`, `candidate_application_certificates`, `candidate_certificate_settings`, `candidate_certificate_issuances`, and `candidate_certificate_finalizations`.
+- The repair uses an atomic transaction and PostgreSQL advisory lock, creates missing tables/indexes and the chairperson signature column, and restores missing COC foreign keys. It avoids repeated DDL when the expected tables, signature column, and references already exist.
+- Restored foreign keys use `NOT VALID` to retain old orphaned archives for backup recovery while checking future writes. Do not silently delete those archives. The application sequence advances beyond all surviving archive IDs so a new application cannot inherit a deleted candidate's PDF; never lower an existing sequence.
+- Recovery restores schema, not deleted records, PDFs, signatures, or settings. Recover deleted data from a backup. If settings were deleted, re-enter the year, chairperson, and signature in COC Management and save for both forms. The repair is scoped to these five tables; inspect logs if other deleted tables still cause errors.
+- Management command: `backend/elecom_auth/management/commands/repair_candidate_filing_schema.py`. It skips unrelated Django system checks so face-service dependencies do not prevent this repair. Instructions: `docs/candidate-filing-table-recovery.md`.
+- After committing/pushing the backend changes, run on the server:
+
+```bash
+cd /var/www/elecom
+git pull origin main
+/var/www/elecom/venv/bin/python backend/manage.py repair_candidate_filing_schema
+/var/www/elecom/venv/bin/python backend/manage.py migrate
+/var/www/elecom/venv/bin/python backend/manage.py collectstatic --noinput
+sudo systemctl restart gunicorn
+sudo systemctl is-active gunicorn
+```
+
+- Run commands on separate lines; screenshots showed pasted commands merged with prompts and missing visible status output. Expect `active` from `is-active`, then refresh COC Management with Ctrl + Shift + R and retry mobile filing.
+- An HTML `<!DOCTYPE ...>` response causes the web's JSON parsing error, but is not the underlying database diagnosis. The COC script now reports a readable server error for non-JSON settings responses. Reproduce the failure, then inspect `journalctl -u gunicorn --since "5 minutes ago" --no-pager`.
+- A warning that `elecom_voting` models have unapplied changes is separate from successful COC schema repair. Investigate the model/migration difference locally instead of blindly generating migrations on production.
+- Backend recovery needs deployment/restart, not an APK rebuild. Mobile code or bundled form changes require a rebuilt and installed APK. Pulling mobile source alone does not update an installed app.
+
+### COC verification and resource limits (2026-10-09)
+
+- Latest focused mobile verification: 16 tests passed across certificate loading/back/retry, filenames, PDF generation/signature drawing, and API archival/download/settings. Changed certificate/filing files analyzed cleanly. This is a verification snapshot, not a claim that the production device or all app tests were checked.
+- Focused Flutter command:
+
+```powershell
+flutter test --no-pub --concurrency=1 test/candidate_certificate_preview_loading_test.dart test/candidate_certificate_filename_test.dart test/candidate_certificate_test.dart test/candidate_certificate_storage_test.dart
+```
+
+- Backend recovery verification: 45 tests passed including `core.test_candidate_filing_schema`, `core.test_coc_management`, `core.test_coc_chairperson_signatures`, `core.test_candidate_certificates`, and `core.test_candidate_application_policy`. The recovery tests mock PostgreSQL cursor behavior; they do not replace live database verification. The user later reported the server's successful **Filing/COC schema repaired** output.
+- Run those backend tests from `F:\elecom_web\backend` using its venv Python and `-m unittest`. No new migration was necessary for the recovery command or ELECOM template update; settings and signature migrations remain 0009 and 0010.
+- This machine can run out of memory when Flutter analysis and PDF tests overlap. Do not start duplicate analyzers because the first is quiet. Wait for completion and run verification sequentially; `--concurrency=1` reduces test-process overlap. A run hit OOM, but later focused tests including PDF generation passed.
+- If verification processes must be stopped, identify the exact process trees launched by the current task. Do not terminate the user's IDE Dart language server, devtools, or unrelated app sessions. Avoid restarting a slow build or analysis without evidence it is stuck.
+
 ### Filing stages
 
 - Initial filing: `pending`. Initial approval changes it to `requirements_pending`; the candidate is not yet published.
