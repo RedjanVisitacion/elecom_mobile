@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -7,6 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:printing/printing.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../app/app.dart' show elecomRouteObserver;
 import '../../../core/notifications/notification_center_store.dart';
@@ -15,6 +18,8 @@ import '../../../core/utils/toast_service.dart';
 import '../data/elecom_mobile_api.dart';
 import '../data/candidate_application_policy.dart';
 import '../student_dashboard/utils/theme_notifier.dart';
+import 'candidate_certificate.dart';
+import 'candidate_signature_screen.dart';
 
 const _premiumBlue = Color(0xFF2563EB);
 const _premiumAccentBlue = Color(0xFF60A5FA);
@@ -58,6 +63,22 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
   ];
 
   static const List<String> _programs = ['BSIT', 'BTLED', 'BFPT'];
+
+  // USTP Oroquieta student organizations (USTP Trailblazer's Summit 2025).
+  static const List<String> _membershipOrganizations = [
+    'University Student Government (USG)',
+    'Society of Information Technology Enthusiasts (SITE)',
+    'Prime Association of Future Educators (PAFE)',
+    'Association of Food Processing and Technology Students (AFPROTECHS)',
+    'Active Certified Computer-Enhanced Student Society (ACCESS)',
+    'Red Cross Youth (RCY)',
+  ];
+
+  static const Map<String, String> _curriculumPrograms = {
+    'BSIT': 'Bachelor of Science in Information Technology',
+    'BTLED': 'Bachelor of Technology and Livelihood Education',
+    'BFPT': 'Bachelor in Food Processing and Technology',
+  };
 
   static const List<String> _yearSections = [
     'BSIT-1A',
@@ -121,6 +142,32 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
   final TextEditingController _partyNameController = TextEditingController();
   final FocusNode _partyNameFocusNode = FocusNode();
   final TextEditingController _partyCodeController = TextEditingController();
+  final Map<String, TextEditingController> _certificateControllers = {
+    for (final key in [
+      'curriculum_program',
+      'major',
+      'contact_number',
+      'email',
+      'address',
+      for (var i = 0; i < 3; i++) ...[
+        'affiliation_${i}_organization',
+        'affiliation_${i}_years',
+        'affiliation_${i}_position',
+      ],
+    ])
+      key: TextEditingController(),
+  };
+  DateTime? _birthDate;
+  int _membershipCount = 1;
+  final List<String?> _membershipSelections = List.filled(3, null);
+  final List<String?> _membershipPositions = List.filled(3, null);
+  final List<RangeValues?> _membershipYears = List.filled(3, null);
+  String? _gender;
+  Uint8List? _signature;
+  Uint8List? _savedCertificate;
+  String? _savedCertificateApplicationId;
+  bool _preparingCertificate = false;
+  bool _certified = false;
 
   String _candidateType = 'Political Party';
   String? _accountProgram;
@@ -153,6 +200,7 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
     _hydrateFromSession();
     _hydrateProfileAndStatus();
     _loadPartyNames();
+    _restoreCertificate();
   }
 
   @override
@@ -210,8 +258,539 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
     _partyNameController.dispose();
     _partyNameFocusNode.dispose();
     _partyCodeController.dispose();
+    for (final controller in _certificateControllers.values) {
+      controller.dispose();
+    }
     super.dispose();
   }
+
+  Future<void> _restoreCertificate() async {
+    final studentId = UserSession.studentId;
+    if (studentId == null || studentId.isEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    final stored = prefs.getString('candidate_certificate_$studentId');
+    if (!mounted || stored == null || studentId != UserSession.studentId) {
+      return;
+    }
+    try {
+      final copy = jsonDecode(stored) as Map<String, dynamic>;
+      setState(() {
+        _savedCertificate = base64Decode(copy['pdf'] as String);
+        _savedCertificateApplicationId = copy['application_id']?.toString();
+      });
+    } catch (_) {
+      /* Ignore an invalid local copy. */
+    }
+  }
+
+  Map<String, String> _filingFields() => {
+    'candidate_type': _candidateType,
+    'student_id': _studentIdController.text.trim(),
+    'first_name': _firstNameController.text.trim(),
+    'middle_name': _middleNameController.text.trim(),
+    'last_name': _lastNameController.text.trim(),
+    'organization': _organization ?? '',
+    'position': _position ?? '',
+    'program': _program ?? '',
+    'year_section': _yearSection ?? '',
+    'platform': _platformController.text.trim(),
+    'party_name': _effectivePartyName,
+    'party_code': _effectivePartyCode,
+    for (final entry in _certificateControllers.entries)
+      entry.key: entry.value.text.trim(),
+    'gender': _gender ?? '',
+    'date_of_birth': _birthDate == null
+        ? ''
+        : '${_birthDate!.year}-${_birthDate!.month.toString().padLeft(2, '0')}-${_birthDate!.day.toString().padLeft(2, '0')}',
+    'age': _birthDate == null
+        ? ''
+        : candidateAge(_birthDate!, DateTime.now()).toString(),
+    if (_signature != null) 'signature_base64': base64Encode(_signature!),
+  };
+
+  bool _validateCertificate() {
+    if (!_formKey.currentState!.validate()) return false;
+    final missing = <String>[
+      if (_candidatePhoto == null) 'add your 2x2 photo',
+      if (_signature == null) 'add your signature',
+      if (!_certified) 'check the declaration checkbox',
+    ];
+    if (missing.isNotEmpty) {
+      AppToast.warning(context, 'Please ${missing.join(', ')}.');
+      return false;
+    }
+    return true;
+  }
+
+  Future<Uint8List> _createCertificate() async => buildCandidateCertificate(
+    fields: _filingFields(),
+    photo: await _candidatePhoto!.readAsBytes(),
+    signature: _signature!,
+  );
+
+  Future<void> _previewCertificate({Uint8List? saved}) async {
+    if (_preparingCertificate || (saved == null && !_validateCertificate())) {
+      return;
+    }
+    setState(() => _preparingCertificate = true);
+    try {
+      final bytes = saved ?? await _createCertificate();
+      if (!mounted) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => Scaffold(
+            appBar: AppBar(title: const Text('Certificate of Candidacy')),
+            body: PdfPreview(
+              build: (_) async => bytes,
+              pdfFileName:
+                  'certificate_of_candidacy_${_studentIdController.text.trim()}.pdf',
+              canChangePageFormat: false,
+              canChangeOrientation: false,
+              allowPrinting: true,
+              allowSharing: true,
+            ),
+          ),
+        ),
+      );
+    } catch (error, stackTrace) {
+      debugPrint('Certificate preview failed: $error\n$stackTrace');
+      if (mounted) {
+        AppToast.warning(
+          context,
+          'Could not prepare your certificate. Please try again.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _preparingCertificate = false);
+    }
+  }
+
+  Future<void> _pickBirthDate() async {
+    final now = DateTime.now();
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _birthDate ?? DateTime(now.year - 18, now.month, now.day),
+      firstDate: DateTime(1900),
+      lastDate: DateTime(now.year, now.month, now.day),
+    );
+    if (date != null && mounted) setState(() => _birthDate = date);
+  }
+
+  Future<void> _sign() async {
+    final signature = await Navigator.of(context).push<Uint8List>(
+      MaterialPageRoute(builder: (_) => const CandidateSignatureScreen()),
+    );
+    if (signature != null && mounted) {
+      setState(() {
+        _signature = signature;
+        _certified = false;
+      });
+    }
+  }
+
+  Widget _certificateText(
+    String key,
+    String label, {
+    bool required = true,
+    String? hint,
+    int lines = 1,
+  }) => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: _FilingTextField(
+      controller: _certificateControllers[key]!,
+      validator: (value) {
+        if (required && (value ?? '').trim().isEmpty) return 'Required';
+        if (key == 'email' &&
+            !RegExp(
+              r'^[^\s@]+@[^\s@]+\.[^\s@]+$',
+            ).hasMatch((value ?? '').trim())) {
+          return 'Enter a valid email address';
+        }
+        if ((value ?? '').length > (key == 'address' ? 200 : 120)) {
+          return 'Please use a shorter value';
+        }
+        if (key.startsWith('affiliation_')) {
+          final prefix = key.substring(0, key.lastIndexOf('_') + 1);
+          final hasRow = ['organization', 'years', 'position'].any(
+            (suffix) => _certificateControllers['$prefix$suffix']!.text
+                .trim()
+                .isNotEmpty,
+          );
+          if (hasRow && (value ?? '').trim().isEmpty) {
+            return 'Complete this membership row';
+          }
+        }
+        return null;
+      },
+      maxLines: lines,
+      decoration: InputDecoration(labelText: label, hintText: hint),
+    ),
+  );
+
+  Widget _personalDetails(bool premium) => _Section(
+    title: 'Personal Details',
+    isPremiumMode: premium,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _FilingSelectField(
+          label: 'Curriculum Program',
+          value: _certificateControllers['curriculum_program']!.text.isEmpty
+              ? null
+              : _certificateControllers['curriculum_program']!.text,
+          options: _curriculumPrograms.values.toList(),
+          validator: _required,
+          onChanged: (value) => setState(() {
+            _certificateControllers['curriculum_program']!.text = value ?? '';
+          }),
+        ),
+        const SizedBox(height: 12),
+        _certificateText(
+          'major',
+          'Major in',
+          hint: 'Enter N/A if not applicable',
+        ),
+        _FilingSelectField(
+          label: 'Gender',
+          value: _gender,
+          options: const ['Male', 'Female', 'Other', 'Prefer not to say'],
+          validator: _required,
+          onChanged: (value) => setState(() => _gender = value),
+        ),
+        const SizedBox(height: 12),
+        FormField<DateTime>(
+          initialValue: _birthDate,
+          key: ValueKey(_birthDate),
+          validator: (_) => _birthDate == null ? 'Required' : null,
+          builder: (field) => InkWell(
+            onTap: _pickBirthDate,
+            child: InputDecorator(
+              decoration: InputDecoration(
+                labelText: 'Date of Birth',
+                errorText: field.errorText,
+                suffixIcon: const Icon(Icons.calendar_month),
+              ),
+              child: Text(
+                _birthDate == null
+                    ? 'Select date'
+                    : _filingFields()['date_of_birth']!,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          _birthDate == null
+              ? 'Age: calculated from date of birth'
+              : 'Age: ${candidateAge(_birthDate!, DateTime.now())}',
+        ),
+        const SizedBox(height: 12),
+        _certificateText(
+          'contact_number',
+          'Contact No.',
+          hint: 'Mobile or telephone number',
+        ),
+        _certificateText('email', 'Email Address'),
+        _certificateText('address', 'Address', lines: 2),
+      ],
+    ),
+  );
+
+  Widget _membershipOrganization(int index) {
+    final key = 'affiliation_${index}_organization';
+    final controller = _certificateControllers[key]!;
+    final selection = _membershipSelections[index];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _FilingSelectField(
+          label: 'Club / Organization',
+          value: selection,
+          options: const [..._membershipOrganizations, 'Others', 'None'],
+          validator: (_) {
+            final hasDetails = ['years', 'position'].any(
+              (suffix) =>
+                  _certificateControllers['affiliation_${index}_$suffix']!.text
+                      .trim()
+                      .isNotEmpty,
+            );
+            if (selection != 'Others' &&
+                hasDetails &&
+                controller.text.isEmpty) {
+              return 'Select a club / organization';
+            }
+            return null;
+          },
+          onChanged: (value) => setState(() {
+            _membershipSelections[index] = value;
+            _membershipPositions[index] = null;
+            _certificateControllers['affiliation_${index}_position']!.clear();
+            controller.text = value == 'Others' || value == 'None'
+                ? ''
+                : value ?? '';
+            if (value == 'None') {
+              _membershipYears[index] = null;
+              for (final suffix in ['years', 'position']) {
+                _certificateControllers['affiliation_${index}_$suffix']!
+                    .clear();
+              }
+            }
+          }),
+        ),
+        const SizedBox(height: 12),
+        if (selection == 'Others')
+          _certificateText(
+            key,
+            'Other Club / Organization',
+            hint: 'Enter the full organization name',
+          ),
+      ],
+    );
+  }
+
+  Future<void> _pickMembershipYears(int index) async {
+    FocusScope.of(context).unfocus();
+    final currentYear = DateTime.now().year;
+    final firstYear = _birthDate?.year ?? currentYear - 100;
+    var range =
+        _membershipYears[index] ??
+        RangeValues(currentYear.toDouble(), currentYear.toDouble());
+    range = RangeValues(
+      range.start.clamp(firstYear, currentYear).toDouble(),
+      range.end.clamp(firstYear, currentYear).toDouble(),
+    );
+    final selected = await showModalBottomSheet<RangeValues>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => StatefulBuilder(
+        builder: (context, updateSheet) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Year/s of Membership',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'From ${range.start.round()} to ${range.end.round()}',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Drag the handles to select your start and end year.',
+                ),
+                RangeSlider(
+                  values: range,
+                  min: firstYear.toDouble(),
+                  max: currentYear.toDouble(),
+                  divisions: currentYear > firstYear
+                      ? currentYear - firstYear
+                      : null,
+                  labels: RangeLabels(
+                    range.start.round().toString(),
+                    range.end.round().toString(),
+                  ),
+                  onChanged: (value) => updateSheet(() => range = value),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(context, range),
+                  child: const Text('Use these years'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    if (!mounted || selected == null) return;
+    setState(() {
+      _membershipYears[index] = selected;
+      _certificateControllers['affiliation_${index}_years']!.text =
+          '${selected.start.round()}–${selected.end.round()}';
+    });
+  }
+
+  Widget _membershipYearField(int index) => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: _FilingFieldLabel(
+      label: 'Year/s of Membership',
+      child: FormField<String>(
+        key: ValueKey('membership-years-$index:${_membershipYears[index]}'),
+        validator: (_) {
+          final hasOrganization =
+              _certificateControllers['affiliation_${index}_organization']!.text
+                  .trim()
+                  .isNotEmpty;
+          return hasOrganization && _membershipYears[index] == null
+              ? 'Select membership years'
+              : null;
+        },
+        builder: (field) => InkWell(
+          onTap: () => _pickMembershipYears(index),
+          child: InputDecorator(
+            decoration: InputDecoration(
+              errorText: field.errorText,
+              suffixIcon: const Icon(Icons.calendar_month, size: 20),
+            ),
+            child: Text(
+              _membershipYears[index] == null
+                  ? 'Select start and end year'
+                  : _certificateControllers['affiliation_${index}_years']!.text,
+              style: _filingValueStyle(context),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+
+  Widget _membershipPositionField(int index) {
+    final organization = _membershipSelections[index];
+    final hasKnownRoles = _membershipOrganizations
+        .take(4)
+        .contains(organization);
+    final key = 'affiliation_${index}_position';
+    final selection = _membershipPositions[index];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _FilingSelectField(
+          label: 'Membership Position',
+          value: selection,
+          options: [
+            if (hasKnownRoles) ..._generalPositions,
+            if (organization == _membershipOrganizations.first)
+              ..._representativePositions,
+            'Member',
+            'Others',
+          ],
+          validator: (_) {
+            final hasRow = ['organization', 'years'].any(
+              (suffix) =>
+                  _certificateControllers['affiliation_${index}_$suffix']!.text
+                      .trim()
+                      .isNotEmpty,
+            );
+            return hasRow && selection == null
+                ? 'Select a membership position'
+                : null;
+          },
+          onChanged: (value) => setState(() {
+            _membershipPositions[index] = value;
+            _certificateControllers[key]!.text = value == 'Others'
+                ? ''
+                : value ?? '';
+          }),
+        ),
+        const SizedBox(height: 12),
+        if (selection == 'Others')
+          _certificateText(
+            key,
+            'Other Membership Position',
+            hint: 'Enter your position',
+          ),
+      ],
+    );
+  }
+
+  Widget _affiliations(bool premium) => _Section(
+    title: 'Clubs and Organizations',
+    isPremiumMode: premium,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text(
+          'Inside or outside the school. Optional if you have no memberships.',
+        ),
+        const SizedBox(height: 12),
+        for (var i = 0; i < _membershipCount; i++) ...[
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Membership ${i + 1}',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+              if (i == _membershipCount - 1 && i > 0)
+                IconButton(
+                  tooltip: 'Remove membership',
+                  icon: const Icon(Icons.remove_circle_outline),
+                  onPressed: () => setState(() {
+                    for (final suffix in [
+                      'organization',
+                      'years',
+                      'position',
+                    ]) {
+                      _certificateControllers['affiliation_${i}_$suffix']!
+                          .clear();
+                    }
+                    _membershipCount--;
+                    _membershipSelections[i] = null;
+                    _membershipPositions[i] = null;
+                    _membershipYears[i] = null;
+                  }),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _membershipOrganization(i),
+          _membershipYearField(i),
+          _membershipPositionField(i),
+        ],
+        if (_membershipCount < 3)
+          OutlinedButton.icon(
+            onPressed: () => setState(() => _membershipCount++),
+            icon: const Icon(Icons.add),
+            label: const Text('Add Club / Organization'),
+          ),
+      ],
+    ),
+  );
+
+  Widget _signatureSection(bool premium) => _Section(
+    title: 'Candidate Signature',
+    isPremiumMode: premium,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (_signature != null)
+          Container(
+            color: Colors.white,
+            height: 100,
+            child: Image.memory(_signature!, fit: BoxFit.contain),
+          ),
+        OutlinedButton.icon(
+          onPressed: _sign,
+          icon: const Icon(Icons.draw_outlined),
+          label: Text(
+            _signature == null ? 'Add E-Signature' : 'Replace E-Signature',
+          ),
+        ),
+        CheckboxListTile(
+          contentPadding: EdgeInsets.zero,
+          value: _certified,
+          onChanged: (value) => setState(() => _certified = value ?? false),
+          title: const Text(
+            'I certify that these details are true and correct and agree to abide by the USTP Oroquieta election rules.',
+          ),
+        ),
+        OutlinedButton.icon(
+          onPressed: _preparingCertificate ? null : () => _previewCertificate(),
+          icon: const Icon(Icons.picture_as_pdf_outlined),
+          label: Text(
+            _preparingCertificate
+                ? 'Preparing...'
+                : 'Preview / Save Certificate',
+          ),
+        ),
+      ],
+    ),
+  );
 
   void _hydrateFromSession() {
     _studentIdController.text = (UserSession.studentId ?? '').trim();
@@ -255,6 +834,8 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
   }
 
   Future<void> _hydrateProfileAndStatus() async {
+    final initialEmail = _certificateControllers['email']!.text;
+    final initialPhone = _certificateControllers['contact_number']!.text;
     try {
       final res = await _api.getProfile();
       final data = res['data'];
@@ -265,12 +846,55 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
       }
       UserSession.setFromResponse(res);
       if (mounted) {
-        setState(_hydrateFromSession);
+        setState(() {
+          _hydrateFromSession();
+          // Only prefill untouched empty fields; preserve candidate corrections.
+          if (initialEmail.isEmpty &&
+              _certificateControllers['email']!.text == initialEmail) {
+            _certificateControllers['email']!.text = _profileContact(
+              res,
+              const ['email'],
+            );
+          }
+          if (initialPhone.isEmpty &&
+              _certificateControllers['contact_number']!.text == initialPhone) {
+            _certificateControllers['contact_number']!.text =
+                _profileContact(res, const [
+                  'phone_number',
+                  'phoneNumber',
+                  'phone',
+                  'mobile',
+                  'contact',
+                  'contact_number',
+                  'contact_no',
+                  'contactNo',
+                ]);
+          }
+        });
       }
     } catch (_) {
       // Keep the locally persisted session values if profile refresh fails.
     }
     await _loadApplicationStatus();
+  }
+
+  String _profileContact(Map<String, dynamic> profile, List<String> keys) {
+    final sources = <Map>[
+      profile,
+      if (profile['data'] is Map) profile['data'] as Map,
+    ];
+    for (final source in List<Map>.of(sources)) {
+      for (final key in ['user', 'student']) {
+        if (source[key] is Map) sources.add(source[key] as Map);
+      }
+    }
+    for (final key in keys) {
+      for (final source in sources) {
+        final value = source[key]?.toString().trim() ?? '';
+        if (value.isNotEmpty && value.toLowerCase() != 'null') return value;
+      }
+    }
+    return '';
   }
 
   Future<void> _refreshFiling() async {
@@ -360,6 +984,8 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
 
   void _setProgram(String? value) {
     _program = value;
+    _certificateControllers['curriculum_program']!.text =
+        _curriculumPrograms[value] ?? '';
     if (_organization != null &&
         !_availableOrganizations.contains(_organization)) {
       _organization = null;
@@ -523,39 +1149,47 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
   }
 
   Future<void> _submit() async {
-    if (_submitting) return;
-    if (!_formKey.currentState!.validate()) return;
-    if (_candidatePhoto == null) {
-      AppToast.warning(context, 'Upload your candidate photo first.');
-      return;
-    }
+    if (_submitting || _preparingCertificate) return;
+    if (!_validateCertificate()) return;
+    final fields = _filingFields();
+    final photo = _candidatePhoto!;
+    final signature = _signature!;
+    final partyLogo = _partyLogo;
 
     setState(() => _submitting = true);
     try {
+      final certificate = await buildCandidateCertificate(
+        fields: fields,
+        photo: await photo.readAsBytes(),
+        signature: signature,
+      );
       final res = await _api.submitCandidateApplication(
-        candidatePhoto: _candidatePhoto!,
-        partyLogo: _partyLogo,
-        fields: <String, String>{
-          'candidate_type': _candidateType,
-          'student_id': _studentIdController.text.trim(),
-          'first_name': _firstNameController.text.trim(),
-          'middle_name': _middleNameController.text.trim(),
-          'last_name': _lastNameController.text.trim(),
-          'organization': _organization ?? '',
-          'position': _position ?? '',
-          'program': _program ?? '',
-          'year_section': _yearSection ?? '',
-          'platform': _platformController.text.trim(),
-          'party_name': _effectivePartyName,
-          'party_code': _effectivePartyCode,
-        },
+        candidatePhoto: photo,
+        partyLogo: partyLogo,
+        fields: fields,
       );
       if (!mounted) return;
       setState(() {
         _statusRevision++;
         _existingApplication = _applicationFromSubmitResponse(res);
         _loadingStatus = false;
+        _savedCertificate = certificate;
+        _savedCertificateApplicationId = _existingApplication?['id']
+            ?.toString();
       });
+      // A local copy remains available even while the server uses the old contract.
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(
+          'candidate_certificate_${_studentIdController.text.trim()}',
+          jsonEncode({
+            'pdf': base64Encode(certificate),
+            'application_id': _savedCertificateApplicationId,
+          }),
+        );
+      } catch (_) {
+        /* Submission already succeeded; keep the in-memory copy. */
+      }
       await NotificationCenterStore.refresh();
       if (!mounted) return;
       AppToast.success(
@@ -928,7 +1562,7 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
                             padding: EdgeInsets.symmetric(vertical: 28),
                             child: Center(child: CircularProgressIndicator()),
                           )
-                        else if (existingApplication != null)
+                        else if (existingApplication != null) ...[
                           _ApplicationStatusCard(
                             application: existingApplication,
                             isPremiumMode: isPremiumMode,
@@ -944,10 +1578,26 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
                                 _existingApplication = null;
                                 _candidatePhoto = null;
                                 _partyLogo = null;
+                                _signature = null;
+                                _certified = false;
+                                _savedCertificate = null;
+                                _savedCertificateApplicationId = null;
                               });
                             },
-                          )
-                        else ...[
+                          ),
+                          if (_savedCertificate != null &&
+                              _savedCertificateApplicationId != null &&
+                              _savedCertificateApplicationId ==
+                                  existingApplication['id']?.toString()) ...[
+                            const SizedBox(height: 12),
+                            OutlinedButton.icon(
+                              onPressed: () =>
+                                  _previewCertificate(saved: _savedCertificate),
+                              icon: const Icon(Icons.picture_as_pdf_outlined),
+                              label: const Text('View / Save Certificate'),
+                            ),
+                          ],
+                        ] else ...[
                           _Section(
                             title: 'Candidate Type',
                             isPremiumMode: isPremiumMode,
@@ -1076,6 +1726,10 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
                             ),
                           ),
                           const SizedBox(height: 14),
+                          _personalDetails(isPremiumMode),
+                          const SizedBox(height: 14),
+                          _affiliations(isPremiumMode),
+                          const SizedBox(height: 14),
                           _Section(
                             title: 'Candidacy Details',
                             isPremiumMode: isPremiumMode,
@@ -1134,6 +1788,8 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
                               ),
                             ),
                           ],
+                          const SizedBox(height: 14),
+                          _signatureSection(isPremiumMode),
                         ],
                       ],
                     ),
@@ -1948,7 +2604,7 @@ class _PhotoPickerCard extends StatelessWidget {
         const SizedBox(height: 6),
         Text(
           imageFile == null
-              ? 'Candidate photo ? Required'
+              ? 'Latest 2x2 candidate photo • Required'
               : 'Tap to change photo',
           style: Theme.of(context).textTheme.bodySmall,
         ),
