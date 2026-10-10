@@ -7,6 +7,8 @@ A secure mobile application for conducting and managing student union elections,
 
 ![Elecom Mobile Banner](assets/elecom_bg.png)
 
+SMSCHEF_SIM_SLOT=1
+
 ## 📖 Table of Contents
 - [Key Features](#-key-features)
 - [Installation](#-installation)
