@@ -474,3 +474,20 @@ flutter build apk --release --no-pub
 - Nine targeted Flutter tests and four backend policy tests passed; the changed filing screen and policy analyzed cleanly.
 - Full-app analysis had 42 existing warnings/lint findings, and the existing login widget test expected missing text `WELCOME`. Investigate current output before attributing these to a new change.
 - Local `manage.py check` was blocked by missing `numpy` from the face-service import. Backend syntax and isolated policy tests passed; full Django checks still require the appropriate backend environment and dependencies.
+
+## Developer Options ? User Gallery (2026-10-10)
+
+- Admin Developer Options lives in `frontend/org_elecom/elecom_admin/elecom_reset.html`. The User Gallery panel loads `admin_components/admin_js/developer_gallery.js`; its styles share `elecom_reset.css`. Bump referenced asset versions after changes.
+- GET `/api/admin/developer/gallery/` is implemented in `backend/core/developer_gallery.py` and registered in `core/urls.py`. It uses `_developer_admin`: existing admin authentication plus the 15-minute developer-password gate. Never expose this endpoint through mobile or remove that gate.
+- Gallery groups retained profile photos, face enrollments, candidate filing/follow-up photos, registered candidate photos, and party logo uploads by account name/student ID. Search is parameterized, users are alphabetically ordered, and pages contain 20 users. Refresh fetches current records; thumbnails load lazily and open a full-size Bootstrap modal.
+- Sources are a fixed table/column allowlist. Schema introspection skips optional tables/columns without creating or repairing them. URLs accept HTTP(S) only; data is rendered via textContent and private/no-store API responses. Never return embeddings, reusable chairperson signatures, OTPs, or credentials.
+- This is a gallery of retained database image references, not a Cloudinary-wide asset crawler or a new upload archive. Overwritten profile/enrollment images and unsaved verification frames cannot be reconstructed. FaceVerificationLog retains match metadata, not a camera image URL. Do not claim the gallery contains every historical capture.
+- Focused checks: `python -m unittest core.test_developer_gallery core.test_developer_options` (19 passing tests during implementation) and `node --check` for the two developer scripts. Tests mock the DB; production image rendering/live PostgreSQL still need deployment verification.
+- Deploy web/backend changes, run collectstatic, restart Gunicorn, and refresh browser assets. No APK or migration is needed. Setup: `docs/developer-user-gallery.md` in the web repository.
+
+### Optional production deployment after git pull
+
+- User preference: after one-time setup, use only `git pull origin main` for normal web/backend updates.
+- `deploy/enable-pull-deploy.sh` installs the repo-local `core.hooksPath=deploy/hooks` on /var/www/elecom only. It refuses to replace an existing custom hooks path or post-merge hook.
+- `deploy/hooks/post-merge` collects static files, restarts Gunicorn, and checks service health after a successful merge. Deployment failures are printed; the source merge may already have completed. Do not claim success merely because Git pulled.
+- Setup is not active on the user's server until the scripts are deployed and `sh deploy/enable-pull-deploy.sh` runs there once. Hooks do not run on an already-up-to-date pull. Environment edits, migrations, and local-change conflicts still need their appropriate separate handling. See docs/pull-auto-deploy.md.
