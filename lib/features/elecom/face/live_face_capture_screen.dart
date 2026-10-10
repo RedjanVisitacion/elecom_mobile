@@ -92,7 +92,6 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
   double? _lowestEyeScoreInClosedSegment;
 
   bool _captureInFlight = false;
-  bool _showCheckFlash = false;
   bool _blinkSessionArmed = false;
 
   /// Locks the analyzer only after the entire required liveness sequence.
@@ -111,7 +110,7 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
   Timer? _noFaceTimer;
 
   late final AnimationController _pulseController;
-  late final AnimationController _checkController;
+  late final AnimationController _scanController;
 
   /// Instruction shown in the floating pill (may differ slightly from internal state label).
   String _instructionPillText = '';
@@ -124,9 +123,9 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
       vsync: this,
       duration: const Duration(milliseconds: 1400),
     )..repeat(reverse: true);
-    _checkController = AnimationController(
+    _scanController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 550),
+      duration: const Duration(milliseconds: 2400),
     );
     _instructionPillText = _pillForState(FaceCaptureUiState.initializingCamera);
     _initCamera();
@@ -136,7 +135,7 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _pulseController.dispose();
-    _checkController.dispose();
+    _scanController.dispose();
     _cancelTimers();
     unawaited(_releasePipeline());
     super.dispose();
@@ -152,6 +151,7 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     _appResumed = state == AppLifecycleState.resumed;
+    if (!_appResumed) _scanController.stop();
     final camera = _camera;
     if (camera == null || !camera.value.isInitialized) return;
     if (state == AppLifecycleState.inactive ||
@@ -965,11 +965,9 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
 
     if (!mounted) return;
     setState(() {
-      _uiState = FaceCaptureUiState.blinkDetected;
-      _instructionPillText = _pillForState(FaceCaptureUiState.blinkDetected);
-      _showCheckFlash = true;
+      _uiState = FaceCaptureUiState.capturing;
+      _instructionPillText = _pillForState(FaceCaptureUiState.capturing);
     });
-    _checkController.forward(from: 0);
 
     unawaited(_runCapturePipelineAfterLivenessLocked());
   }
@@ -1085,8 +1083,32 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
     }
   }
 
+  void _configureScan() {
+    final fast =
+        _uiState == FaceCaptureUiState.blinkNow ||
+        _uiState == FaceCaptureUiState.turnLeft ||
+        _uiState == FaceCaptureUiState.turnRight;
+    final duration = Duration(milliseconds: fast ? 1700 : 2400);
+    final changed = _scanController.duration != duration;
+    _scanController.duration = duration;
+    final animate =
+        _appResumed &&
+        _cameraReady &&
+        !_isExiting &&
+        !_hasCapturedFinalImage &&
+        _uiState != FaceCaptureUiState.failed &&
+        !MediaQuery.disableAnimationsOf(context) &&
+        TickerMode.valuesOf(context).enabled;
+    if (animate) {
+      if (changed || !_scanController.isAnimating) _scanController.repeat();
+    } else {
+      _scanController.stop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    _configureScan();
     final title =
         widget.title ??
         (widget.mode == LiveFaceMode.enrollment
@@ -1114,37 +1136,22 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
                 ),
               ),
             IgnorePointer(
-              child: CustomPaint(
-                painter: BiometricTrackingPainter(
-                  animation: _pulseController,
-                  active: _ovalGuideGreenish() && _appResumed,
-                  landmarks: _meshPoints,
-                  eyes: _eyeTargets,
+              child: RepaintBoundary(
+                child: CustomPaint(
+                  painter: BiometricTrackingPainter(
+                    animation: _pulseController,
+                    scan: _scanController,
+                    complete: _hasCapturedFinalImage,
+                    active: _ovalGuideGreenish() && _appResumed,
+                    landmarks: _meshPoints,
+                    eyes: _eyeTargets,
+                  ),
                 ),
               ),
             ),
-            if (_showCheckFlash &&
-                (_uiState == FaceCaptureUiState.blinkDetected ||
-                    _uiState == FaceCaptureUiState.capturing))
-              Center(
-                child: ScaleTransition(
-                  scale: CurvedAnimation(
-                    parent: _checkController,
-                    curve: Curves.elasticOut,
-                  ),
-                  child: Container(
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.35),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.check_circle,
-                      color: Color(0xFF22C55E),
-                      size: 72,
-                    ),
-                  ),
-                ),
+            if (_isProcessingFinalCapture)
+              const Center(
+                child: CircularProgressIndicator(color: Color(0xFF72E8DD)),
               ),
             Align(
               alignment: Alignment.topCenter,

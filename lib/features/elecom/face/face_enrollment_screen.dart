@@ -10,6 +10,7 @@ import '../../auth/presentation/login_screen.dart';
 import '../data/elecom_mobile_api.dart';
 import '../presentation/elecom_dashboard.dart';
 import 'live_face_capture_screen.dart';
+import 'biometric_scan_guide.dart';
 
 class FaceEnrollmentScreen extends StatefulWidget {
   const FaceEnrollmentScreen({
@@ -65,7 +66,6 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
 
   // ── Theme tokens ─────────────────────────────────────────────────────────
   static const Color _blue = Color(0xFF2563EB);
-  static const Color _darkBlue = Color(0xFF0C1E70);
   static const Color _gold = Color(0xFFFACC15);
   static const Color _bg = Color(0xFFF8FAFC);
   static const Color _cardBg = Colors.white;
@@ -581,79 +581,25 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
                               ),
                               child: Column(
                                 children: [
-                                  // Oval face frame
-                                  Container(
-                                    width: 148,
-                                    height: 182,
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(100),
-                                      color: const Color(0xFFEAF1FF),
-                                      border: Border.all(
-                                        color: _blue.withValues(alpha: 0.20),
-                                        width: 1.5,
-                                      ),
-                                    ),
-                                    child: Stack(
-                                      alignment: Alignment.center,
-                                      children: [
-                                        Positioned(
-                                          top: 12,
-                                          left: 18,
-                                          child: _bracket(
-                                            topLeft: true,
-                                            color: _blue,
-                                          ),
-                                        ),
-                                        Positioned(
-                                          top: 12,
-                                          right: 18,
-                                          child: _bracket(
-                                            topRight: true,
-                                            color: _blue,
-                                          ),
-                                        ),
-                                        Positioned(
-                                          bottom: 12,
-                                          left: 18,
-                                          child: _bracket(
-                                            bottomLeft: true,
-                                            color: _blue,
-                                          ),
-                                        ),
-                                        Positioned(
-                                          bottom: 12,
-                                          right: 18,
-                                          child: _bracket(
-                                            bottomRight: true,
-                                            color: _blue,
-                                          ),
-                                        ),
-                                        Icon(
-                                          Icons.face_outlined,
-                                          size: 64,
-                                          color: _blue.withValues(alpha: 0.25),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
+                                  const BiometricScanGuide(),
 
                                   const SizedBox(height: 16),
 
                                   Text(
-                                    'Face Capture Area',
+                                    'Biometric Face Scan Guide',
                                     style: TextStyle(
                                       fontWeight: FontWeight.w700,
                                       fontSize: 14.5,
-                                      color: const Color(0xFF0F172A),
+                                      color: const Color(0xFF0D1B3E),
                                       letterSpacing: -0.1,
                                     ),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    'Center your face, blink once,\nthen turn your head left and right',
+                                    'Center your face inside the frame. During capture, you will be prompted to blink once and turn your head slowly left and right for liveness verification.',
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
-                                      color: _subtleGrey,
+                                      color: const Color(0xFF475569),
                                       fontSize: 12.5,
                                       fontWeight: FontWeight.w400,
                                       height: 1.5,
@@ -814,79 +760,4 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
       ),
     );
   }
-
-  Widget _bracket({
-    bool topLeft = false,
-    bool topRight = false,
-    bool bottomLeft = false,
-    bool bottomRight = false,
-    required Color color,
-  }) {
-    return SizedBox(
-      width: 16,
-      height: 16,
-      child: CustomPaint(
-        painter: _BracketPainter(
-          color: color,
-          topLeft: topLeft,
-          topRight: topRight,
-          bottomLeft: bottomLeft,
-          bottomRight: bottomRight,
-        ),
-      ),
-    );
-  }
-}
-
-class _BracketPainter extends CustomPainter {
-  const _BracketPainter({
-    required this.color,
-    this.topLeft = false,
-    this.topRight = false,
-    this.bottomLeft = false,
-    this.bottomRight = false,
-  });
-
-  final Color color;
-  final bool topLeft;
-  final bool topRight;
-  final bool bottomLeft;
-  final bool bottomRight;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final p = Paint()
-      ..color = color
-      ..strokeWidth = 2.5
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-
-    final w = size.width;
-    final h = size.height;
-
-    if (topLeft) {
-      canvas.drawLine(Offset(0, h), Offset(0, 0), p);
-      canvas.drawLine(Offset(0, 0), Offset(w, 0), p);
-    }
-    if (topRight) {
-      canvas.drawLine(Offset(0, 0), Offset(w, 0), p);
-      canvas.drawLine(Offset(w, 0), Offset(w, h), p);
-    }
-    if (bottomLeft) {
-      canvas.drawLine(Offset(0, 0), Offset(0, h), p);
-      canvas.drawLine(Offset(0, h), Offset(w, h), p);
-    }
-    if (bottomRight) {
-      canvas.drawLine(Offset(w, 0), Offset(w, h), p);
-      canvas.drawLine(Offset(0, h), Offset(w, h), p);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_BracketPainter old) =>
-      old.color != color ||
-      old.topLeft != topLeft ||
-      old.topRight != topRight ||
-      old.bottomLeft != bottomLeft ||
-      old.bottomRight != bottomRight;
 }

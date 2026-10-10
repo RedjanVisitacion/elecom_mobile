@@ -59,6 +59,8 @@ class _ElectionScreenState extends State<ElectionScreen>
   final ElecomMobileApi _api = ElecomMobileApi();
 
   bool _loading = true;
+  bool _verifyingFace = false;
+  String? _faceVerificationFailure;
   bool _alreadyVoted = false;
   bool _checkingReceipt = false;
   bool _votingTutorialRequested = false;
@@ -442,7 +444,9 @@ class _ElectionScreenState extends State<ElectionScreen>
           _ballotPayload = const {};
           _selections.clear();
           _straightPartyKeys.clear();
-          _loadError = 'Face verification did not complete.';
+          _loadError =
+              _faceVerificationFailure ??
+              'Face verification did not complete. Please try again.';
         });
         return;
       }
@@ -1454,6 +1458,7 @@ class _ElectionScreenState extends State<ElectionScreen>
   }
 
   Future<bool> _runFaceVerificationBeforeVote() async {
+    _faceVerificationFailure = null;
     const mismatchMsg =
         'Face verification failed. This face does not match the enrolled voter.';
 
@@ -1474,37 +1479,46 @@ class _ElectionScreenState extends State<ElectionScreen>
       ),
     );
     if (capture == null || !mounted) {
+      _faceVerificationFailure =
+          'Face verification cancelled. Tap Retry to start again.';
       return false;
     }
     if (capture.livenessPassed != true) {
       if (!mounted) return false;
-      AppToast.warning(context, 'Blink/liveness check did not complete.');
+      _faceVerificationFailure =
+          'Blink/liveness check did not complete. Please try again.';
+      AppToast.warning(context, _faceVerificationFailure!);
       return false;
     }
 
     try {
       if (!mounted) return false;
-      final verify = await _api.verifyFaceForVote(
-        liveFaceImageFile: capture.capturedImage,
-        livenessPassed: true,
-      );
+      setState(() => _verifyingFace = true);
+      final verify = await _api
+          .verifyFaceForVote(
+            liveFaceImageFile: capture.capturedImage,
+            livenessPassed: true,
+          )
+          .timeout(const Duration(seconds: 30));
       final allow = verify['allow_to_vote'] == true;
       if (!allow && mounted) {
         final reason = (verify['failure_reason'] ?? '').toString().trim();
         final text = reason.isEmpty ? mismatchMsg : reason;
+        _faceVerificationFailure = text;
         AppToast.error(context, text);
       }
+      if (allow && mounted) AppToast.success(context, 'Face verified.');
       return allow;
     } catch (e) {
-      if (mounted) {
-        AppToast.error(
-          context,
-          e is ElecomApiException
-              ? e.message
-              : 'Face verification could not finish. Please try again.',
-        );
-      }
+      _faceVerificationFailure = e is TimeoutException
+          ? 'Face verification is taking too long. Please try again.'
+          : e is ElecomApiException
+          ? e.message
+          : 'Face verification could not finish. Please try again.';
+      if (mounted) AppToast.error(context, _faceVerificationFailure!);
       return false;
+    } finally {
+      if (mounted) setState(() => _verifyingFace = false);
     }
   }
 
@@ -1578,10 +1592,34 @@ class _ElectionScreenState extends State<ElectionScreen>
               ? _ElectionAccessState.upcoming
               : _ElectionAccessState.closed);
 
-    if (_loading) {
+    if (_loading || _verifyingFace) {
       return Center(
-        child: CircularProgressIndicator(
-          color: isDark ? Colors.white : Colors.black,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(
+              color: isDark ? Colors.white : Colors.black,
+            ),
+            if (_verifyingFace) ...[
+              const SizedBox(height: 16),
+              Semantics(
+                liveRegion: true,
+                child: Text(
+                  'Verifying your face...',
+                  style: TextStyle(
+                    color: titleColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Please wait while we compare your enrolled face.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: subtitleColor),
+              ),
+            ],
+          ],
         ),
       );
     }

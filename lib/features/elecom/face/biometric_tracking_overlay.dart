@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'biometric_laser.dart';
 
 const _cyan = Color(0xFF00F0FF);
 const _teal = Color(0xFF72E8DD);
@@ -12,7 +13,11 @@ class BiometricTrackingPainter extends CustomPainter {
     required this.active,
     required this.landmarks,
     required this.eyes,
-  }) : super(repaint: animation);
+    required this.scan,
+    this.complete = false,
+  }) : super(repaint: Listenable.merge([animation, scan]));
+  final Animation<double> scan;
+  final bool complete;
   final Animation<double> animation;
   final bool active;
   final List<Offset> landmarks;
@@ -64,6 +69,15 @@ class BiometricTrackingPainter extends CustomPainter {
         pen..strokeWidth = 3,
       );
     }
+    canvas.save();
+    canvas.clipPath(Path()..addOval(oval));
+    final beamY = BiometricLaser.paint(
+      canvas,
+      oval,
+      scan.value,
+      complete: complete,
+    );
+    canvas.restore();
     if (!active) return;
     Offset mapped(Offset p) => Offset(p.dx * size.width, p.dy * size.height);
     canvas.save();
@@ -130,6 +144,25 @@ class BiometricTrackingPainter extends CustomPainter {
         canvas.drawCircle(mid, 1, Paint()..color = _cyan.withValues(alpha: .3));
       }
     }
+    for (final node in landmarks) {
+      final center = mapped(node);
+      final intensity = complete
+          ? 1.0
+          : BiometricLaser.intersection(center.dy, beamY, oval.height * .055);
+      final color = complete ? const Color(0xFF22C55E) : _cyan;
+      canvas.drawCircle(
+        center,
+        3 + intensity * 3,
+        Paint()
+          ..color = color.withValues(alpha: .1 + .35 * intensity)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
+      );
+      canvas.drawCircle(
+        center,
+        1.5 + intensity * 1.5,
+        Paint()..color = color.withValues(alpha: .25 + .75 * intensity),
+      );
+    }
     for (final eye in eyes) {
       final center = mapped(eye);
       final radius = size.width * .045;
@@ -164,7 +197,9 @@ class BiometricTrackingPainter extends CustomPainter {
       active != oldDelegate.active ||
       landmarks != oldDelegate.landmarks ||
       eyes != oldDelegate.eyes ||
-      animation != oldDelegate.animation;
+      animation != oldDelegate.animation ||
+      scan != oldDelegate.scan ||
+      complete != oldDelegate.complete;
 }
 
 class BiometricCaptureActions extends StatelessWidget {
