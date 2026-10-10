@@ -103,6 +103,9 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
     }
     expect(camera.created, 1);
+    expect(find.text('Blink Once to Verify'), findsOneWidget);
+    expect(find.text('Turn Left'), findsNothing);
+    expect(find.text('Turn Right'), findsNothing);
     await tester.pump(const Duration(seconds: 19));
     expect(find.text('No face detected. Please try again.'), findsOneWidget);
     await tester.tap(find.text('Retry'));

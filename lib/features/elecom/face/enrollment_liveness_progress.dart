@@ -71,3 +71,37 @@ class EnrollmentLivenessProgress extends StatelessWidget {
     );
   }
 }
+
+/// A single liveness status; completion does not imply an identity match.
+class VerificationBlinkProgress extends StatelessWidget {
+  const VerificationBlinkProgress({super.key, required this.completed});
+  final bool completed;
+  @override
+  Widget build(BuildContext context) => Semantics(
+    liveRegion: true,
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A202C).withValues(alpha: .82),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            completed ? Icons.check_circle_outline : Icons.visibility_outlined,
+            size: 18,
+            color: const Color(0xFF72E8DD),
+          ),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              completed ? 'Blink complete' : 'Blink Once to Verify',
+              style: const TextStyle(color: Colors.white, fontSize: 12),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}

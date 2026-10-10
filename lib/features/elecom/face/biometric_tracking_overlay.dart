@@ -17,11 +17,13 @@ class BiometricTrackingPainter extends CustomPainter {
     this.complete = false,
     this.completedSteps = 0,
     this.motionStep = -1,
+    this.showMotion = true,
   }) : super(repaint: Listenable.merge([animation, scan]));
   final Animation<double> scan;
   final bool complete;
   final int completedSteps;
   final int motionStep;
+  final bool showMotion;
   final Animation<double> animation;
   final bool active;
   final List<Offset> landmarks;
@@ -93,7 +95,7 @@ class BiometricTrackingPainter extends CustomPainter {
       complete: complete,
     );
     canvas.restore();
-    for (var side = 0; side < 2; side++) {
+    for (var side = 0; side < (showMotion ? 2 : 0); side++) {
       final step = side + 1;
       final done = completedSteps > step;
       final focused = motionStep == step;
@@ -316,7 +318,8 @@ class BiometricTrackingPainter extends CustomPainter {
       scan != oldDelegate.scan ||
       complete != oldDelegate.complete ||
       completedSteps != oldDelegate.completedSteps ||
-      motionStep != oldDelegate.motionStep;
+      motionStep != oldDelegate.motionStep ||
+      showMotion != oldDelegate.showMotion;
 }
 
 class BiometricCaptureActions extends StatelessWidget {

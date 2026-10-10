@@ -96,6 +96,7 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
   _BlinkStage _blinkStage = _BlinkStage.idle;
   DateTime? _stableSince;
   DateTime? _closedStartedAt;
+  DateTime? _blinkOpenedAt;
   final List<Offset> _recentCenters = [];
   double? _openEyeBaseline;
   double? _lowestEyeScoreInClosedSegment;
@@ -596,6 +597,7 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
   void _resetBlinkTracking() {
     _blinkStage = _BlinkStage.idle;
     _closedStartedAt = null;
+    _blinkOpenedAt = null;
     _lowestEyeScoreInClosedSegment = null;
   }
 
@@ -759,7 +761,8 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
         _stableSince = null;
         _recentCenters.clear();
       }
-      if (_liveness.step != EnrollmentLivenessStep.blink) {
+      if (widget.mode == LiveFaceMode.enrollment &&
+          _liveness.step != EnrollmentLivenessStep.blink) {
         // ML Kit yaw is relative to the unmirrored input image. The front
         // preview is mirrored, so invert it for the user's left/right cues.
         final yaw = EnrollmentLivenessController.userYaw(
@@ -778,7 +781,8 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
       }
       // Establish the blink while looking forward, before any head turns.
       final yaw = face.headEulerAngleY;
-      if (yaw == null || !yaw.isFinite || yaw.abs() > 12) {
+      if (widget.mode == LiveFaceMode.enrollment &&
+          (yaw == null || !yaw.isFinite || yaw.abs() > 12)) {
         _stableSince = null;
         _recentCenters.clear();
         _resetBlinkTracking();
@@ -849,11 +853,17 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
 
     final now = DateTime.now();
 
+    if (widget.mode == LiveFaceMode.verification &&
+        _blinkOpenedAt != null &&
+        now.difference(_blinkOpenedAt!) > const Duration(seconds: 2)) {
+      _resetBlinkTracking();
+    }
     // Adaptive blink: open baseline → clear drop → open rebound.
     switch (_blinkStage) {
       case _BlinkStage.idle:
         if (_eyesOpen(left, right)) {
           _blinkStage = _BlinkStage.sawOpenWhileEligible;
+          _blinkOpenedAt = now;
           _learnOpenEyeBaseline(eyeScore);
         }
         _debugLog(left, right, 'idle');
@@ -874,6 +884,7 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
         if (!_eyesOpen(left, right)) {
           _blinkStage = _BlinkStage.idle;
         } else {
+          _blinkOpenedAt = now;
           _learnOpenEyeBaseline(eyeScore);
         }
         _debugLog(left, right, 'wait_close');
@@ -917,8 +928,12 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
           _cancelBlinkDeadline();
           _debugLog(left, right, 'blink_confirmed');
           _liveness.confirmBlink();
-          _showRotationGuidance();
-          _restartMotionDeadline();
+          if (widget.mode == LiveFaceMode.enrollment) {
+            _showRotationGuidance();
+            _restartMotionDeadline();
+          } else {
+            _beginLivenessSuccessCapture();
+          }
           break;
         }
         _debugLog(left, right, 'ambiguous_in_closed_keep_waiting');
@@ -960,7 +975,11 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
 
   /// Must be synchronous (no `async` gap) so no other frame microtask resets UI before flags apply.
   void _beginLivenessSuccessCapture() {
-    if (!_liveness.isComplete) return;
+    if (widget.mode == LiveFaceMode.enrollment
+        ? !_liveness.isComplete
+        : _liveness.completedSteps < 1) {
+      return;
+    }
     if (_livenessLocked || _isProcessingFinalCapture) return;
 
     _analysisGeneration++;
@@ -1196,6 +1215,7 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
                     scan: _scanController,
                     complete: _successFlash,
                     completedSteps: _liveness.completedSteps,
+                    showMotion: widget.mode == LiveFaceMode.enrollment,
                     motionStep: _uiState == FaceCaptureUiState.turnLeft
                         ? 1
                         : _uiState == FaceCaptureUiState.turnRight
@@ -1262,9 +1282,14 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    EnrollmentLivenessProgress(
-                      completedSteps: _liveness.completedSteps,
-                    ),
+                    if (widget.mode == LiveFaceMode.enrollment)
+                      EnrollmentLivenessProgress(
+                        completedSteps: _liveness.completedSteps,
+                      )
+                    else
+                      VerificationBlinkProgress(
+                        completed: _liveness.completedSteps > 0,
+                      ),
                     const SizedBox(height: 8),
                     if (_ovalGuideGreenish() && !_isProcessingFinalCapture)
                       FadeTransition(
