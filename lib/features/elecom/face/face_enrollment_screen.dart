@@ -28,8 +28,9 @@ class FaceEnrollmentScreen extends StatefulWidget {
 class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
   final ElecomMobileApi _api = ElecomMobileApi();
 
-  static final Uri _supportMessengerUri =
-      Uri.parse('https://m.me/redjan.phil.s.visitacion');
+  static final Uri _supportMessengerUri = Uri.parse(
+    'https://m.me/redjan.phil.s.visitacion',
+  );
   static final Uri _supportEmailUri = Uri(
     scheme: 'mailto',
     path: 'rpsvcodes@gmail.com',
@@ -93,8 +94,10 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
       }
       if (res.livenessPassed != true) {
         if (mounted) {
-          setState(() =>
-              _status = 'Liveness check did not complete. Please try again.');
+          setState(
+            () =>
+                _status = 'Liveness check did not complete. Please try again.',
+          );
         }
         return;
       }
@@ -107,9 +110,12 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
         builder: (ctx) => AlertDialog(
           backgroundColor: Colors.white,
           shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(18)),
-          title: const Text('Enrollment successful',
-              style: TextStyle(fontWeight: FontWeight.w900)),
+            borderRadius: BorderRadius.circular(18),
+          ),
+          title: const Text(
+            'Enrollment successful',
+            style: TextStyle(fontWeight: FontWeight.w900),
+          ),
           content: const Text(
             'Your face reference was saved securely and is only used for voting verification.',
             style: TextStyle(fontWeight: FontWeight.w600, height: 1.35),
@@ -118,9 +124,13 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
             FilledButton(
               onPressed: () => Navigator.of(ctx).pop(),
               style: FilledButton.styleFrom(
-                  backgroundColor: _blue, foregroundColor: Colors.white),
-              child: const Text('Continue',
-                  style: TextStyle(fontWeight: FontWeight.w800)),
+                backgroundColor: _blue,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text(
+                'Continue',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
             ),
           ],
         ),
@@ -136,19 +146,21 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
       }
     } on ElecomApiException catch (e) {
       if (!mounted) return;
-      final isConcurrency = e.message.toUpperCase().contains('CONCURRENCY') ||
+      final isConcurrency =
+          e.message.toUpperCase().contains('CONCURRENCY') ||
           e.message.toUpperCase().contains('BUSY') ||
           e.message.contains('concurrency_limit');
-      final isQuota = e.message.toUpperCase().contains('QUOTA') ||
+      final isQuota =
+          e.message.toUpperCase().contains('QUOTA') ||
           e.message.toUpperCase().contains('UNAVAILABLE') ||
           e.message.contains('facepp_quota_error');
       final msg = ElecomMobileApi.isFaceAlreadyEnrolled(e)
           ? 'This face is already registered to another account. Please contact ELECOM.'
           : isQuota
-              ? 'Face verification is currently unavailable. Please contact ELECOM or try again later.'
-              : isConcurrency
-                  ? 'The face verification service is temporarily busy. Please wait a moment and tap Retry.'
-                  : 'Enrollment could not be saved. ${e.message}';
+          ? 'Face verification is currently unavailable. Please contact ELECOM or try again later.'
+          : isConcurrency
+          ? 'The face verification service is temporarily busy. Please wait a moment and tap Retry.'
+          : 'Enrollment could not be saved. ${e.message}';
       setState(() {
         _uploadFailed = true;
         _status = msg;
@@ -173,18 +185,21 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16)),
-        title: const Text('Log out?',
-            style: TextStyle(fontWeight: FontWeight.w800)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Log out?',
+          style: TextStyle(fontWeight: FontWeight.w800),
+        ),
         content: const Text(
           'You can log in again anytime. Enrollment will still be required before voting.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel',
-                style: TextStyle(color: Color(0xFF6B7280))),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Color(0xFF6B7280)),
+            ),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
@@ -205,8 +220,10 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
 
   Future<void> _openMessengerSupport() async {
     try {
-      final opened = await launchUrl(_supportMessengerUri,
-          mode: LaunchMode.externalApplication);
+      final opened = await launchUrl(
+        _supportMessengerUri,
+        mode: LaunchMode.externalApplication,
+      );
       if (!opened && mounted) {
         AppToast.error(context, 'Unable to open Messenger support.');
       }
@@ -219,8 +236,10 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
 
   Future<void> _openEmailSupport() async {
     try {
-      final opened = await launchUrl(_supportEmailUri,
-          mode: LaunchMode.externalApplication);
+      final opened = await launchUrl(
+        _supportEmailUri,
+        mode: LaunchMode.externalApplication,
+      );
       if (!opened && mounted) {
         AppToast.error(context, 'Unable to open email app.');
       }
@@ -238,9 +257,10 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
       backgroundColor: Colors.transparent,
       builder: (ctx) => Padding(
         padding: EdgeInsets.only(
-            left: 10,
-            right: 10,
-            bottom: MediaQuery.of(ctx).padding.bottom + 10),
+          left: 10,
+          right: 10,
+          bottom: MediaQuery.of(ctx).padding.bottom + 10,
+        ),
         child: Material(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
@@ -253,36 +273,54 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                    color: Colors.black12,
-                    borderRadius: BorderRadius.circular(99)),
+                  color: Colors.black12,
+                  borderRadius: BorderRadius.circular(99),
+                ),
               ),
               const SizedBox(height: 14),
-              const Text('Contact Support',
-                  style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.black)),
+              const Text(
+                'Contact Support',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.black,
+                ),
+              ),
               const SizedBox(height: 8),
               ListTile(
                 leading: const Icon(Icons.facebook, color: Colors.blue),
-                title: const Text('Facebook Messenger',
-                    style: TextStyle(
-                        fontWeight: FontWeight.w800, color: Colors.black)),
-                subtitle: const Text('Chat with support on Facebook',
-                    style: TextStyle(color: Colors.black54)),
+                title: const Text(
+                  'Facebook Messenger',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: Colors.black,
+                  ),
+                ),
+                subtitle: const Text(
+                  'Chat with support on Facebook',
+                  style: TextStyle(color: Colors.black54),
+                ),
                 onTap: () async {
                   Navigator.of(ctx).pop();
                   await _openMessengerSupport();
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.email_outlined,
-                    color: Colors.black87),
-                title: const Text('Email',
-                    style: TextStyle(
-                        fontWeight: FontWeight.w800, color: Colors.black)),
-                subtitle: const Text('rpsvcodes@gmail.com',
-                    style: TextStyle(color: Colors.black54)),
+                leading: const Icon(
+                  Icons.email_outlined,
+                  color: Colors.black87,
+                ),
+                title: const Text(
+                  'Email',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: Colors.black,
+                  ),
+                ),
+                subtitle: const Text(
+                  'rpsvcodes@gmail.com',
+                  style: TextStyle(color: Colors.black54),
+                ),
                 onTap: () async {
                   Navigator.of(ctx).pop();
                   await _openEmailSupport();
@@ -291,10 +329,13 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
               const SizedBox(height: 4),
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('Close',
-                    style: TextStyle(
-                        color: Colors.black54,
-                        fontWeight: FontWeight.w700)),
+                child: const Text(
+                  'Close',
+                  style: TextStyle(
+                    color: Colors.black54,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
               const SizedBox(height: 10),
             ],
@@ -355,9 +396,11 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.logout_rounded,
-                        size: 17,
-                        color: _busy ? Colors.black26 : _subtleGrey),
+                    Icon(
+                      Icons.logout_rounded,
+                      size: 17,
+                      color: _busy ? Colors.black26 : _subtleGrey,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       'Logout',
@@ -385,7 +428,6 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-
                     // ── Info card: blue gradient ───────────────────────
                     Container(
                       key: ElecomTutorialKeys.faceEnrollInfo,
@@ -419,8 +461,9 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
                                   shape: BoxShape.circle,
                                   color: Colors.white,
                                   border: Border.all(
-                                      color: _gold.withValues(alpha: 0.70),
-                                      width: 2),
+                                    color: _gold.withValues(alpha: 0.70),
+                                    width: 2,
+                                  ),
                                 ),
                                 padding: const EdgeInsets.all(4),
                                 child: ClipOval(
@@ -433,14 +476,14 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
                                       'FACE VERIFICATION',
                                       style: TextStyle(
-                                        color: Colors.white
-                                            .withValues(alpha: 0.65),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.65,
+                                        ),
                                         fontWeight: FontWeight.w700,
                                         fontSize: 10,
                                         letterSpacing: 1.0,
@@ -464,25 +507,26 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
 
                           const SizedBox(height: 12),
                           Divider(
-                              color: Colors.white.withValues(alpha: 0.18),
-                              height: 1),
+                            color: Colors.white.withValues(alpha: 0.18),
+                            height: 1,
+                          ),
                           const SizedBox(height: 12),
 
                           // Privacy note
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(Icons.shield_outlined,
-                                  color:
-                                      Colors.white.withValues(alpha: 0.70),
-                                  size: 16),
+                              Icon(
+                                Icons.shield_outlined,
+                                color: Colors.white.withValues(alpha: 0.70),
+                                size: 16,
+                              ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
                                   'Your face reference will be used only to verify your identity during voting. It will not be shown publicly.',
                                   style: TextStyle(
-                                    color:
-                                        Colors.white.withValues(alpha: 0.72),
+                                    color: Colors.white.withValues(alpha: 0.72),
                                     fontWeight: FontWeight.w400,
                                     fontSize: 12.5,
                                     height: 1.5,
@@ -504,7 +548,8 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
                         color: _cardBg,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                            color: _blue.withValues(alpha: 0.12)),
+                          color: _blue.withValues(alpha: 0.12),
+                        ),
                         boxShadow: [
                           BoxShadow(
                             color: _blue.withValues(alpha: 0.08),
@@ -531,7 +576,9 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
                             ),
                             Padding(
                               padding: const EdgeInsets.symmetric(
-                                  vertical: 24, horizontal: 24),
+                                vertical: 24,
+                                horizontal: 24,
+                              ),
                               child: Column(
                                 children: [
                                   // Oval face frame
@@ -539,12 +586,12 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
                                     width: 148,
                                     height: 182,
                                     decoration: BoxDecoration(
-                                      borderRadius:
-                                          BorderRadius.circular(100),
+                                      borderRadius: BorderRadius.circular(100),
                                       color: const Color(0xFFEAF1FF),
                                       border: Border.all(
-                                          color: _blue.withValues(alpha: 0.20),
-                                          width: 1.5),
+                                        color: _blue.withValues(alpha: 0.20),
+                                        width: 1.5,
+                                      ),
                                     ),
                                     child: Stack(
                                       alignment: Alignment.center,
@@ -553,32 +600,38 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
                                           top: 12,
                                           left: 18,
                                           child: _bracket(
-                                              topLeft: true, color: _blue),
+                                            topLeft: true,
+                                            color: _blue,
+                                          ),
                                         ),
                                         Positioned(
                                           top: 12,
                                           right: 18,
                                           child: _bracket(
-                                              topRight: true, color: _blue),
+                                            topRight: true,
+                                            color: _blue,
+                                          ),
                                         ),
                                         Positioned(
                                           bottom: 12,
                                           left: 18,
                                           child: _bracket(
-                                              bottomLeft: true, color: _blue),
+                                            bottomLeft: true,
+                                            color: _blue,
+                                          ),
                                         ),
                                         Positioned(
                                           bottom: 12,
                                           right: 18,
                                           child: _bracket(
-                                              bottomRight: true,
-                                              color: _blue),
+                                            bottomRight: true,
+                                            color: _blue,
+                                          ),
                                         ),
                                         Icon(
                                           Icons.face_outlined,
                                           size: 64,
-                                          color:
-                                              _blue.withValues(alpha: 0.25),
+                                          color: _blue.withValues(alpha: 0.25),
                                         ),
                                       ],
                                     ),
@@ -597,7 +650,7 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    'Center your face within the frame\nwhen the camera opens',
+                                    'Center your face, blink once,\nthen turn your head left and right',
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                       color: _subtleGrey,
@@ -643,7 +696,9 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 11),
+                        horizontal: 14,
+                        vertical: 11,
+                      ),
                       decoration: BoxDecoration(
                         color: _cardBg,
                         borderRadius: BorderRadius.circular(12),
@@ -719,7 +774,8 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
                         disabledBackgroundColor: _blue.withValues(alpha: 0.40),
                         disabledForegroundColor: Colors.white70,
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16)),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                       ),
                     ),
                   ),
@@ -732,8 +788,7 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
                     height: 44,
                     child: OutlinedButton.icon(
                       onPressed: _showSupportSheet,
-                      icon: const Icon(Icons.support_agent_rounded,
-                          size: 17),
+                      icon: const Icon(Icons.support_agent_rounded, size: 17),
                       label: const Text(
                         'Contact Support',
                         style: TextStyle(
@@ -743,11 +798,11 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
                       ),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: _subtleGrey,
-                        side: const BorderSide(
-                            color: Color(0xFFD1D1D6)),
+                        side: const BorderSide(color: Color(0xFFD1D1D6)),
                         backgroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                     ),
                   ),

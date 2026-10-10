@@ -5,7 +5,11 @@ import 'dart:math' as math;
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
+
+import 'enrollment_liveness_controller.dart';
+import 'enrollment_liveness_progress.dart';
 
 enum LiveFaceMode { enrollment, verification }
 
@@ -17,17 +21,15 @@ enum FaceCaptureUiState {
   holdStill,
   blinkNow,
   blinkDetected,
+  turnLeft,
+  turnRight,
   capturing,
   verifying,
   failed,
 }
 
 /// Internal blink sequence after the face is stable inside the oval.
-enum _BlinkStage {
-  idle,
-  sawOpenWhileEligible,
-  inClosedSegment,
-}
+enum _BlinkStage { idle, sawOpenWhileEligible, inClosedSegment }
 
 class LiveFaceCaptureResult {
   const LiveFaceCaptureResult({
@@ -42,11 +44,7 @@ class LiveFaceCaptureResult {
 }
 
 class LiveFaceCaptureScreen extends StatefulWidget {
-  const LiveFaceCaptureScreen({
-    super.key,
-    required this.mode,
-    this.title,
-  });
+  const LiveFaceCaptureScreen({super.key, required this.mode, this.title});
 
   final LiveFaceMode mode;
   final String? title;
@@ -73,11 +71,14 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
   bool _permissionDenied = false;
   bool _isExiting = false;
   bool _processingDisabled = false;
+  bool _appResumed = true;
 
   bool _streamBusy = false;
   DateTime? _lastFrameProcessedAt;
 
   FaceCaptureUiState _uiState = FaceCaptureUiState.initializingCamera;
+  final _liveness = EnrollmentLivenessController();
+
   _BlinkStage _blinkStage = _BlinkStage.idle;
   DateTime? _stableSince;
   DateTime? _closedStartedAt;
@@ -89,8 +90,8 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
   bool _showCheckFlash = false;
   bool _blinkSessionArmed = false;
 
-  /// After a valid blink, the analyzer must not run again until Retry / failure recovery.
-  bool _blinkConfirmed = false;
+  /// Locks the analyzer only after the entire required liveness sequence.
+  bool _livenessLocked = false;
 
   /// Stream stopped + photo capture + validation / pop in progress.
   bool _isProcessingFinalCapture = false;
@@ -98,7 +99,7 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
   /// Prevents duplicate [CameraController.takePicture] calls.
   bool _hasCapturedFinalImage = false;
 
-  /// Bumped when blink locks or analyzer restarts — stale async ML completions must not touch UI.
+  /// Bumped when liveness locks or analyzer restarts — stale async ML completions must not touch UI.
   int _analysisGeneration = 0;
 
   Timer? _sessionTimer;
@@ -145,24 +146,39 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    _appResumed = state == AppLifecycleState.resumed;
     final camera = _camera;
     if (camera == null || !camera.value.isInitialized) return;
-    if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused) {
+      _analysisGeneration++;
+      _cancelTimers();
+      _liveness.reset();
+      _openEyeBaseline = null;
+      _resetBlinkTracking();
+      _stableSince = null;
+      _recentCenters.clear();
+      if (!_isProcessingFinalCapture) {
+        _safeSetState(() {
+          _uiState = FaceCaptureUiState.positioningFace;
+          _instructionPillText = _pillForState(_uiState);
+        });
+      }
       unawaited(_stopStreamSafe(camera));
     } else if (state == AppLifecycleState.resumed &&
         !_captureInFlight &&
         !_processingDisabled &&
         !_isExiting &&
-        !_blinkConfirmed &&
+        !_livenessLocked &&
         !_isProcessingFinalCapture) {
+      _startNoFaceTimer();
       unawaited(_startImageStream());
     }
   }
 
   Future<void> _stopStreamSafe(CameraController camera) async {
     try {
-      if (camera.value.isInitialized &&
-          camera.value.isStreamingImages) {
+      if (camera.value.isInitialized && camera.value.isStreamingImages) {
         await camera.stopImageStream();
       }
     } catch (_) {}
@@ -206,8 +222,9 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
     _processingDisabled = false;
     try {
       final cameras = await availableCameras();
-      final front =
-          cameras.where((c) => c.lensDirection == CameraLensDirection.front).toList();
+      final front = cameras
+          .where((c) => c.lensDirection == CameraLensDirection.front)
+          .toList();
       final selected = front.isNotEmpty ? front.first : cameras.first;
       final controller = CameraController(
         selected,
@@ -219,6 +236,7 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
       _detector = FaceDetector(
         options: FaceDetectorOptions(
           enableClassification: true,
+          enableTracking: true,
           performanceMode: FaceDetectorMode.fast,
         ),
       );
@@ -260,7 +278,7 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
       if (!mounted ||
           _processingDisabled ||
           _captureInFlight ||
-          _blinkConfirmed ||
+          _livenessLocked ||
           _isProcessingFinalCapture) {
         return;
       }
@@ -274,20 +292,23 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
     });
   }
 
-  void _restartSessionTimerForBlink() {
+  void _restartMotionDeadline() {
     _sessionTimer?.cancel();
     _sessionTimer = Timer(_sessionTimeout, () {
       if (!mounted ||
           _processingDisabled ||
           _captureInFlight ||
-          _blinkConfirmed ||
+          _livenessLocked ||
           _isProcessingFinalCapture) {
         return;
       }
-      if (_uiState == FaceCaptureUiState.blinkNow) {
+      if (_uiState != FaceCaptureUiState.failed) {
         _safeSetState(() {
+          final waitingForBlink = _uiState == FaceCaptureUiState.blinkNow;
           _uiState = FaceCaptureUiState.failed;
-          _instructionPillText = 'Blink not detected. Try blinking slowly once.';
+          _instructionPillText = waitingForBlink
+              ? 'Blink not detected. Try blinking slowly once.'
+              : 'Head turn not detected. Please try again.';
           _resetBlinkTracking();
         });
         _cancelBlinkDeadline();
@@ -302,7 +323,7 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
 
   /// Analyzer-driven UI only — never overwrite blink/success/capture UI.
   void _applyLiveAnalyzerUi(VoidCallback fn) {
-    if (!mounted || _blinkConfirmed || _isProcessingFinalCapture) return;
+    if (!mounted || _livenessLocked || _isProcessingFinalCapture) return;
     setState(fn);
   }
 
@@ -312,8 +333,9 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
     if (camera == null ||
         detector == null ||
         !camera.value.isInitialized ||
+        !_appResumed ||
         _processingDisabled ||
-        _blinkConfirmed ||
+        _livenessLocked ||
         _isProcessingFinalCapture) {
       return;
     }
@@ -324,10 +346,11 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
   }
 
   void _processCameraFrame(CameraImage image, FaceDetector detector) {
-    if (_processingDisabled ||
+    if (!_appResumed ||
+        _processingDisabled ||
         _captureInFlight ||
         _isExiting ||
-        _blinkConfirmed ||
+        _livenessLocked ||
         _isProcessingFinalCapture) {
       return;
     }
@@ -362,7 +385,7 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
         final faces = await detector.processImage(inputImage);
         if (!mounted ||
             genWhenScheduled != _analysisGeneration ||
-            _blinkConfirmed ||
+            _livenessLocked ||
             _isProcessingFinalCapture ||
             _processingDisabled ||
             _captureInFlight) {
@@ -378,7 +401,20 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
   }
 
   InputImageRotation _rotationFromCamera(CameraController controller) {
-    switch (controller.description.sensorOrientation) {
+    var degrees = controller.description.sensorOrientation;
+    if (Platform.isAndroid) {
+      final deviceDegrees = switch (controller.value.deviceOrientation) {
+        DeviceOrientation.portraitUp => 0,
+        DeviceOrientation.landscapeLeft => 90,
+        DeviceOrientation.portraitDown => 180,
+        DeviceOrientation.landscapeRight => 270,
+      };
+      degrees =
+          controller.description.lensDirection == CameraLensDirection.front
+          ? (degrees + deviceDegrees) % 360
+          : (degrees - deviceDegrees + 360) % 360;
+    }
+    switch (degrees) {
       case 90:
         return InputImageRotation.rotation90deg;
       case 180:
@@ -442,7 +478,10 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
     if (score == null) return false;
     final lowest = _lowestEye(l, r) ?? score;
     final baseline = _openEyeBaseline ?? math.max(score, _fallbackEyeOpenMin);
-    final adaptiveClosed = math.min(_fallbackEyeClosedMax, baseline - _minBlinkDrop);
+    final adaptiveClosed = math.min(
+      _fallbackEyeClosedMax,
+      baseline - _minBlinkDrop,
+    );
     final clearDrop = baseline - score >= _minBlinkDrop;
     return score <= adaptiveClosed ||
         lowest <= _hardClosedEyeMax ||
@@ -455,12 +494,21 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
     return !_eyesOpen(l, r) && !_eyesClosed(l, r);
   }
 
-  Offset _normalizedFaceCenter(Face face, CameraImage image, CameraController controller) {
+  Offset _normalizedFaceCenter(
+    Face face,
+    CameraImage image,
+    CameraController controller,
+  ) {
     final box = face.boundingBox;
     final cx = box.center.dx;
     final cy = box.center.dy;
-    final w = image.width.toDouble();
-    final h = image.height.toDouble();
+    // ML Kit bounding boxes use rotated, upright image coordinates.
+    final rotation = _rotationFromCamera(controller);
+    final sideways =
+        rotation == InputImageRotation.rotation90deg ||
+        rotation == InputImageRotation.rotation270deg;
+    final w = (sideways ? image.height : image.width).toDouble();
+    final h = (sideways ? image.width : image.height).toDouble();
     double nx = cx / w;
     double ny = cy / h;
     if (controller.description.lensDirection == CameraLensDirection.front) {
@@ -546,23 +594,31 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
       case FaceCaptureUiState.holdStill:
         return 'Hold still';
       case FaceCaptureUiState.blinkNow:
-        return 'Blink once';
+        return 'Hold still and blink once';
       case FaceCaptureUiState.blinkDetected:
-        return 'Blink detected';
+        return widget.mode == LiveFaceMode.enrollment
+            ? 'Liveness complete'
+            : 'Blink detected';
+      case FaceCaptureUiState.turnLeft:
+        return 'Turn head slowly to the left';
+      case FaceCaptureUiState.turnRight:
+        return 'Turn head slowly to the right';
       case FaceCaptureUiState.capturing:
-        return 'Blink detected';
+        return 'Capturing photo';
       case FaceCaptureUiState.verifying:
         return widget.mode == LiveFaceMode.verification
             ? 'Verifying identity'
             : 'Checking image quality';
       case FaceCaptureUiState.failed:
-        return _instructionPillText.isEmpty ? 'Please try again.' : _instructionPillText;
+        return _instructionPillText.isEmpty
+            ? 'Please try again.'
+            : _instructionPillText;
     }
   }
 
   void _onFacesDetected(List<Face> faces, CameraImage image) {
     if (!mounted ||
-        _blinkConfirmed ||
+        _livenessLocked ||
         _isProcessingFinalCapture ||
         _processingDisabled ||
         _captureInFlight) {
@@ -572,15 +628,22 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
     final camera = _camera;
     if (camera == null) return;
 
-    if (faces.isEmpty) {
+    if (_uiState == FaceCaptureUiState.failed) return;
+
+    if (faces.length != 1) {
+      _liveness.reset();
+      _openEyeBaseline = null;
       _recentCenters.clear();
       _stableSince = null;
       _cancelBlinkDeadline();
       _resetBlinkTracking();
       _applyLiveAnalyzerUi(() {
         _uiState = FaceCaptureUiState.positioningFace;
-        _instructionPillText = _pillForState(FaceCaptureUiState.positioningFace);
+        _instructionPillText = faces.length > 1
+            ? 'Only one person should be in the frame'
+            : _pillForState(FaceCaptureUiState.positioningFace);
       });
+      if (_noFaceTimer == null) _startNoFaceTimer();
       _debugLog(null, null, 'no_face');
       return;
     }
@@ -590,20 +653,64 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
     final right = face.rightEyeOpenProbability;
 
     if (!_faceCenterInOvalGuide(face, image, camera)) {
+      _liveness.reset();
+      _openEyeBaseline = null;
       _recentCenters.clear();
       _stableSince = null;
       _cancelBlinkDeadline();
       _resetBlinkTracking();
       _applyLiveAnalyzerUi(() {
         _uiState = FaceCaptureUiState.positioningFace;
-        _instructionPillText = _pillForState(FaceCaptureUiState.positioningFace);
+        _instructionPillText = _pillForState(
+          FaceCaptureUiState.positioningFace,
+        );
       });
+      if (_noFaceTimer == null) _startNoFaceTimer();
       _debugLog(left, right, 'out_of_oval');
       return;
     }
 
     _noFaceTimer?.cancel();
     _noFaceTimer = null;
+
+    if (widget.mode == LiveFaceMode.enrollment) {
+      if (!_liveness.observeFace(face.trackingId)) {
+        _openEyeBaseline = null;
+        _cancelBlinkDeadline();
+        _resetBlinkTracking();
+        _stableSince = null;
+        _recentCenters.clear();
+      }
+      if (_liveness.step != EnrollmentLivenessStep.blink) {
+        // ML Kit yaw is relative to the unmirrored input image. The front
+        // preview is mirrored, so invert it for the user's left/right cues.
+        final yaw = EnrollmentLivenessController.userYaw(
+          face.headEulerAngleY,
+          frontCamera:
+              camera.description.lensDirection == CameraLensDirection.front,
+        );
+        final advanced = _liveness.observeYaw(yaw, DateTime.now());
+        if (_liveness.isComplete) {
+          _beginLivenessSuccessCapture();
+        } else {
+          _showRotationGuidance();
+          if (advanced) _restartMotionDeadline();
+        }
+        return;
+      }
+      // Establish the blink while looking forward, before any head turns.
+      final yaw = face.headEulerAngleY;
+      if (yaw == null || !yaw.isFinite || yaw.abs() > 12) {
+        _stableSince = null;
+        _recentCenters.clear();
+        _resetBlinkTracking();
+        _applyLiveAnalyzerUi(() {
+          _uiState = FaceCaptureUiState.positioningFace;
+          _instructionPillText = 'Face the camera and center your head';
+        });
+        return;
+      }
+    }
 
     final center = _normalizedFaceCenter(face, image, camera);
     _pushCenterSample(center);
@@ -659,7 +766,7 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
     }
     if (!_blinkSessionArmed) {
       _blinkSessionArmed = true;
-      _restartSessionTimerForBlink();
+      _restartMotionDeadline();
     }
 
     final now = DateTime.now();
@@ -731,7 +838,13 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
           }
           _cancelBlinkDeadline();
           _debugLog(left, right, 'blink_confirmed');
-          _beginBlinkSuccessCapture();
+          if (widget.mode == LiveFaceMode.enrollment) {
+            _liveness.confirmBlink();
+            _showRotationGuidance();
+            _restartMotionDeadline();
+          } else {
+            _beginLivenessSuccessCapture();
+          }
           break;
         }
         _debugLog(left, right, 'ambiguous_in_closed_keep_waiting');
@@ -739,16 +852,27 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
     }
   }
 
+  void _showRotationGuidance() {
+    _applyLiveAnalyzerUi(() {
+      _uiState = _liveness.step == EnrollmentLivenessStep.turnLeft
+          ? FaceCaptureUiState.turnLeft
+          : FaceCaptureUiState.turnRight;
+      _instructionPillText = _pillForState(_uiState);
+    });
+  }
+
   bool _ovalGuideGreenish() {
     return _uiState == FaceCaptureUiState.faceDetected ||
         _uiState == FaceCaptureUiState.holdStill ||
         _uiState == FaceCaptureUiState.blinkNow ||
         _uiState == FaceCaptureUiState.blinkDetected ||
+        _uiState == FaceCaptureUiState.turnLeft ||
+        _uiState == FaceCaptureUiState.turnRight ||
         _uiState == FaceCaptureUiState.capturing ||
         _uiState == FaceCaptureUiState.verifying;
   }
 
-  /// Liveness is the blink; we do not reject stills for brightness/blur (budget cameras).
+  /// Liveness is checked before capture; we do not reject stills for brightness/blur (budget cameras).
   Future<bool> _capturedFileUsable(File file) async {
     try {
       if (!await file.exists()) return false;
@@ -761,23 +885,17 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
   }
 
   /// Must be synchronous (no `async` gap) so no other frame microtask resets UI before flags apply.
-  void _beginBlinkSuccessCapture() {
-    if (_blinkConfirmed || _isProcessingFinalCapture) return;
+  void _beginLivenessSuccessCapture() {
+    if (widget.mode == LiveFaceMode.enrollment && !_liveness.isComplete) return;
+    if (_livenessLocked || _isProcessingFinalCapture) return;
 
     _analysisGeneration++;
-    _blinkConfirmed = true;
+    _livenessLocked = true;
     _isProcessingFinalCapture = true;
     _captureInFlight = true;
     _processingDisabled = true;
     _cancelTimers();
     _cancelBlinkDeadline();
-
-    final cam = _camera;
-    if (cam != null &&
-        cam.value.isInitialized &&
-        cam.value.isStreamingImages) {
-      unawaited(cam.stopImageStream());
-    }
 
     if (!mounted) return;
     setState(() {
@@ -787,11 +905,10 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
     });
     _checkController.forward(from: 0);
 
-    unawaited(_runCapturePipelineAfterBlinkLocked());
+    unawaited(_runCapturePipelineAfterLivenessLocked());
   }
 
-  Future<void> _runCapturePipelineAfterBlinkLocked() async {
-    await Future<void>.delayed(const Duration(milliseconds: 500));
+  Future<void> _runCapturePipelineAfterLivenessLocked() async {
     if (!mounted || _hasCapturedFinalImage) return;
 
     final camera = _camera;
@@ -802,7 +919,6 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
 
     await _stopStreamSafe(camera);
 
-    await Future<void>.delayed(const Duration(milliseconds: 140));
     if (!mounted || _hasCapturedFinalImage) return;
 
     setState(() {
@@ -833,7 +949,9 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
       if (!mounted) return;
       final result = LiveFaceCaptureResult(
         capturedImage: file,
-          statusMessage: 'Blink detected',
+        statusMessage: widget.mode == LiveFaceMode.enrollment
+            ? 'Blink and head turns verified'
+            : 'Blink detected',
         livenessPassed: true,
       );
       // Defer pop so camera plugin / stream teardown finishes cleanly on slow devices.
@@ -863,7 +981,9 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
   /// Re-open the preview stream after capture/validation failed (camera still initialized).
   Future<void> _resumePreviewAfterFailedCapture() async {
     _analysisGeneration++;
-    _blinkConfirmed = false;
+    _livenessLocked = false;
+    _liveness.reset();
+    _openEyeBaseline = null;
     _isProcessingFinalCapture = false;
     _hasCapturedFinalImage = false;
     _captureInFlight = false;
@@ -876,6 +996,7 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
     _detector ??= FaceDetector(
       options: FaceDetectorOptions(
         enableClassification: true,
+        enableTracking: true,
         performanceMode: FaceDetectorMode.fast,
       ),
     );
@@ -891,7 +1012,9 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
     _analysisGeneration++;
     _cancelTimers();
     _cancelBlinkDeadline();
-    _blinkConfirmed = false;
+    _livenessLocked = false;
+    _liveness.reset();
+    _openEyeBaseline = null;
     _isProcessingFinalCapture = false;
     _hasCapturedFinalImage = false;
     _captureInFlight = false;
@@ -905,7 +1028,9 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
       _permissionDenied = false;
       _safeSetState(() {
         _uiState = FaceCaptureUiState.positioningFace;
-        _instructionPillText = _pillForState(FaceCaptureUiState.positioningFace);
+        _instructionPillText = _pillForState(
+          FaceCaptureUiState.positioningFace,
+        );
       });
       await _startImageStream();
       _startNoFaceTimer();
@@ -917,15 +1042,20 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
     _cameraReady = false;
     _safeSetState(() {
       _uiState = FaceCaptureUiState.initializingCamera;
-      _instructionPillText = _pillForState(FaceCaptureUiState.initializingCamera);
+      _instructionPillText = _pillForState(
+        FaceCaptureUiState.initializingCamera,
+      );
     });
     await _initCamera();
   }
 
   @override
   Widget build(BuildContext context) {
-    final title = widget.title ??
-        (widget.mode == LiveFaceMode.enrollment ? 'Face Enrollment' : 'Face Verification');
+    final title =
+        widget.title ??
+        (widget.mode == LiveFaceMode.enrollment
+            ? 'Face Enrollment'
+            : 'Face Verification');
 
     final topInset = MediaQuery.paddingOf(context).top;
 
@@ -938,9 +1068,9 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
       child: Scaffold(
         backgroundColor: Colors.black,
         body: Stack(
-              fit: StackFit.expand,
-              children: [
-                if (_cameraReady && _camera != null)
+          fit: StackFit.expand,
+          children: [
+            if (_cameraReady && _camera != null)
               Positioned.fill(child: CameraPreview(_camera!))
             else
               const ColoredBox(
@@ -988,7 +1118,10 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.30),
                     borderRadius: BorderRadius.circular(14),
@@ -998,7 +1131,10 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
                     children: [
                       IconButton(
                         onPressed: () => unawaited(_requestExit()),
-                        icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+                        icon: const Icon(
+                          Icons.arrow_back_ios_new,
+                          color: Colors.white,
+                        ),
                       ),
                       const Spacer(),
                     ],
@@ -1010,9 +1146,26 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
               alignment: const Alignment(0, -0.42),
               child: Padding(
                 padding: EdgeInsets.only(top: topInset + 44),
-                child: _InstructionPill(text: _instructionPillText),
+                child: _InstructionPill(
+                  text: _instructionPillText,
+                  direction: _uiState == FaceCaptureUiState.turnLeft
+                      ? Icons.arrow_back_rounded
+                      : _uiState == FaceCaptureUiState.turnRight
+                      ? Icons.arrow_forward_rounded
+                      : null,
+                ),
               ),
             ),
+            if (widget.mode == LiveFaceMode.enrollment)
+              Align(
+                alignment: const Alignment(0, 0.65),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: EnrollmentLivenessProgress(
+                    completedSteps: _liveness.completedSteps,
+                  ),
+                ),
+              ),
             if (_uiState != FaceCaptureUiState.failed)
               Align(
                 alignment: Alignment.bottomCenter,
@@ -1020,7 +1173,10 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.52),
                         borderRadius: BorderRadius.circular(18),
@@ -1033,7 +1189,9 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
                           color: Colors.white,
                           fontWeight: FontWeight.w900,
                           fontSize: 16,
-                          shadows: [Shadow(color: Colors.black87, blurRadius: 6)],
+                          shadows: [
+                            Shadow(color: Colors.black87, blurRadius: 6),
+                          ],
                         ),
                       ),
                     ),
@@ -1066,11 +1224,14 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
                           children: [
                             Expanded(
                               child: OutlinedButton(
-                                onPressed: () => unawaited(_retryAfterFailure()),
+                                onPressed: () =>
+                                    unawaited(_retryAfterFailure()),
                                 style: OutlinedButton.styleFrom(
                                   foregroundColor: Colors.white,
                                   side: const BorderSide(color: Colors.white70),
-                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 14,
+                                  ),
                                 ),
                                 child: const Text(
                                   'Retry',
@@ -1085,7 +1246,9 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
                                 style: FilledButton.styleFrom(
                                   backgroundColor: Colors.white,
                                   foregroundColor: Colors.black,
-                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 14,
+                                  ),
                                 ),
                                 child: const Text(
                                   'Cancel',
@@ -1098,9 +1261,9 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
                       ],
                     ),
                   ),
-            ),
-          ),
-        ],
+                ),
+              ),
+          ],
         ),
       ),
     );
@@ -1108,9 +1271,10 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
 }
 
 class _InstructionPill extends StatelessWidget {
-  const _InstructionPill({required this.text});
+  const _InstructionPill({required this.text, this.direction});
 
   final String text;
+  final IconData? direction;
 
   @override
   Widget build(BuildContext context) {
@@ -1122,21 +1286,34 @@ class _InstructionPill extends StatelessWidget {
         borderRadius: BorderRadius.circular(26),
         border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
         boxShadow: const [
-          BoxShadow(color: Colors.black45, blurRadius: 18, offset: Offset(0, 6)),
+          BoxShadow(
+            color: Colors.black45,
+            blurRadius: 18,
+            offset: Offset(0, 6),
+          ),
         ],
       ),
-      child: Text(
-        text,
-        textAlign: TextAlign.center,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 18,
-          fontWeight: FontWeight.w800,
-          height: 1.25,
-          shadows: [
-            Shadow(color: Colors.black87, blurRadius: 8),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (direction != null) ...[
+            Icon(direction, color: Colors.white70, size: 24),
+            const SizedBox(width: 8),
           ],
-        ),
+          Flexible(
+            child: Text(
+              text,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                height: 1.25,
+                shadows: [Shadow(color: Colors.black87, blurRadius: 8)],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1176,14 +1353,17 @@ class _GcashStyleOverlayPainter extends CustomPainter {
     );
 
     final pulsePaint = Paint()
-      ..color = (ovalActiveGreen ? const Color(0xFF22C55E) : const Color(0xFFBDBDBD))
-          .withValues(alpha: ovalActiveGreen ? 0.50 : 0.35)
+      ..color =
+          (ovalActiveGreen ? const Color(0xFF22C55E) : const Color(0xFFBDBDBD))
+              .withValues(alpha: ovalActiveGreen ? 0.50 : 0.35)
       ..style = PaintingStyle.stroke
       ..strokeWidth = ovalActiveGreen ? 3.5 : 2.5;
     canvas.drawOval(pulseRect, pulsePaint);
 
     final borderPaint = Paint()
-      ..color = ovalActiveGreen ? const Color(0xFF22C55E) : const Color(0xFFE5E7EB)
+      ..color = ovalActiveGreen
+          ? const Color(0xFF22C55E)
+          : const Color(0xFFE5E7EB)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3.4;
     canvas.drawOval(guideRect, borderPaint);
@@ -1191,6 +1371,7 @@ class _GcashStyleOverlayPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _GcashStyleOverlayPainter oldDelegate) {
-    return oldDelegate.pulseT != pulseT || oldDelegate.ovalActiveGreen != ovalActiveGreen;
+    return oldDelegate.pulseT != pulseT ||
+        oldDelegate.ovalActiveGreen != ovalActiveGreen;
   }
 }
