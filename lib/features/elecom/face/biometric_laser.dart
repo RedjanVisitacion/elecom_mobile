@@ -21,12 +21,7 @@ class BiometricLaser {
         ? 1.0
         : math.min(1.0, math.min(phase, 1 - phase) * 12);
     final color = complete ? const Color(0xFF22C55E) : const Color(0xFF00F0FF);
-    final trail = Rect.fromLTRB(
-      bounds.left,
-      y - bounds.height * .13,
-      bounds.right,
-      y,
-    );
+    final trail = Rect.fromLTRB(bounds.left, y - 20, bounds.right, y);
     if (!complete) {
       canvas.drawRect(
         trail,

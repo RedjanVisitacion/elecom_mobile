@@ -59,7 +59,6 @@ class _ElectionScreenState extends State<ElectionScreen>
   final ElecomMobileApi _api = ElecomMobileApi();
 
   bool _loading = true;
-  bool _verifyingFace = false;
   String? _faceVerificationFailure;
   bool _alreadyVoted = false;
   bool _checkingReceipt = false;
@@ -1459,8 +1458,6 @@ class _ElectionScreenState extends State<ElectionScreen>
 
   Future<bool> _runFaceVerificationBeforeVote() async {
     _faceVerificationFailure = null;
-    const mismatchMsg =
-        'Face verification failed. This face does not match the enrolled voter.';
 
     final status = await _api.getFaceEnrollmentStatus();
     if (status['enrolled'] != true) {
@@ -1474,8 +1471,24 @@ class _ElectionScreenState extends State<ElectionScreen>
     TutorialService.dismissActiveTutorial();
     final capture = await Navigator.of(context).push<LiveFaceCaptureResult>(
       MaterialPageRoute(
-        builder: (_) =>
-            const LiveFaceCaptureScreen(mode: LiveFaceMode.verification),
+        builder: (_) => LiveFaceCaptureScreen(
+          mode: LiveFaceMode.verification,
+          verifyImage: (image) async {
+            final result = await _api.verifyFaceForVote(
+              liveFaceImageFile: image,
+              livenessPassed: true,
+            );
+            if (result['allow_to_vote'] != true) {
+              final reason = (result['failure_reason'] ?? '').toString().trim();
+              throw ElecomApiException(
+                reason.isEmpty
+                    ? 'This face does not match the enrolled voter.'
+                    : reason,
+              );
+            }
+            return true;
+          },
+        ),
       ),
     );
     if (capture == null || !mounted) {
@@ -1491,35 +1504,7 @@ class _ElectionScreenState extends State<ElectionScreen>
       return false;
     }
 
-    try {
-      if (!mounted) return false;
-      setState(() => _verifyingFace = true);
-      final verify = await _api
-          .verifyFaceForVote(
-            liveFaceImageFile: capture.capturedImage,
-            livenessPassed: true,
-          )
-          .timeout(const Duration(seconds: 30));
-      final allow = verify['allow_to_vote'] == true;
-      if (!allow && mounted) {
-        final reason = (verify['failure_reason'] ?? '').toString().trim();
-        final text = reason.isEmpty ? mismatchMsg : reason;
-        _faceVerificationFailure = text;
-        AppToast.error(context, text);
-      }
-      if (allow && mounted) AppToast.success(context, 'Face verified.');
-      return allow;
-    } catch (e) {
-      _faceVerificationFailure = e is TimeoutException
-          ? 'Face verification is taking too long. Please try again.'
-          : e is ElecomApiException
-          ? e.message
-          : 'Face verification could not finish. Please try again.';
-      if (mounted) AppToast.error(context, _faceVerificationFailure!);
-      return false;
-    } finally {
-      if (mounted) setState(() => _verifyingFace = false);
-    }
+    return capture.identityVerified;
   }
 
   Future<bool> _ensureFaceVerifiedBeforeBallot() async {
@@ -1592,7 +1577,7 @@ class _ElectionScreenState extends State<ElectionScreen>
               ? _ElectionAccessState.upcoming
               : _ElectionAccessState.closed);
 
-    if (_loading || _verifyingFace) {
+    if (_loading) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1600,25 +1585,6 @@ class _ElectionScreenState extends State<ElectionScreen>
             CircularProgressIndicator(
               color: isDark ? Colors.white : Colors.black,
             ),
-            if (_verifyingFace) ...[
-              const SizedBox(height: 16),
-              Semantics(
-                liveRegion: true,
-                child: Text(
-                  'Verifying your face...',
-                  style: TextStyle(
-                    color: titleColor,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Please wait while we compare your enrolled face.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: subtitleColor),
-              ),
-            ],
           ],
         ),
       );

@@ -41,6 +41,8 @@ class EnrollmentLivenessProgress extends StatelessWidget {
                       Icon(
                         i < completedSteps
                             ? Icons.check_circle
+                            : i == completedSteps
+                            ? Icons.radio_button_checked
                             : Icons.circle_outlined,
                         size: 20,
                         color: i < completedSteps

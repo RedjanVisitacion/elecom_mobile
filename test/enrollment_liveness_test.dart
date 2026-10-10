@@ -85,7 +85,8 @@ void main() {
       expect(find.text('Turn Left'), findsOneWidget);
       expect(find.text('Turn Right'), findsOneWidget);
       expect(find.byIcon(Icons.check_circle), findsNWidgets(2));
-      expect(find.byIcon(Icons.circle_outlined), findsOneWidget);
+      expect(find.byIcon(Icons.radio_button_checked), findsOneWidget);
+      expect(find.byIcon(Icons.circle_outlined), findsNothing);
       expect(tester.takeException(), isNull);
     },
   );

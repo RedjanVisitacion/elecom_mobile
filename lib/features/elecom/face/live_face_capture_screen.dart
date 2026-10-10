@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 
 import 'enrollment_liveness_controller.dart';
+import '../data/elecom_mobile_api.dart';
 import 'enrollment_liveness_progress.dart';
 import 'biometric_tracking_overlay.dart';
 
@@ -37,18 +38,26 @@ class LiveFaceCaptureResult {
     required this.capturedImage,
     required this.statusMessage,
     this.livenessPassed = true,
+    this.identityVerified = false,
   });
 
   final File capturedImage;
   final String statusMessage;
   final bool livenessPassed;
+  final bool identityVerified;
 }
 
 class LiveFaceCaptureScreen extends StatefulWidget {
-  const LiveFaceCaptureScreen({super.key, required this.mode, this.title});
+  const LiveFaceCaptureScreen({
+    super.key,
+    required this.mode,
+    this.title,
+    this.verifyImage,
+  });
 
   final LiveFaceMode mode;
   final String? title;
+  final Future<bool> Function(File image)? verifyImage;
 
   @override
   State<LiveFaceCaptureScreen> createState() => _LiveFaceCaptureScreenState();
@@ -102,6 +111,8 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
 
   /// Prevents duplicate [CameraController.takePicture] calls.
   bool _hasCapturedFinalImage = false;
+  bool _successFlash = false;
+  File? _capturedPreview;
 
   /// Bumped when liveness locks or analyzer restarts — stale async ML completions must not touch UI.
   int _analysisGeneration = 0;
@@ -152,6 +163,7 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     _appResumed = state == AppLifecycleState.resumed;
     if (!_appResumed) _scanController.stop();
+    if (_isProcessingFinalCapture) return;
     final camera = _camera;
     if (camera == null || !camera.value.isInitialized) return;
     if (state == AppLifecycleState.inactive ||
@@ -163,7 +175,7 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
       _resetBlinkTracking();
       _stableSince = null;
       _recentCenters.clear();
-      if (!_isProcessingFinalCapture) {
+      if (_uiState != FaceCaptureUiState.failed) {
         _safeSetState(() {
           _uiState = FaceCaptureUiState.positioningFace;
           _instructionPillText = _pillForState(_uiState);
@@ -739,7 +751,7 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
     _noFaceTimer?.cancel();
     _noFaceTimer = null;
 
-    if (widget.mode == LiveFaceMode.enrollment) {
+    {
       if (!_liveness.observeFace(face.trackingId)) {
         _openEyeBaseline = null;
         _cancelBlinkDeadline();
@@ -904,13 +916,9 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
           }
           _cancelBlinkDeadline();
           _debugLog(left, right, 'blink_confirmed');
-          if (widget.mode == LiveFaceMode.enrollment) {
-            _liveness.confirmBlink();
-            _showRotationGuidance();
-            _restartMotionDeadline();
-          } else {
-            _beginLivenessSuccessCapture();
-          }
+          _liveness.confirmBlink();
+          _showRotationGuidance();
+          _restartMotionDeadline();
           break;
         }
         _debugLog(left, right, 'ambiguous_in_closed_keep_waiting');
@@ -952,7 +960,7 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
 
   /// Must be synchronous (no `async` gap) so no other frame microtask resets UI before flags apply.
   void _beginLivenessSuccessCapture() {
-    if (widget.mode == LiveFaceMode.enrollment && !_liveness.isComplete) return;
+    if (!_liveness.isComplete) return;
     if (_livenessLocked || _isProcessingFinalCapture) return;
 
     _analysisGeneration++;
@@ -1010,6 +1018,38 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
         return;
       }
 
+      setState(() => _capturedPreview = file);
+      var identityVerified = false;
+      if (widget.mode == LiveFaceMode.verification) {
+        setState(() {
+          _uiState = FaceCaptureUiState.verifying;
+          _instructionPillText = 'Verifying your face...';
+        });
+        final verify = widget.verifyImage;
+        if (verify == null) {
+          throw const ElecomApiException(
+            'Face verification is unavailable. Please try again.',
+          );
+        }
+        identityVerified = await verify(
+          file,
+        ).timeout(const Duration(seconds: 30));
+        if (!mounted || _isExiting) return;
+        if (!identityVerified) {
+          throw const ElecomApiException(
+            'This face does not match the enrolled voter.',
+          );
+        }
+      }
+      if (!mounted || _isExiting) return;
+      setState(() {
+        _successFlash = true;
+        _instructionPillText = identityVerified
+            ? 'Face verified'
+            : 'Liveness complete';
+      });
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      if (!mounted || _isExiting) return;
       setState(() => _hasCapturedFinalImage = true);
 
       if (!mounted) return;
@@ -1017,21 +1057,27 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
         capturedImage: file,
         statusMessage: widget.mode == LiveFaceMode.enrollment
             ? 'Blink and head turns verified'
-            : 'Blink detected',
+            : 'Face verified',
         livenessPassed: true,
+        identityVerified: identityVerified,
       );
       // Defer pop so camera plugin / stream teardown finishes cleanly on slow devices.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || _isExiting) return;
         Navigator.of(context).pop(result);
       });
-    } catch (_) {
-      if (!mounted) return;
+    } catch (error) {
+      if (!mounted || _isExiting) return;
+      _isProcessingFinalCapture = false;
+      _captureInFlight = false;
       setState(() {
         _uiState = FaceCaptureUiState.failed;
-        _instructionPillText = 'Capture failed. Please try again.';
+        _instructionPillText = error is ElecomApiException
+            ? error.message
+            : error is TimeoutException
+            ? 'Verification timed out. Please try again.'
+            : 'Capture failed. Please try again.';
       });
-      await _resumePreviewAfterFailedCapture();
     }
   }
 
@@ -1057,6 +1103,8 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
     _openEyeBaseline = null;
     _isProcessingFinalCapture = false;
     _hasCapturedFinalImage = false;
+    _successFlash = false;
+    _capturedPreview = null;
     _captureInFlight = false;
     _processingDisabled = false;
     _stableSince = null;
@@ -1096,6 +1144,7 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
         _cameraReady &&
         !_isExiting &&
         !_hasCapturedFinalImage &&
+        !_successFlash &&
         _uiState != FaceCaptureUiState.failed &&
         !MediaQuery.disableAnimationsOf(context) &&
         TickerMode.valuesOf(context).enabled;
@@ -1126,7 +1175,11 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
         body: Stack(
           fit: StackFit.expand,
           children: [
-            if (_cameraReady && _camera != null)
+            if (_capturedPreview != null)
+              Positioned.fill(
+                child: Image.file(_capturedPreview!, fit: BoxFit.fill),
+              )
+            else if (_cameraReady && _camera != null)
               Positioned.fill(child: CameraPreview(_camera!))
             else
               const ColoredBox(
@@ -1141,7 +1194,13 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
                   painter: BiometricTrackingPainter(
                     animation: _pulseController,
                     scan: _scanController,
-                    complete: _hasCapturedFinalImage,
+                    complete: _successFlash,
+                    completedSteps: _liveness.completedSteps,
+                    motionStep: _uiState == FaceCaptureUiState.turnLeft
+                        ? 1
+                        : _uiState == FaceCaptureUiState.turnRight
+                        ? 2
+                        : -1,
                     active: _ovalGuideGreenish() && _appResumed,
                     landmarks: _meshPoints,
                     eyes: _eyeTargets,
@@ -1149,7 +1208,7 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
                 ),
               ),
             ),
-            if (_isProcessingFinalCapture)
+            if (_isProcessingFinalCapture && !_successFlash)
               const Center(
                 child: CircularProgressIndicator(color: Color(0xFF72E8DD)),
               ),
@@ -1203,7 +1262,11 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (_ovalGuideGreenish())
+                    EnrollmentLivenessProgress(
+                      completedSteps: _liveness.completedSteps,
+                    ),
+                    const SizedBox(height: 8),
+                    if (_ovalGuideGreenish() && !_isProcessingFinalCapture)
                       FadeTransition(
                         opacity: Tween<double>(
                           begin: 0.55,
@@ -1231,16 +1294,6 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
                 ),
               ),
             ),
-            if (widget.mode == LiveFaceMode.enrollment)
-              Align(
-                alignment: const Alignment(0, -0.70),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: EnrollmentLivenessProgress(
-                    completedSteps: _liveness.completedSteps,
-                  ),
-                ),
-              ),
             if (_uiState != FaceCaptureUiState.failed)
               Align(
                 alignment: Alignment.bottomCenter,
@@ -1250,7 +1303,11 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
                     child: BiometricCaptureActions(
                       animation: _pulseController,
                       onCancel: () => unawaited(_requestExit()),
-                      label: _isProcessingFinalCapture
+                      label: _successFlash
+                          ? 'Complete'
+                          : _uiState == FaceCaptureUiState.verifying
+                          ? 'Verifying...'
+                          : _isProcessingFinalCapture
                           ? 'Capturing...'
                           : _cameraReady
                           ? 'Scanning...'
