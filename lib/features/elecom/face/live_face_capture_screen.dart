@@ -10,6 +10,7 @@ import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 
 import 'enrollment_liveness_controller.dart';
 import 'enrollment_liveness_progress.dart';
+import 'biometric_tracking_overlay.dart';
 
 enum LiveFaceMode { enrollment, verification }
 
@@ -74,6 +75,10 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
   bool _appResumed = true;
 
   bool _streamBusy = false;
+  bool _restartingCamera = false;
+  Future<void> _cameraTransition = Future<void>.value();
+  final List<Offset> _meshPoints = [];
+  final List<Offset> _eyeTargets = [];
   DateTime? _lastFrameProcessedAt;
 
   FaceCaptureUiState _uiState = FaceCaptureUiState.initializingCamera;
@@ -164,22 +169,27 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
           _instructionPillText = _pillForState(_uiState);
         });
       }
-      unawaited(_stopStreamSafe(camera));
+      _cameraTransition = _cameraTransition.then(
+        (_) => _stopStreamSafe(camera),
+      );
     } else if (state == AppLifecycleState.resumed &&
         !_captureInFlight &&
         !_processingDisabled &&
         !_isExiting &&
         !_livenessLocked &&
         !_isProcessingFinalCapture) {
-      _startNoFaceTimer();
-      unawaited(_startImageStream());
+      _cameraTransition = _cameraTransition.then((_) async {
+        if (mounted && _appResumed && !_isExiting) {
+          await _retryAfterFailure();
+        }
+      });
     }
   }
 
   Future<void> _stopStreamSafe(CameraController camera) async {
     try {
       if (camera.value.isInitialized && camera.value.isStreamingImages) {
-        await camera.stopImageStream();
+        await camera.stopImageStream().timeout(const Duration(seconds: 5));
       }
     } catch (_) {}
   }
@@ -199,19 +209,19 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
     } catch (_) {}
 
     try {
-      await det?.close();
+      await det?.close().timeout(const Duration(seconds: 5));
     } catch (_) {}
     _detector = null;
 
     try {
-      cam?.dispose();
+      await cam?.dispose().timeout(const Duration(seconds: 5));
     } catch (_) {}
     _camera = null;
   }
 
   Future<void> _requestExit() async {
     if (_isExiting) return;
-    _isExiting = true;
+    _safeSetState(() => _isExiting = true);
     _processingDisabled = true;
     await _releasePipeline();
     if (!mounted) return;
@@ -221,7 +231,9 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
   Future<void> _initCamera() async {
     _processingDisabled = false;
     try {
-      final cameras = await availableCameras();
+      final cameras = await availableCameras().timeout(
+        const Duration(seconds: 10),
+      );
       final front = cameras
           .where((c) => c.lensDirection == CameraLensDirection.front)
           .toList();
@@ -232,10 +244,16 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
         enableAudio: false,
         imageFormatGroup: ImageFormatGroup.nv21,
       );
-      await controller.initialize();
+      _camera = controller;
+      await controller.initialize().timeout(const Duration(seconds: 15));
+      if (!mounted || _isExiting || !_appResumed) {
+        await controller.dispose();
+        return;
+      }
       _detector = FaceDetector(
         options: FaceDetectorOptions(
           enableClassification: true,
+          enableLandmarks: true,
           enableTracking: true,
           performanceMode: FaceDetectorMode.fast,
         ),
@@ -340,9 +358,11 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
       return;
     }
     if (camera.value.isStreamingImages) return;
-    await camera.startImageStream((image) {
-      _processCameraFrame(image, detector);
-    });
+    await camera
+        .startImageStream((image) {
+          _processCameraFrame(image, detector);
+        })
+        .timeout(const Duration(seconds: 10));
   }
 
   void _processCameraFrame(CameraImage image, FaceDetector detector) {
@@ -382,7 +402,9 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
             bytesPerRow: image.planes.first.bytesPerRow,
           ),
         );
-        final faces = await detector.processImage(inputImage);
+        final faces = await detector
+            .processImage(inputImage)
+            .timeout(const Duration(seconds: 10));
         if (!mounted ||
             genWhenScheduled != _analysisGeneration ||
             _livenessLocked ||
@@ -594,7 +616,9 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
       case FaceCaptureUiState.holdStill:
         return 'Hold still';
       case FaceCaptureUiState.blinkNow:
-        return 'Hold still and blink once';
+        return widget.mode == LiveFaceMode.enrollment
+            ? 'Blink once, then slowly turn head left and right'
+            : 'Hold still and blink once';
       case FaceCaptureUiState.blinkDetected:
         return widget.mode == LiveFaceMode.enrollment
             ? 'Liveness complete'
@@ -631,6 +655,8 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
     if (_uiState == FaceCaptureUiState.failed) return;
 
     if (faces.length != 1) {
+      _meshPoints.clear();
+      _eyeTargets.clear();
       _liveness.reset();
       _openEyeBaseline = null;
       _recentCenters.clear();
@@ -649,6 +675,46 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
     }
 
     final face = faces.first;
+    final rotation = _rotationFromCamera(camera);
+    final sideways =
+        rotation == InputImageRotation.rotation90deg ||
+        rotation == InputImageRotation.rotation270deg;
+    final width = (sideways ? image.height : image.width).toDouble();
+    final height = (sideways ? image.width : image.height).toDouble();
+    Offset normalized(FaceLandmark landmark) {
+      final x = landmark.position.x / width;
+      return Offset(
+        camera.description.lensDirection == CameraLensDirection.front
+            ? 1 - x
+            : x,
+        landmark.position.y / height,
+      );
+    }
+
+    _meshPoints
+      ..clear()
+      ..addAll([
+        for (final type in [
+          FaceLandmarkType.leftEye,
+          FaceLandmarkType.rightEye,
+          FaceLandmarkType.leftCheek,
+          FaceLandmarkType.rightCheek,
+          FaceLandmarkType.noseBase,
+          FaceLandmarkType.leftMouth,
+          FaceLandmarkType.rightMouth,
+          FaceLandmarkType.bottomMouth,
+        ])
+          if (face.landmarks[type] != null) normalized(face.landmarks[type]!),
+      ]);
+    _eyeTargets
+      ..clear()
+      ..addAll([
+        for (final type in [
+          FaceLandmarkType.leftEye,
+          FaceLandmarkType.rightEye,
+        ])
+          if (face.landmarks[type] != null) normalized(face.landmarks[type]!),
+      ]);
     final left = face.leftEyeOpenProbability;
     final right = face.rightEyeOpenProbability;
 
@@ -928,7 +994,9 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
 
     try {
       if (_hasCapturedFinalImage) return;
-      final shot = await camera.takePicture();
+      final shot = await camera.takePicture().timeout(
+        const Duration(seconds: 12),
+      );
       final file = File(shot.path);
 
       if (!mounted) return;
@@ -944,7 +1012,7 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
         return;
       }
 
-      _hasCapturedFinalImage = true;
+      setState(() => _hasCapturedFinalImage = true);
 
       if (!mounted) return;
       final result = LiveFaceCaptureResult(
@@ -956,7 +1024,7 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
       );
       // Defer pop so camera plugin / stream teardown finishes cleanly on slow devices.
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
+        if (!mounted || _isExiting) return;
         Navigator.of(context).pop(result);
       });
     } catch (_) {
@@ -979,36 +1047,10 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
   }
 
   /// Re-open the preview stream after capture/validation failed (camera still initialized).
-  Future<void> _resumePreviewAfterFailedCapture() async {
-    _analysisGeneration++;
-    _livenessLocked = false;
-    _liveness.reset();
-    _openEyeBaseline = null;
-    _isProcessingFinalCapture = false;
-    _hasCapturedFinalImage = false;
-    _captureInFlight = false;
-    _processingDisabled = false;
-    _showCheckFlash = false;
-    _cancelBlinkDeadline();
-    _resetBlinkTracking();
-    _stableSince = null;
-    _recentCenters.clear();
-    _detector ??= FaceDetector(
-      options: FaceDetectorOptions(
-        enableClassification: true,
-        enableTracking: true,
-        performanceMode: FaceDetectorMode.fast,
-      ),
-    );
-    await _startImageStream();
-    _startNoFaceTimer();
-    _safeSetState(() {
-      _uiState = FaceCaptureUiState.positioningFace;
-      _instructionPillText = _pillForState(FaceCaptureUiState.positioningFace);
-    });
-  }
+  Future<void> _resumePreviewAfterFailedCapture() => _retryAfterFailure();
 
   Future<void> _retryAfterFailure() async {
+    if (_restartingCamera || _isExiting || !mounted) return;
     _analysisGeneration++;
     _cancelTimers();
     _cancelBlinkDeadline();
@@ -1023,30 +1065,24 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
     _recentCenters.clear();
     _resetBlinkTracking();
 
-    final cam = _camera;
-    if (cam != null && cam.value.isInitialized) {
-      _permissionDenied = false;
+    _restartingCamera = true;
+    try {
       _safeSetState(() {
-        _uiState = FaceCaptureUiState.positioningFace;
-        _instructionPillText = _pillForState(
-          FaceCaptureUiState.positioningFace,
-        );
+        _cameraReady = false;
+        _permissionDenied = false;
+        _meshPoints.clear();
+        _eyeTargets.clear();
+        _uiState = FaceCaptureUiState.initializingCamera;
+        _instructionPillText = _pillForState(_uiState);
       });
-      await _startImageStream();
-      _startNoFaceTimer();
-      return;
+      await _releasePipeline();
+      if (!mounted || _isExiting || !_appResumed) return;
+      _streamBusy = false;
+      _lastFrameProcessedAt = null;
+      await _initCamera();
+    } finally {
+      _restartingCamera = false;
     }
-
-    await _releasePipeline();
-    _permissionDenied = false;
-    _cameraReady = false;
-    _safeSetState(() {
-      _uiState = FaceCaptureUiState.initializingCamera;
-      _instructionPillText = _pillForState(
-        FaceCaptureUiState.initializingCamera,
-      );
-    });
-    await _initCamera();
   }
 
   @override
@@ -1057,10 +1093,8 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
             ? 'Face Enrollment'
             : 'Face Verification');
 
-    final topInset = MediaQuery.paddingOf(context).top;
-
     return PopScope(
-      canPop: false,
+      canPop: _isExiting || _hasCapturedFinalImage,
       onPopInvokedWithResult: (bool didPop, dynamic result) async {
         if (didPop) return;
         await _requestExit();
@@ -1079,17 +1113,15 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
                   child: CircularProgressIndicator(color: Colors.white),
                 ),
               ),
-            AnimatedBuilder(
-              animation: _pulseController,
-              builder: (context, child) {
-                return CustomPaint(
-                  painter: _GcashStyleOverlayPainter(
-                    pulseT: _pulseController.value,
-                    ovalActiveGreen: _ovalGuideGreenish(),
-                  ),
-                  child: const SizedBox.expand(),
-                );
-              },
+            IgnorePointer(
+              child: CustomPaint(
+                painter: BiometricTrackingPainter(
+                  animation: _pulseController,
+                  active: _ovalGuideGreenish() && _appResumed,
+                  landmarks: _meshPoints,
+                  eyes: _eyeTargets,
+                ),
+              ),
             ),
             if (_showCheckFlash &&
                 (_uiState == FaceCaptureUiState.blinkDetected ||
@@ -1114,51 +1146,87 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
                   ),
                 ),
               ),
-            SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.30),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.white24),
-                  ),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        onPressed: () => unawaited(_requestExit()),
-                        icon: const Icon(
-                          Icons.arrow_back_ios_new,
-                          color: Colors.white,
+            Align(
+              alignment: Alignment.topCenter,
+              child: SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.30),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: Colors.white24),
+                    ),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          onPressed: () => unawaited(_requestExit()),
+                          icon: const Icon(
+                            Icons.arrow_back_ios_new,
+                            color: Colors.white,
+                          ),
                         ),
-                      ),
-                      const Spacer(),
-                    ],
+                        Expanded(
+                          child: Text(
+                            title,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 48),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
             Align(
-              alignment: const Alignment(0, -0.42),
+              alignment: const Alignment(0, 0.48),
               child: Padding(
-                padding: EdgeInsets.only(top: topInset + 44),
-                child: _InstructionPill(
-                  text: _instructionPillText,
-                  direction: _uiState == FaceCaptureUiState.turnLeft
-                      ? Icons.arrow_back_rounded
-                      : _uiState == FaceCaptureUiState.turnRight
-                      ? Icons.arrow_forward_rounded
-                      : null,
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_ovalGuideGreenish())
+                      FadeTransition(
+                        opacity: Tween<double>(
+                          begin: 0.55,
+                          end: 1,
+                        ).animate(_pulseController),
+                        child: const Text(
+                          'LIVENESS ACTIVE \u25c9',
+                          style: TextStyle(
+                            color: Color(0xFF72E8DD),
+                            letterSpacing: 1.5,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    const SizedBox(height: 8),
+                    _InstructionPill(
+                      text: _instructionPillText,
+                      direction: _uiState == FaceCaptureUiState.turnLeft
+                          ? Icons.arrow_back_rounded
+                          : _uiState == FaceCaptureUiState.turnRight
+                          ? Icons.arrow_forward_rounded
+                          : null,
+                    ),
+                  ],
                 ),
               ),
             ),
             if (widget.mode == LiveFaceMode.enrollment)
               Align(
-                alignment: const Alignment(0, 0.65),
+                alignment: const Alignment(0, -0.70),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: EnrollmentLivenessProgress(
@@ -1172,28 +1240,14 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
                 child: SafeArea(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.52),
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: Colors.white24),
-                      ),
-                      child: Text(
-                        title,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 16,
-                          shadows: [
-                            Shadow(color: Colors.black87, blurRadius: 6),
-                          ],
-                        ),
-                      ),
+                    child: BiometricCaptureActions(
+                      animation: _pulseController,
+                      onCancel: () => unawaited(_requestExit()),
+                      label: _isProcessingFinalCapture
+                          ? 'Capturing...'
+                          : _cameraReady
+                          ? 'Scanning...'
+                          : 'Starting camera...',
                     ),
                   ),
                 ),
@@ -1282,8 +1336,8 @@ class _InstructionPill extends StatelessWidget {
       constraints: const BoxConstraints(maxWidth: 340),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.72),
-        borderRadius: BorderRadius.circular(26),
+        color: const Color(0xFF1A202C).withValues(alpha: 0.82),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
         boxShadow: const [
           BoxShadow(
@@ -1306,8 +1360,8 @@ class _InstructionPill extends StatelessWidget {
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
                 height: 1.25,
                 shadows: [Shadow(color: Colors.black87, blurRadius: 8)],
               ),
@@ -1316,62 +1370,5 @@ class _InstructionPill extends StatelessWidget {
         ],
       ),
     );
-  }
-}
-
-/// Dimmed full-screen overlay with a clear oval “window” and animated pulse ring.
-class _GcashStyleOverlayPainter extends CustomPainter {
-  _GcashStyleOverlayPainter({
-    required this.pulseT,
-    required this.ovalActiveGreen,
-  });
-
-  final double pulseT;
-  final bool ovalActiveGreen;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final overlay = Paint()..color = Colors.black.withValues(alpha: 0.62);
-    final clear = Paint()..blendMode = BlendMode.clear;
-    final layerRect = Offset.zero & size;
-    canvas.saveLayer(layerRect, Paint());
-    canvas.drawRect(layerRect, overlay);
-
-    final guideRect = Rect.fromCenter(
-      center: Offset(size.width / 2, size.height / 2),
-      width: size.width * 0.72,
-      height: size.height * 0.54,
-    );
-    canvas.drawOval(guideRect, clear);
-    canvas.restore();
-
-    final pulseExpand = 1.0 + 0.04 * pulseT;
-    final pulseRect = Rect.fromCenter(
-      center: guideRect.center,
-      width: guideRect.width * pulseExpand,
-      height: guideRect.height * pulseExpand,
-    );
-
-    final pulsePaint = Paint()
-      ..color =
-          (ovalActiveGreen ? const Color(0xFF22C55E) : const Color(0xFFBDBDBD))
-              .withValues(alpha: ovalActiveGreen ? 0.50 : 0.35)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = ovalActiveGreen ? 3.5 : 2.5;
-    canvas.drawOval(pulseRect, pulsePaint);
-
-    final borderPaint = Paint()
-      ..color = ovalActiveGreen
-          ? const Color(0xFF22C55E)
-          : const Color(0xFFE5E7EB)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.4;
-    canvas.drawOval(guideRect, borderPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _GcashStyleOverlayPainter oldDelegate) {
-    return oldDelegate.pulseT != pulseT ||
-        oldDelegate.ovalActiveGreen != ovalActiveGreen;
   }
 }

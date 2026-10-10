@@ -389,7 +389,9 @@ class _ElectionScreenState extends State<ElectionScreen>
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _loadError = e.toString();
+        _loadError = e is ElecomApiException
+            ? e.message
+            : 'Unable to load the election. Please try again.';
         _loading = false;
       });
     }
@@ -471,7 +473,9 @@ class _ElectionScreenState extends State<ElectionScreen>
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _loadError = e.toString();
+        _loadError = e is ElecomApiException
+            ? e.message
+            : 'Unable to load the election. Please try again.';
         _loading = false;
       });
     }
@@ -1493,7 +1497,12 @@ class _ElectionScreenState extends State<ElectionScreen>
       return allow;
     } catch (e) {
       if (mounted) {
-        AppToast.error(context, 'Face verification error: $e');
+        AppToast.error(
+          context,
+          e is ElecomApiException
+              ? e.message
+              : 'Face verification could not finish. Please try again.',
+        );
       }
       return false;
     }

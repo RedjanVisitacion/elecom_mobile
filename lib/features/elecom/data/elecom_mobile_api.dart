@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' as developer;
 import 'dart:io';
@@ -20,7 +21,7 @@ class ElecomMobileApi {
   static const String codeFaceAlreadyEnrolled = 'face_already_enrolled';
 
   Future<Map<String, dynamic>> getElectionWindow() async {
-    return _getJson(MobileApiPaths.electionWindow);
+    return _getJson(MobileApiPaths.electionWindow, retryConnection: true);
   }
 
   Future<Map<String, dynamic>> getAppUpdateInfo() async {
@@ -385,7 +386,7 @@ class ElecomMobileApi {
   }
 
   Future<Map<String, dynamic>> getVoteStatus() async {
-    return _getJson(MobileApiPaths.voteStatus);
+    return _getJson(MobileApiPaths.voteStatus, retryConnection: true);
   }
 
   Future<Map<String, dynamic>> getResults() async {
@@ -428,7 +429,7 @@ class ElecomMobileApi {
   }
 
   Future<Map<String, dynamic>> getFaceEnrollmentStatus() async {
-    return _getJson(MobileApiPaths.faceEnrollmentStatus);
+    return _getJson(MobileApiPaths.faceEnrollmentStatus, retryConnection: true);
   }
 
   /// Persists enrollment via backend (Face++, Cloudinary, DB). Sends image bytes only —
@@ -714,18 +715,36 @@ class ElecomMobileApi {
     });
   }
 
-  Future<Map<String, dynamic>> _getJson(String url) async {
+  Future<Map<String, dynamic>> _getJson(
+    String url, {
+    bool retryConnection = false,
+  }) async {
     final uri = Uri.parse(url);
-    http.Response res;
-    try {
-      res = await _client.get(
-        uri,
-        headers: const {'Accept': 'application/json'},
-      );
-    } catch (_) {
-      throw const ElecomApiException('Network error: cannot reach server');
+    final attempts = retryConnection ? 2 : 1;
+    for (var attempt = 0; attempt < attempts; attempt++) {
+      http.Response res;
+      try {
+        res = await _client
+            .get(uri, headers: const {'Accept': 'application/json'})
+            .timeout(const Duration(seconds: 20));
+      } catch (error) {
+        final transient =
+            error is http.ClientException ||
+            error is SocketException ||
+            error is TimeoutException;
+        if (transient && attempt + 1 < attempts) {
+          await Future<void>.delayed(const Duration(milliseconds: 500));
+          continue;
+        }
+        throw const ElecomApiException(
+          'Unable to connect to ELECOM. Check your internet connection and tap Retry.',
+          code: 'network_unavailable',
+        );
+      }
+      // Server/authentication/validation responses are never retried here.
+      return _decode(res);
     }
-    return _decode(res);
+    throw StateError('No request attempted');
   }
 
   Future<Map<String, dynamic>> _postJson(
