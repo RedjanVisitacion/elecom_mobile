@@ -23,6 +23,12 @@ ThemeData candidateFilingTheme(ThemeData base) {
       backgroundColor: surface,
       surfaceTintColor: Colors.transparent,
     ),
+    datePickerTheme: base.datePickerTheme.copyWith(
+      backgroundColor: surface,
+      surfaceTintColor: Colors.transparent,
+      headerBackgroundColor: surface,
+      headerForegroundColor: dark ? Colors.white : const Color(0xFF0F172A),
+    ),
     appBarTheme: base.appBarTheme.copyWith(
       backgroundColor: surface,
       surfaceTintColor: Colors.transparent,

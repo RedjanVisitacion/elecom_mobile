@@ -750,7 +750,8 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const Text(
-          'Inside or outside the school. Optional if you have no memberships.',
+          'Inside or outside the school. Add up to 3 clubs or organizations, '
+          'matching the COC form. Optional if you have no memberships.',
         ),
         const SizedBox(height: 12),
         for (var i = 0; i < _membershipCount; i++) ...[
@@ -790,7 +791,10 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
         ],
         if (_membershipCount < 3)
           OutlinedButton.icon(
-            onPressed: () => setState(() => _membershipCount++),
+            onPressed: () {
+              if (_membershipCount >= 3) return;
+              setState(() => _membershipCount++);
+            },
             icon: const Icon(Icons.add),
             label: const Text('Add Club / Organization'),
           ),
