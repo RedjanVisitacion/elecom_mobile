@@ -10,6 +10,8 @@ class _StatusApi extends ElecomMobileApi {
   String status = 'pending';
   int requests = 0;
   bool fail = false;
+  bool registered = false;
+  bool hasApplication = true;
   Completer<Map<String, dynamic>>? pending;
 
   @override
@@ -24,7 +26,10 @@ class _StatusApi extends ElecomMobileApi {
     if (pending != null) return pending!.future;
     if (fail) throw Exception('Temporary network failure');
     return {
-      'application': {'id': 1, 'status': status},
+      'application': hasApplication ? {'id': 1, 'status': status} : null,
+      'official_candidate': registered
+          ? {'id': 7, 'position': 'President'}
+          : null,
     };
   }
 }
@@ -45,6 +50,46 @@ Future<void> _open(
 }
 
 void main() {
+  testWidgets(
+    'manual candidate registration blocks filing without an application',
+    (tester) async {
+      final api = _StatusApi()
+        ..hasApplication = false
+        ..registered = true;
+      await _open(tester, api);
+      expect(find.text('You are already a candidate'), findsOneWidget);
+      expect(find.text('Submit Filing'), findsNothing);
+      expect(find.text('Candidate Type'), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets('registration while form is open removes filing controls', (
+    tester,
+  ) async {
+    final api = _StatusApi()..hasApplication = false;
+    await _open(tester, api);
+    expect(find.text('Submit Filing'), findsOneWidget);
+    api.registered = true;
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pump();
+    expect(find.text('You are already a candidate'), findsOneWidget);
+    expect(find.text('Submit Filing'), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('failed initial status check keeps filing disabled', (
+    tester,
+  ) async {
+    final api = _StatusApi()
+      ..hasApplication = false
+      ..fail = true;
+    await _open(tester, api);
+    expect(find.text('Unable to check your candidate status.'), findsOneWidget);
+    expect(find.text('Submit Filing'), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets('initial and final approvals update without refreshing', (
     tester,
   ) async {

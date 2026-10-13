@@ -178,6 +178,9 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
   String? _program;
   String? _yearSection;
   Map<String, dynamic>? _existingApplication;
+  Map<String, dynamic>? _officialCandidate;
+  String? _refilingApplicationId;
+  bool _statusLoadFailed = false;
   List<String> _existingPartyNames = <String>[];
   String? _selectedPartyName;
   File? _candidatePhoto;
@@ -239,8 +242,7 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
         !_routeVisible ||
         _filingRoute?.isCurrent == false ||
         _loadingStatus ||
-        _submitting ||
-        _existingApplication == null) {
+        _submitting) {
       return;
     }
     unawaited(_loadApplicationStatus());
@@ -1082,7 +1084,16 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
         const Duration(seconds: 15),
       );
       final raw = res['application'];
-      final application = raw is Map ? Map<String, dynamic>.from(raw) : null;
+      var application = raw is Map ? Map<String, dynamic>.from(raw) : null;
+      if (application != null &&
+          application['id']?.toString() == _refilingApplicationId &&
+          canFileCandidateApplicationAgain(application)) {
+        application = null;
+      }
+      final candidateRaw = res['official_candidate'];
+      final candidate = candidateRaw is Map
+          ? Map<String, dynamic>.from(candidateRaw)
+          : null;
       if (!mounted || revision != _statusRevision) return;
       final applicationId = application?['id']?.toString();
       if (applicationId != null &&
@@ -1103,16 +1114,24 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
         }
         if (!mounted || revision != _statusRevision) return;
       }
-      if (_loadingStatus || !mapEquals(_existingApplication, application)) {
+      if (_loadingStatus ||
+          _statusLoadFailed ||
+          !mapEquals(_officialCandidate, candidate) ||
+          !mapEquals(_existingApplication, application)) {
         setState(() {
           _existingApplication = application;
+          _officialCandidate = candidate;
+          _statusLoadFailed = false;
           _loadingStatus = false;
         });
       }
     } catch (_) {
       // Retain the last successful status and retry on the next poll.
       if (mounted && revision == _statusRevision && _loadingStatus) {
-        setState(() => _loadingStatus = false);
+        setState(() {
+          _loadingStatus = false;
+          _statusLoadFailed = true;
+        });
       }
     } finally {
       _statusRequestInFlight = false;
@@ -1237,7 +1256,13 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
   }
 
   Future<void> _submit() async {
-    if (_submitting || _preparingCertificate) return;
+    if (_submitting ||
+        _preparingCertificate ||
+        _loadingStatus ||
+        _statusLoadFailed ||
+        _officialCandidate != null) {
+      return;
+    }
     if (!_validateCertificate()) return;
     final fields = _filingFields();
     final photo = _candidatePhoto!;
@@ -1247,6 +1272,10 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
     setState(() => _submitting = true);
     try {
       final storage = await _api.getCandidateApplicationStatus();
+      if (storage['official_candidate'] is Map) {
+        await _loadApplicationStatus();
+        return;
+      }
       if (storage['certificate_storage_ready'] != true) {
         throw const ElecomApiException(
           'Certificate storage is not ready on the server. Please contact ELECOM before submitting.',
@@ -1584,7 +1613,11 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
                 ),
               ),
             ),
-            bottomNavigationBar: !_loadingStatus && existingApplication == null
+            bottomNavigationBar:
+                !_loadingStatus &&
+                    !_statusLoadFailed &&
+                    _officialCandidate == null &&
+                    existingApplication == null
                 ? DecoratedBox(
                     decoration: BoxDecoration(
                       color: formTheme.colorScheme.surface,
@@ -1658,7 +1691,26 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
                             padding: EdgeInsets.symmetric(vertical: 28),
                             child: Center(child: CircularProgressIndicator()),
                           )
-                        else if (existingApplication != null) ...[
+                        else if (_officialCandidate != null &&
+                            existingApplication?['status'] != 'approved') ...[
+                          const Icon(Icons.verified, size: 48),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'You are already a candidate',
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Your Student ID is registered for this election. You cannot submit another candidate filing.',
+                            textAlign: TextAlign.center,
+                          ),
+                        ] else if (_statusLoadFailed) ...[
+                          const Text('Unable to check your candidate status.'),
+                          TextButton(
+                            onPressed: _loadApplicationStatus,
+                            child: const Text('Try again'),
+                          ),
+                        ] else if (existingApplication != null) ...[
                           _ApplicationStatusCard(
                             application: existingApplication,
                             isPremiumMode: isPremiumMode,
@@ -1671,6 +1723,8 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
                               }
                               setState(() {
                                 _statusRevision++;
+                                _refilingApplicationId =
+                                    existingApplication['id']?.toString();
                                 _existingApplication = null;
                                 _candidatePhoto = null;
                                 _partyLogo = null;

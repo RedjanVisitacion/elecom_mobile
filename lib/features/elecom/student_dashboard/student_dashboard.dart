@@ -433,7 +433,46 @@ class _StudentDashboardState extends State<StudentDashboard>
     });
   }
 
-  void _openCandidateApplicationInfo() {
+  bool _checkingCandidateFiling = false;
+
+  Future<void> _openCandidateApplicationInfo() async {
+    if (_checkingCandidateFiling) return;
+    _checkingCandidateFiling = true;
+    try {
+      final status = await _api.getCandidateApplicationStatus().timeout(
+        const Duration(seconds: 15),
+      );
+      if (!mounted) return;
+      if (status['official_candidate'] is Map) {
+        await showDialog<void>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Already a candidate'),
+            content: const Text(
+              'Your Student ID is already registered as a candidate for this election. You cannot file again.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
+    } catch (_) {
+      if (mounted) {
+        AppToast.error(
+          context,
+          'Unable to check candidate status. Please try again.',
+        );
+      }
+      return;
+    } finally {
+      _checkingCandidateFiling = false;
+    }
+    if (!mounted) return;
     Navigator.of(context).push(
       PageRouteBuilder<bool>(
         pageBuilder: (context, animation, secondaryAnimation) =>
