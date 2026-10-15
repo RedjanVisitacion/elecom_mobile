@@ -6,6 +6,7 @@ import 'package:lottie/lottie.dart';
 import '../../../core/session/elevote_preferences.dart';
 import '../../../core/utils/toast_service.dart';
 import '../data/elecom_mobile_api.dart';
+import 'widgets/chat_typing_indicator.dart';
 
 class EleVoteChatScreen extends StatefulWidget {
   const EleVoteChatScreen({super.key});
@@ -467,7 +468,11 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
                         itemBuilder: (context, index) {
                           if (index == 0) return const _AssistantIntro();
                           if (_sending && index == _messages.length + 1) {
-                            return const _TypingBubble();
+                            return _TypingBubble(
+                              label: _takeover
+                                  ? 'Sending message to support'
+                                  : 'EleVote is typing',
+                            );
                           }
                           return _ChatBubble(
                               message: _messages[index - 1]);
@@ -916,25 +921,17 @@ class _ChatBubble extends StatelessWidget {
 }
 
 class _TypingBubble extends StatelessWidget {
-  const _TypingBubble();
+  const _TypingBubble({required this.label});
+
+  final String label;
 
   @override
   Widget build(BuildContext context) {
-    return const Row(
+    return Row(
       children: [
-        _EleVoteAvatar(size: 28),
-        SizedBox(width: 8),
-        Padding(
-          padding: EdgeInsets.only(bottom: 10),
-          child: Text(
-            'EleVote is typing...',
-            style: TextStyle(
-              color: Color(0xFF64748B),
-              fontWeight: FontWeight.w700,
-              fontSize: 12,
-            ),
-          ),
-        ),
+        const _EleVoteAvatar(size: 28),
+        const SizedBox(width: 8),
+        ChatTypingIndicator(label: label),
       ],
     );
   }
