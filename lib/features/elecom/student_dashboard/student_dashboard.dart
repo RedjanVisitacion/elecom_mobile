@@ -2107,19 +2107,27 @@ class _AnimatedPremiumAssistantBubbleState
                                                 width: 32,
                                                 height: 32,
                                               ),
-                                          padding: const EdgeInsets.all(6),
+                                          padding: const EdgeInsets.all(7),
                                           style: IconButton.styleFrom(
-                                            backgroundColor: Colors.white
-                                                .withValues(alpha: 0.6),
                                             foregroundColor: Colors.black
                                                 .withValues(alpha: 0.6),
                                             shape: const CircleBorder(),
                                             tapTargetSize: MaterialTapTargetSize
                                                 .shrinkWrap,
                                           ),
-                                          icon: const Icon(
-                                            Icons.close,
-                                            size: 14,
+                                          icon: Container(
+                                            width: 18,
+                                            height: 18,
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withValues(
+                                                alpha: 0.5,
+                                              ),
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: const Icon(
+                                              Icons.close,
+                                              size: 10,
+                                            ),
                                           ),
                                         ),
                                       ),
