@@ -2067,23 +2067,18 @@ class _AnimatedPremiumAssistantBubbleState
                 child: GestureDetector(
                   key: _bubbleKey,
                   behavior: HitTestBehavior.opaque,
-                  onPanUpdate: !_renderBubble
+                  onVerticalDragUpdate: !_renderBubble
                       ? null
                       : (details) {
                           final box =
                               _bubbleKey.currentContext?.findRenderObject()
                                   as RenderBox?;
                           if (box == null || !box.hasSize) return;
-                          final travelX = constraints.maxWidth - box.size.width;
                           final travelY =
                               constraints.maxHeight - box.size.height;
                           setState(() {
                             _bubbleAlignment = Alignment(
-                              travelX > 0
-                                  ? (_bubbleAlignment.x +
-                                            2 * details.delta.dx / travelX)
-                                        .clamp(-1.0, 1.0)
-                                  : 0,
+                              1,
                               travelY > 0
                                   ? (_bubbleAlignment.y +
                                             2 * details.delta.dy / travelY)
@@ -2169,7 +2164,7 @@ class _PremiumAssistantBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       label: 'EleVote AI assistant',
-      hint: 'Tap to open chat. Drag to move.',
+      hint: 'Tap to open chat. Drag up or down to move.',
       button: true,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
