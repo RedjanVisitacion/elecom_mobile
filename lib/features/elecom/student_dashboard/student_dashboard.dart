@@ -1975,6 +1975,8 @@ class _AnimatedPremiumAssistantBubbleState
   late final Animation<double> _turns;
   late final Animation<Offset> _offset;
   bool _renderBubble = false;
+  Alignment _bubbleAlignment = Alignment.bottomRight;
+  final GlobalKey _bubbleKey = GlobalKey();
 
   @override
   void initState() {
@@ -2038,24 +2040,63 @@ class _AnimatedPremiumAssistantBubbleState
 
   @override
   Widget build(BuildContext context) {
-    return Positioned(
-      right: 16,
-      bottom: 12,
-      child: IgnorePointer(
-        ignoring: !_renderBubble,
-        child: FadeTransition(
-          opacity: _opacity,
-          child: SlideTransition(
-            position: _offset,
-            child: RotationTransition(
-              turns: _turns,
-              child: ScaleTransition(
-                scale: _scale,
-                child: _renderBubble
-                    ? const _PremiumAssistantBubble()
-                    : const SizedBox.shrink(),
-              ),
-            ),
+    return Positioned.fill(
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return Align(
+                alignment: _bubbleAlignment,
+                child: GestureDetector(
+                  key: _bubbleKey,
+                  behavior: HitTestBehavior.opaque,
+                  onPanUpdate: !_renderBubble
+                      ? null
+                      : (details) {
+                          final box =
+                              _bubbleKey.currentContext?.findRenderObject()
+                                  as RenderBox?;
+                          if (box == null || !box.hasSize) return;
+                          final travelX = constraints.maxWidth - box.size.width;
+                          final travelY =
+                              constraints.maxHeight - box.size.height;
+                          setState(() {
+                            _bubbleAlignment = Alignment(
+                              travelX > 0
+                                  ? (_bubbleAlignment.x +
+                                            2 * details.delta.dx / travelX)
+                                        .clamp(-1.0, 1.0)
+                                  : 0,
+                              travelY > 0
+                                  ? (_bubbleAlignment.y +
+                                            2 * details.delta.dy / travelY)
+                                        .clamp(-1.0, 1.0)
+                                  : 0,
+                            );
+                          });
+                        },
+                  child: IgnorePointer(
+                    ignoring: !_renderBubble,
+                    child: FadeTransition(
+                      opacity: _opacity,
+                      child: SlideTransition(
+                        position: _offset,
+                        child: RotationTransition(
+                          turns: _turns,
+                          child: ScaleTransition(
+                            scale: _scale,
+                            child: _renderBubble
+                                ? const _PremiumAssistantBubble()
+                                : const SizedBox.shrink(),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ),
@@ -2069,7 +2110,8 @@ class _PremiumAssistantBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: 'AI assistant',
+      label: 'EleVote AI assistant',
+      hint: 'Tap to open chat. Drag to move.',
       button: true,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
