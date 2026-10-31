@@ -1,5 +1,7 @@
 # Agent Instructions (Flutter app: `elecom_mobile`)
 
+> Current-machine path correction (2026-11-01): this checkout is `G:\elecom_mobile`; the sibling web/backend checkout is `G:\elecom_web\backend`. Older `F:` examples below are historical; verify paths before using them. Production remains `/var/www/elecom/backend`.
+
 > Intended for any AI coding agent working in this workspace. If you maintain `CLAUDE.md` or `GEMINI.md` elsewhere, keep them aligned with this file.
 
 This repository is a **Flutter** client for the ELECOM voting app. Optimize for **fast, safe iteration**: small changes, `flutter analyze` clean, and runnable builds.
@@ -491,3 +493,65 @@ flutter build apk --release --no-pub
 - `deploy/enable-pull-deploy.sh` installs the repo-local `core.hooksPath=deploy/hooks` on /var/www/elecom only. It refuses to replace an existing custom hooks path or post-merge hook.
 - `deploy/hooks/post-merge` collects static files, restarts Gunicorn, and checks service health after a successful merge. Deployment failures are printed; the source merge may already have completed. Do not claim success merely because Git pulled.
 - Setup is not active on the user's server until the scripts are deployed and `sh deploy/enable-pull-deploy.sh` runs there once. Hooks do not run on an already-up-to-date pull. Environment edits, migrations, and local-change conflicts still need their appropriate separate handling. See docs/pull-auto-deploy.md.
+
+## Recent mobile UI and turnout decisions (2026-11-01)
+
+- Mobile turnout must be scoped to the current election. Archived and legacy unscoped votes must not inflate a new election's turnout. The reported mismatch was mobile 31/1,643 (1.9%) versus current-election admin 0/1,643 (0.0%). Backend ownership: `G:\elecom_web\backend\core\views.py`, `election_window_api`; regression coverage: `core.test_mobile_turnout`. Do not reset historical votes to fix a display query.
+- Shared geometry is in `lib/core/theme/app_shape.dart`: cards/dialogs use 8px corners; buttons/text fields use 6px. Apply `.withCompactShapes()` after local theme customization. Keep intentional circular avatars/icons circular.
+- Use dashboard blue `0xFF2563EB` in light mode and `0xFF60A5FA` in dark mode. The user explicitly rejects brown/rose controls and dialog tints for these screens.
+- `account_sessions_screen.dart` applies a local theme to its device cards, buttons, and separately built confirmation dialogs: blue accents, white light surfaces, slate `0xFF1E293B` dark surfaces, transparent surface tint. A local Theme around Scaffold does not automatically reach a showDialog builder using the State's outer context; explicitly theme that dialog too.
+- The Home **Already a candidate** AlertDialog in `student_dashboard.dart` explicitly uses white background, transparent surface tint, dark title/body text (`0xFF0F172A` / `0xFF334155`), and blue OK text. This was an explicit user request; do not restore the inherited brown/rose dialog tint.
+
+### EleVote floating assistant behavior
+
+- Implemented on the dashboard Home overlay in `student_dashboard.dart`; visible in Light, Dark, System default, and Premium appearances. Do not gate the assistant on Premium mode. Visibility still respects the user's assistant-enabled preference.
+- Users can drag freely while touching; releasing snaps horizontally back to the original right side over 250ms while retaining the chosen vertical position. Keep bounds clear of system/app navigation. Do not leave it floating in the center or permanently move it to the opposite side.
+- The close control has a small 18px visual within a 32px tap target and sits 20px above the mascot. Keep its subtle appearance and usable touch area.
+- `lib/core/session/elevote_preferences.dart` separates the persistent enabled setting from temporary dismissal. X hides it in memory for the current foreground session; switching tabs must not restore it. Backgrounding (paused/hidden) then resuming restores it, as does a fresh process. Do not save temporary dismissal to SharedPreferences or reset a permanent disabled preference.
+
+## Password changes and logged-in devices (2026-11-01)
+
+- Settings -> **Where you're logged in** opens `lib/features/elecom/profile/account_sessions_screen.dart`. Lists device label, current-device marker, network IP, sign-in time, and last-active time; supports confirmed logout of one device or all devices. IP is not an exact location. Older sessions may lack sign-in metadata; show it as unavailable rather than inventing a time.
+- Changing or resetting a password revokes all account sessions, including the caller. The password-change screen emits `ApiClient.endSession` after success and does not try to submit a notification using its revoked session. Backend saves the account notification.
+- `lib/core/session/session_guard.dart`, installed in `lib/app/app.dart` with `sessionNavigatorKey`, masks private UI and removes all prior routes on expiry. It checks every 30 seconds while foregrounded and on resume. Network errors/404/5xx do not imply logout. Other devices are blocked on their next authenticated server request; an offline app cannot receive immediate UI logout.
+- `SessionPersistence.clear()` clears in-memory identity/cookies first, then best-effort saved state/push cleanup. Restore requires a nonempty sessionid, not just a CSRF cookie. Normal profile logout also attempts server logout before local cleanup.
+- `SessionHttpClient` attaches cookies, CSRF, same-origin Referer, and device metadata only to the configured API origin. Third-party upload hosts must never receive or replace ELECOM cookies. Emit expiry for authenticated mobile API 401 responses, excluding auth endpoints; bad credentials must not end an existing valid session. Ignore cookie/expiry results from a late request belonging to an older login.
+- Android device label comes from `MainActivity.kt` MethodChannel `com.elecom.mobile/device_info`, method `deviceName`, using manufacturer/model. No unique hardware identifier or extra permission is required. Device labels are informational, not trusted proof of a device's identity.
+
+### Backend session implementation and deployment
+
+- Source: `G:\elecom_web\backend\core\account_sessions.py`; middleware registered after EnsureSystemTablesMiddleware and before RefreshAdminRole. Uses existing `django_session` rows with DB/cached-DB SessionStore deletion; no migration or new dependency required. Other session engines are not supported by the listing/revocation implementation.
+- APIs: GET `/api/mobile/account/session/`, GET `/api/mobile/account/sessions/`, POST `/api/mobile/account/sessions/logout/` with `{session_id: <opaque id>}` or `{all: true}`. Existing `/api/mobile/account/logout/` ends the current session. Device revocation is CSRF-protected, ownership-checked, and private/no-store. GET establishes the CSRF cookie; HTTPS POST requires the same-origin Referer supplied by the client.
+- Never return or display bearer session keys. Public session IDs are HMAC-derived opaque identifiers. Session password stamps are HMAC-derived; do not store raw password hashes in session metadata. Login flushes/rotates the old session to avoid fixation and retained privilege flags. Middleware invalidates sessions after the stored password changes; legacy sessions receive a stamp on use.
+- Only trust forwarded IP headers when the immediate peer is loopback; otherwise use the direct peer. Device labels and IP are not security credentials.
+- `candidate_push.py` binds registered push tokens to sessions. Per-device logout removes its token only if another same-account session does not share it; all-device logout/password change removes all account tokens. Legacy sessions without token binding cannot guarantee per-device push unlinking. Cleanup errors must not prevent session revocation.
+- Session enumeration scans active session rows in chunks and filters by account; revisit indexing/storage if scale warrants it. Do not advertise this as constant-time account lookup.
+- Guide: `G:\elecom_web\docs\account-sessions.md`. Local implementation does not prove production deployment; check server code and actual behavior. At implementation handoff, backend changes still required deployment. No new migration is needed for this feature.
+- Focused backend verification snapshot: `python -m unittest core.test_account_sessions core.test_web_login` (26 passed), plus `python -m unittest core.test_candidate_push` (9 passed). Tests use isolated/mocked storage, not production DB. Full `manage.py check` remained blocked by existing missing numpy in the face service.
+- Mobile verification: `flutter test test/session_http_client_test.dart test/account_sessions_screen_test.dart` (8 passed). Targeted session files analyzed cleanly. Full analysis retained existing findings; do not claim the whole repository was lint-clean.
+
+## Public APK download link and release configuration
+
+- The web login **Download the ELECOM app** link is populated from the backend's `APP_UPDATE_APK_URL` (the admin-only login denial returns `apk_url`). Files: `G:\elecom_web\backend\core\settings.py`, `core/views.py`, and `frontend/org_elecom/elecom_components/elecom_js/elecom_login.js`.
+- To replace that public link, edit **production** `/var/www/elecom/backend/.env`, set `APP_UPDATE_APK_URL`, and restart Gunicorn. No website source edit, collectstatic, or APK rebuild is required for this configuration-only change. A Git pull does not update .env; even an already-up-to-date pull does not trigger post-merge deployment hooks.
+- New public link supplied by the user on 2026-11-01: `https://www.mediafire.com/file/8wu8uoy87hbc2jm/ELECOM.apk/file`. This is a public distribution URL, not a credential. Do not assume the server was updated: instructions were provided, but no server edit was performed in this session.
+- `APP_UPDATE_LATEST_VERSION` / `APP_UPDATE_LATEST_BUILD` drive the mobile update prompt. Set them to the actual uploaded APK's versionName/versionCode, not merely the latest local source. Build 27 is `1.0.0+27`; the contents of the MediaFire upload were not independently verified. Preserve `APP_UPDATE_FORCE` unless the user requests a force-policy change.
+
+### Current release/build lessons
+
+- Successful release snapshot: build 25 introduced device sessions, build 26 changed their colors, build 27 made the candidate dialog white. Latest verified local APK in this session: `1.0.0+27`, `build/app/outputs/flutter-apk/app-release.apk`. Always check current pubspec and output metadata rather than treating this historical snapshot as permanently current.
+- Limited disk/memory: use `.dart_tool/build-temp` for TEMP/TMP on G:, and run verification sequentially. Do not run duplicate analyzers because the first is quiet. Existing dashboard analysis reported 14 warnings/info notices outside the dialog change.
+- Successful low-memory build configuration (session-scoped; preserve the existing signing setup):
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\bump_and_build.ps1 -nobuild
+New-Item -ItemType Directory -Force .dart_tool\build-temp | Out-Null
+$env:TEMP = (Resolve-Path .dart_tool\build-temp).Path
+$env:TMP = $env:TEMP
+$env:GRADLE_OPTS = '-Djava.net.preferIPv4Stack=true -Dorg.gradle.jvmargs="-Xmx1536m -XX:MaxMetaspaceSize=512m -XX:ReservedCodeCacheSize=128m -XX:ActiveProcessorCount=2 -Djava.net.preferIPv4Stack=true -Dfile.encoding=UTF-8" -Dorg.gradle.workers.max=1'
+flutter build apk --release --no-pub
+```
+
+- Bump once per intended release; retry a failed/interrupted build without bumping again. One Gradle daemon start failed with FileLockContentionHandler / `java.net.BindException: Address already in use`; an IPv4-preferred retry later succeeded. This is a local build issue, not an app/API defect.
+- Release builds here took roughly 9-12 minutes and could be quiet for long stretches. Inspect exact task processes/logs before deciding one is stuck; do not kill unrelated Java/Dart/IDE processes. If an exec session disappears after interruption, inspect logs/processes and metadata before reporting completion or restarting.
+- Confirm Flutter's success output AND `build/app/outputs/apk/release/output-metadata.json` versionCode. An older app-release.apk can remain after failure. Do not offer that stale file as the new release. Build outputs/logs/caches remain ignored and must not be committed.
