@@ -55,30 +55,57 @@ class _AccountSessionsScreenState extends State<AccountSessionsScreen> {
     }
   }
 
+  ThemeData _screenTheme(BuildContext context) {
+    final base = Theme.of(context);
+    final dark = base.brightness == Brightness.dark;
+    final blue = dark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB);
+    final surface = dark ? const Color(0xFF1E293B) : Colors.white;
+    return base.copyWith(
+      colorScheme: base.colorScheme.copyWith(
+        primary: blue,
+        onPrimary: dark ? const Color(0xFF0F172A) : Colors.white,
+        secondary: blue,
+        surface: surface,
+        surfaceTint: Colors.transparent,
+      ),
+      cardTheme: base.cardTheme.copyWith(
+        color: surface,
+        surfaceTintColor: Colors.transparent,
+      ),
+      dialogTheme: base.dialogTheme.copyWith(
+        backgroundColor: surface,
+        surfaceTintColor: Colors.transparent,
+      ),
+    );
+  }
+
   Future<void> _logout({Map<String, dynamic>? session}) async {
     if (_working) return;
     final all = session == null;
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(all ? 'Log out all devices?' : 'Log out this device?'),
-        content: Text(
-          all
-              ? 'Every device, including this one, will need to sign in again.'
-              : session['is_current'] == true
-              ? 'You will return to the login screen on this device.'
-              : 'This device will need to sign in again to access your account.',
+      builder: (context) => Theme(
+        data: _screenTheme(context),
+        child: AlertDialog(
+          title: Text(all ? 'Log out all devices?' : 'Log out this device?'),
+          content: Text(
+            all
+                ? 'Every device, including this one, will need to sign in again.'
+                : session['is_current'] == true
+                ? 'You will return to the login screen on this device.'
+                : 'This device will need to sign in again to access your account.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Log out'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Log out'),
-          ),
-        ],
       ),
     );
     if (confirmed != true || !mounted) return;
@@ -119,7 +146,12 @@ class _AccountSessionsScreenState extends State<AccountSessionsScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => Theme(
+    data: _screenTheme(context),
+    child: Builder(builder: _buildContent),
+  );
+
+  Widget _buildContent(BuildContext context) {
     final color = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(title: const Text("Where you're logged in")),
