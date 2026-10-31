@@ -2032,6 +2032,12 @@ class _AnimatedPremiumAssistantBubbleState
     }
   }
 
+  void _hideTemporarily() {
+    _controller.stop();
+    setState(() => _renderBubble = false);
+    _controller.value = 0;
+  }
+
   @override
   void dispose() {
     _controller.dispose();
@@ -2087,7 +2093,38 @@ class _AnimatedPremiumAssistantBubbleState
                           child: ScaleTransition(
                             scale: _scale,
                             child: _renderBubble
-                                ? const _PremiumAssistantBubble()
+                                ? Stack(
+                                    children: [
+                                      const _PremiumAssistantBubble(),
+                                      Positioned(
+                                        top: 0,
+                                        right: 0,
+                                        child: IconButton(
+                                          tooltip: 'Hide EleVote temporarily',
+                                          onPressed: _hideTemporarily,
+                                          constraints:
+                                              const BoxConstraints.tightFor(
+                                                width: 32,
+                                                height: 32,
+                                              ),
+                                          padding: const EdgeInsets.all(6),
+                                          style: IconButton.styleFrom(
+                                            backgroundColor: Colors.white
+                                                .withValues(alpha: 0.6),
+                                            foregroundColor: Colors.black
+                                                .withValues(alpha: 0.6),
+                                            shape: const CircleBorder(),
+                                            tapTargetSize: MaterialTapTargetSize
+                                                .shrinkWrap,
+                                          ),
+                                          icon: const Icon(
+                                            Icons.close,
+                                            size: 14,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  )
                                 : const SizedBox.shrink(),
                           ),
                         ),
