@@ -1977,7 +1977,7 @@ class _AnimatedPremiumAssistantBubble extends StatefulWidget {
 
 class _AnimatedPremiumAssistantBubbleState
     extends State<_AnimatedPremiumAssistantBubble>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _opacity;
   late final Animation<double> _scale;
@@ -1985,12 +1985,27 @@ class _AnimatedPremiumAssistantBubbleState
   late final Animation<Offset> _offset;
   bool _renderBubble = false;
   Alignment _bubbleAlignment = Alignment.bottomRight;
+  late final AnimationController _snapController;
+  double _snapStartX = 1;
   final GlobalKey _bubbleKey = GlobalKey();
 
   @override
   void initState() {
     super.initState();
     _renderBubble = widget.visible;
+    _snapController =
+        AnimationController(
+          vsync: this,
+          duration: const Duration(milliseconds: 250),
+        )..addListener(() {
+          final progress = Curves.easeOutCubic.transform(_snapController.value);
+          setState(() {
+            _bubbleAlignment = Alignment(
+              _snapStartX + (1 - _snapStartX) * progress,
+              _bubbleAlignment.y,
+            );
+          });
+        });
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 820),
@@ -2041,7 +2056,14 @@ class _AnimatedPremiumAssistantBubbleState
     }
   }
 
+  void _snapToRight() {
+    if (!_renderBubble) return;
+    _snapStartX = _bubbleAlignment.x;
+    _snapController.forward(from: 0);
+  }
+
   void _hideTemporarily() {
+    _snapController.stop();
     _controller.stop();
     setState(() => _renderBubble = false);
     _controller.value = 0;
@@ -2050,6 +2072,7 @@ class _AnimatedPremiumAssistantBubbleState
 
   @override
   void dispose() {
+    _snapController.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -2067,18 +2090,28 @@ class _AnimatedPremiumAssistantBubbleState
                 child: GestureDetector(
                   key: _bubbleKey,
                   behavior: HitTestBehavior.opaque,
-                  onVerticalDragUpdate: !_renderBubble
+                  onPanStart: !_renderBubble
+                      ? null
+                      : (_) => _snapController.stop(),
+                  onPanEnd: !_renderBubble ? null : (_) => _snapToRight(),
+                  onPanCancel: !_renderBubble ? null : _snapToRight,
+                  onPanUpdate: !_renderBubble
                       ? null
                       : (details) {
                           final box =
                               _bubbleKey.currentContext?.findRenderObject()
                                   as RenderBox?;
                           if (box == null || !box.hasSize) return;
+                          final travelX = constraints.maxWidth - box.size.width;
                           final travelY =
                               constraints.maxHeight - box.size.height;
                           setState(() {
                             _bubbleAlignment = Alignment(
-                              1,
+                              travelX > 0
+                                  ? (_bubbleAlignment.x +
+                                            2 * details.delta.dx / travelX)
+                                        .clamp(-1.0, 1.0)
+                                  : 1,
                               travelY > 0
                                   ? (_bubbleAlignment.y +
                                             2 * details.delta.dy / travelY)
@@ -2164,7 +2197,7 @@ class _PremiumAssistantBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       label: 'EleVote AI assistant',
-      hint: 'Tap to open chat. Drag up or down to move.',
+      hint: 'Tap to open chat. Drag to move; returns to the right side.',
       button: true,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
