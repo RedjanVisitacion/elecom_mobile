@@ -1,0 +1,879 @@
+{
+  "results": [
+    {
+      "page": "admin_dashboard.html",
+      "width": 301,
+      "bodyWidth": 301,
+      "mainWidth": 286,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_backup_restore.html",
+      "width": 301,
+      "bodyWidth": 286,
+      "mainWidth": 271,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_candidates.html",
+      "width": 301,
+      "bodyWidth": 301,
+      "mainWidth": 301,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_candidates_files.html",
+      "width": 301,
+      "bodyWidth": 301,
+      "mainWidth": 301,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_certificate_of_candidacy.html",
+      "width": 301,
+      "bodyWidth": 301,
+      "mainWidth": 286,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_dashboard.html",
+      "width": 301,
+      "bodyWidth": 301,
+      "mainWidth": 286,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_elections.html",
+      "width": 301,
+      "bodyWidth": 301,
+      "mainWidth": 286,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_election_date.html",
+      "width": 301,
+      "bodyWidth": 301,
+      "mainWidth": 301,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_live_chat.html",
+      "width": 301,
+      "bodyWidth": 301,
+      "mainWidth": 301,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_network_authorize.html",
+      "width": 301,
+      "bodyWidth": 286,
+      "mainWidth": 271,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_register_candidate.html",
+      "width": 301,
+      "bodyWidth": 301,
+      "mainWidth": 301,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_reports.html",
+      "width": 301,
+      "bodyWidth": 301,
+      "mainWidth": 286,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_reset.html",
+      "width": 301,
+      "bodyWidth": 301,
+      "mainWidth": 301,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_results.html",
+      "width": 301,
+      "bodyWidth": 301,
+      "mainWidth": 301,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_transparency.html",
+      "width": 301,
+      "bodyWidth": 301,
+      "mainWidth": 301,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_voters.html",
+      "width": 301,
+      "bodyWidth": 301,
+      "mainWidth": 286,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "profile.html",
+      "width": 301,
+      "bodyWidth": 301,
+      "mainWidth": 301,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "search_results.html",
+      "width": 301,
+      "bodyWidth": 301,
+      "mainWidth": 301,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "admin_dashboard.html",
+      "width": 327,
+      "bodyWidth": 327,
+      "mainWidth": 312,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_backup_restore.html",
+      "width": 327,
+      "bodyWidth": 312,
+      "mainWidth": 297,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_candidates.html",
+      "width": 327,
+      "bodyWidth": 327,
+      "mainWidth": 327,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_candidates_files.html",
+      "width": 327,
+      "bodyWidth": 327,
+      "mainWidth": 327,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_certificate_of_candidacy.html",
+      "width": 327,
+      "bodyWidth": 327,
+      "mainWidth": 312,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_dashboard.html",
+      "width": 327,
+      "bodyWidth": 327,
+      "mainWidth": 312,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_elections.html",
+      "width": 327,
+      "bodyWidth": 327,
+      "mainWidth": 312,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_election_date.html",
+      "width": 327,
+      "bodyWidth": 327,
+      "mainWidth": 327,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_live_chat.html",
+      "width": 327,
+      "bodyWidth": 327,
+      "mainWidth": 327,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_network_authorize.html",
+      "width": 327,
+      "bodyWidth": 312,
+      "mainWidth": 297,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_register_candidate.html",
+      "width": 327,
+      "bodyWidth": 327,
+      "mainWidth": 327,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_reports.html",
+      "width": 327,
+      "bodyWidth": 327,
+      "mainWidth": 312,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_reset.html",
+      "width": 327,
+      "bodyWidth": 327,
+      "mainWidth": 327,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_results.html",
+      "width": 327,
+      "bodyWidth": 327,
+      "mainWidth": 327,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_transparency.html",
+      "width": 327,
+      "bodyWidth": 327,
+      "mainWidth": 327,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_voters.html",
+      "width": 327,
+      "bodyWidth": 327,
+      "mainWidth": 312,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "profile.html",
+      "width": 327,
+      "bodyWidth": 327,
+      "mainWidth": 327,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "search_results.html",
+      "width": 327,
+      "bodyWidth": 327,
+      "mainWidth": 327,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "admin_dashboard.html",
+      "width": 393,
+      "bodyWidth": 393,
+      "mainWidth": 378,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_backup_restore.html",
+      "width": 393,
+      "bodyWidth": 378,
+      "mainWidth": 363,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_candidates.html",
+      "width": 393,
+      "bodyWidth": 393,
+      "mainWidth": 393,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_candidates_files.html",
+      "width": 393,
+      "bodyWidth": 393,
+      "mainWidth": 393,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_certificate_of_candidacy.html",
+      "width": 393,
+      "bodyWidth": 393,
+      "mainWidth": 378,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_dashboard.html",
+      "width": 393,
+      "bodyWidth": 393,
+      "mainWidth": 378,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_elections.html",
+      "width": 393,
+      "bodyWidth": 393,
+      "mainWidth": 378,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_election_date.html",
+      "width": 393,
+      "bodyWidth": 393,
+      "mainWidth": 393,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_live_chat.html",
+      "width": 393,
+      "bodyWidth": 393,
+      "mainWidth": 393,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_network_authorize.html",
+      "width": 393,
+      "bodyWidth": 393,
+      "mainWidth": 378,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_register_candidate.html",
+      "width": 393,
+      "bodyWidth": 393,
+      "mainWidth": 393,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_reports.html",
+      "width": 393,
+      "bodyWidth": 393,
+      "mainWidth": 378,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_reset.html",
+      "width": 393,
+      "bodyWidth": 393,
+      "mainWidth": 393,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_results.html",
+      "width": 393,
+      "bodyWidth": 393,
+      "mainWidth": 393,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_transparency.html",
+      "width": 393,
+      "bodyWidth": 393,
+      "mainWidth": 393,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_voters.html",
+      "width": 393,
+      "bodyWidth": 393,
+      "mainWidth": 393,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "profile.html",
+      "width": 393,
+      "bodyWidth": 393,
+      "mainWidth": 393,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "search_results.html",
+      "width": 393,
+      "bodyWidth": 393,
+      "mainWidth": 393,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "admin_dashboard.html",
+      "width": 768,
+      "bodyWidth": 768,
+      "mainWidth": 753,
+      "over": [
+        "DIV.",
+        "A.btn btn-light text-primary fw-semibold"
+      ],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_backup_restore.html",
+      "width": 768,
+      "bodyWidth": 753,
+      "mainWidth": 738,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_candidates.html",
+      "width": 768,
+      "bodyWidth": 768,
+      "mainWidth": 768,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_candidates_files.html",
+      "width": 768,
+      "bodyWidth": 768,
+      "mainWidth": 768,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_certificate_of_candidacy.html",
+      "width": 768,
+      "bodyWidth": 768,
+      "mainWidth": 753,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_dashboard.html",
+      "width": 768,
+      "bodyWidth": 768,
+      "mainWidth": 753,
+      "over": [
+        "DIV.",
+        "A.btn btn-light text-primary fw-semibold"
+      ],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_elections.html",
+      "width": 768,
+      "bodyWidth": 768,
+      "mainWidth": 768,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_election_date.html",
+      "width": 768,
+      "bodyWidth": 768,
+      "mainWidth": 768,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_live_chat.html",
+      "width": 768,
+      "bodyWidth": 768,
+      "mainWidth": 768,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_network_authorize.html",
+      "width": 768,
+      "bodyWidth": 768,
+      "mainWidth": 753,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_register_candidate.html",
+      "width": 768,
+      "bodyWidth": 768,
+      "mainWidth": 768,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_reports.html",
+      "width": 768,
+      "bodyWidth": 768,
+      "mainWidth": 753,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_reset.html",
+      "width": 768,
+      "bodyWidth": 768,
+      "mainWidth": 768,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_results.html",
+      "width": 768,
+      "bodyWidth": 768,
+      "mainWidth": 768,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_transparency.html",
+      "width": 768,
+      "bodyWidth": 768,
+      "mainWidth": 768,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_voters.html",
+      "width": 768,
+      "bodyWidth": 768,
+      "mainWidth": 768,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "profile.html",
+      "width": 768,
+      "bodyWidth": 768,
+      "mainWidth": 768,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "search_results.html",
+      "width": 768,
+      "bodyWidth": 768,
+      "mainWidth": 768,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "admin_dashboard.html",
+      "width": 980,
+      "bodyWidth": 980,
+      "mainWidth": 965,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_backup_restore.html",
+      "width": 980,
+      "bodyWidth": 980,
+      "mainWidth": 965,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_candidates.html",
+      "width": 980,
+      "bodyWidth": 980,
+      "mainWidth": 980,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_candidates_files.html",
+      "width": 980,
+      "bodyWidth": 980,
+      "mainWidth": 980,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_certificate_of_candidacy.html",
+      "width": 980,
+      "bodyWidth": 980,
+      "mainWidth": 965,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_dashboard.html",
+      "width": 980,
+      "bodyWidth": 980,
+      "mainWidth": 965,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_elections.html",
+      "width": 980,
+      "bodyWidth": 980,
+      "mainWidth": 980,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_election_date.html",
+      "width": 980,
+      "bodyWidth": 980,
+      "mainWidth": 980,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_live_chat.html",
+      "width": 980,
+      "bodyWidth": 980,
+      "mainWidth": 980,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_network_authorize.html",
+      "width": 980,
+      "bodyWidth": 980,
+      "mainWidth": 965,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_register_candidate.html",
+      "width": 980,
+      "bodyWidth": 980,
+      "mainWidth": 980,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_reports.html",
+      "width": 980,
+      "bodyWidth": 980,
+      "mainWidth": 965,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_reset.html",
+      "width": 980,
+      "bodyWidth": 980,
+      "mainWidth": 980,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_results.html",
+      "width": 980,
+      "bodyWidth": 980,
+      "mainWidth": 980,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_transparency.html",
+      "width": 980,
+      "bodyWidth": 980,
+      "mainWidth": 980,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_voters.html",
+      "width": 980,
+      "bodyWidth": 980,
+      "mainWidth": 980,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "profile.html",
+      "width": 980,
+      "bodyWidth": 980,
+      "mainWidth": 980,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "search_results.html",
+      "width": 980,
+      "bodyWidth": 980,
+      "mainWidth": 980,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "admin_dashboard.html",
+      "width": 1440,
+      "bodyWidth": 1440,
+      "mainWidth": 1205,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_backup_restore.html",
+      "width": 1440,
+      "bodyWidth": 1425,
+      "mainWidth": 1190,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_candidates.html",
+      "width": 1440,
+      "bodyWidth": 1440,
+      "mainWidth": 1205,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_candidates_files.html",
+      "width": 1440,
+      "bodyWidth": 1440,
+      "mainWidth": 1205,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_certificate_of_candidacy.html",
+      "width": 1440,
+      "bodyWidth": 1440,
+      "mainWidth": 1205,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_dashboard.html",
+      "width": 1440,
+      "bodyWidth": 1440,
+      "mainWidth": 1205,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_elections.html",
+      "width": 1440,
+      "bodyWidth": 1440,
+      "mainWidth": 1205,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_election_date.html",
+      "width": 1440,
+      "bodyWidth": 1440,
+      "mainWidth": 1205,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_live_chat.html",
+      "width": 1440,
+      "bodyWidth": 1440,
+      "mainWidth": 1205,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_network_authorize.html",
+      "width": 1440,
+      "bodyWidth": 1425,
+      "mainWidth": 1190,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_register_candidate.html",
+      "width": 1440,
+      "bodyWidth": 1440,
+      "mainWidth": 1205,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_reports.html",
+      "width": 1440,
+      "bodyWidth": 1425,
+      "mainWidth": 1190,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_reset.html",
+      "width": 1440,
+      "bodyWidth": 1440,
+      "mainWidth": 1205,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_results.html",
+      "width": 1440,
+      "bodyWidth": 1440,
+      "mainWidth": 1205,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_transparency.html",
+      "width": 1440,
+      "bodyWidth": 1440,
+      "mainWidth": 1205,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "elecom_voters.html",
+      "width": 1440,
+      "bodyWidth": 1440,
+      "mainWidth": 1180,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "profile.html",
+      "width": 1440,
+      "bodyWidth": 1440,
+      "mainWidth": 1205,
+      "over": [],
+      "bootstrap": true
+    },
+    {
+      "page": "search_results.html",
+      "width": 1440,
+      "bodyWidth": 1440,
+      "mainWidth": 1205,
+      "over": [],
+      "bootstrap": true
+    }
+  ],
+  "phone": {
+    "width": 393,
+    "viewport": "width=393, initial-scale=1, viewport-fit=cover",
+    "touch": 5
+  }
+}

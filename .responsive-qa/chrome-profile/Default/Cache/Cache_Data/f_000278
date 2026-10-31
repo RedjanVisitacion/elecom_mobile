@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en" class="dashboard-viewport">
+<head>
+    <style>html { background: #F0F4F8; } @view-transition { navigation: auto; }</style>
+    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="/static/org_elecom/elecom_admin/admin_components/admin_js/admin_viewport.js?v=20261031-phone1"></script>
+    
+    <title>ELECOM | Dashboard</title>
+    <link rel="icon" type="image/png" href="/static/assets/no_bg_elecom.png?v=20261029-favicon1">
+    <link rel="shortcut icon" type="image/png" href="/static/assets/no_bg_elecom.png?v=20261029-favicon1">
+    <link rel="apple-touch-icon" href="/static/assets/no_bg_elecom.png?v=20261029-favicon1">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/org_elecom/elecom_admin/admin_components/admin_css/admin_dashboard.css?v=20261029-small-center-loader1">
+    <link rel="stylesheet" href="/static/org_elecom/elecom_admin/admin_components/admin_css/dashboard_overview.css?v=20261029-campus-hero1">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="/static/org_elecom/elecom_admin/admin_components/admin_css/admin_mobile.css?v=20261031-all-pages5">
+    <link rel="stylesheet" href="/static/org_elecom/elecom_admin/admin_components/admin_css/dashboard_turnout.css?v=20261029-turnout1">
+</head>
+<body data-admin-page="admin_dashboard.html" class="admin-framed-shell theme-elecom dashboard-page">
+<nav class="top-navbar"><div class="admin-frame-brand"><img class="admin-frame-ustp-logo" src="/static/assets/ustp-logo.png" alt="USTP"><img class="admin-frame-logo" src="/static/assets/elecom.png" alt="ELECOM"><span class="admin-frame-title">Electoral Commission</span></div>
+            <button class="menu-toggle" id="menuToggle">
+                <i class="bi bi-list"></i>
+            </button>
+            <div id="userMenuMount"></div>
+        </nav>
+
+    <!-- Sidebar Overlay for Mobile -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-header-content">
+                <button type="button" class="sidebar-collapse-toggle" id="sidebarCollapseToggle" aria-controls="sidebar" aria-expanded="true" aria-label="Collapse navigation" title="Collapse navigation">
+                    <i class="bi bi-list" aria-hidden="true"></i>
+                </button>
+                <div class="logo-container">
+                    <img src="/static/assets/elecom.png" alt="ELECOM Logo" onerror="this.onerror=null;this.src='/static/assets/elecom.png';">
+                    <img class="wordmark" src="/static/assets/img_text/elecom_white1.png" alt="Electoral Commission">
+                </div>
+            </div>
+        </div>
+        <div class="sidebar-menu">
+            <ul class="nav flex-column">
+            <li class="nav-section-label">Overview</li>
+            <li class="nav-item"><a class="nav-link active" href="/static/org_elecom/elecom_admin/admin_dashboard.html" aria-current="page"><i class="bi bi-grid" aria-hidden="true"></i><span>Dashboard</span></a></li>
+            <li class="nav-section-label">Election Operations</li>
+            <li class="nav-item"><a class="nav-link" href="/static/org_elecom/elecom_admin/elecom_elections.html"><i class="bi bi-calendar2-range" aria-hidden="true"></i><span>Election Management</span></a></li>
+            <li class="nav-item">
+            <a class="nav-link" href="#candidatesSubmenu" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="candidatesSubmenu"><i class="bi bi-people" aria-hidden="true"></i><span>Candidates</span><i class="bi bi-chevron-right chevron ms-auto" aria-hidden="true"></i></a>
+            <div class="collapse candidates-submenu" id="candidatesSubmenu">
+            <ul class="nav flex-column">
+            <li class="nav-item"><a class="nav-link" href="/static/org_elecom/elecom_admin/elecom_candidates.html"><i class="bi bi-people" aria-hidden="true"></i><span>List Candidates</span></a></li>
+            <li class="nav-item"><a class="nav-link" href="/static/org_elecom/elecom_admin/elecom_register_candidate.html"><i class="bi bi-person-plus" aria-hidden="true"></i><span>Register Candidate</span></a></li>
+            <li class="nav-item"><a class="nav-link" href="/static/org_elecom/elecom_admin/elecom_candidates_files.html"><i class="bi bi-folder2-open" aria-hidden="true"></i><span>Candidate Files</span></a></li>
+            <li class="nav-item"><a class="nav-link" href="/static/org_elecom/elecom_admin/elecom_certificate_of_candidacy.html"><i class="bi bi-file-earmark-pdf" aria-hidden="true"></i><span>Certificate of Candidacy</span></a></li>
+            </ul>
+            </div>
+            </li>
+            <li class="nav-item"><a class="nav-link" href="/static/org_elecom/elecom_admin/elecom_network_authorize.html"><i class="bi bi-wifi" aria-hidden="true"></i><span>Network Authorization</span></a></li>
+            <li class="nav-section-label">Insights &amp; Reports</li>
+            <li class="nav-item"><a class="nav-link" href="/static/org_elecom/elecom_admin/elecom_results.html"><i class="bi bi-graph-up" aria-hidden="true"></i><span>Election Results</span></a></li>
+            <li class="nav-item"><a class="nav-link" href="/static/org_elecom/elecom_admin/elecom_reports.html"><i class="bi bi-file-earmark-bar-graph" aria-hidden="true"></i><span>Generate Reports</span></a></li>
+            <li class="nav-section-label">System &amp; Support</li>
+            <li class="nav-item"><a class="nav-link" href="/static/org_elecom/elecom_admin/elecom_transparency.html"><i class="bi bi-shield-check" aria-hidden="true"></i><span>Transparency Logs</span></a></li>
+            <li class="nav-item"><a class="nav-link" href="/static/org_elecom/elecom_admin/elecom_backup_restore.html"><i class="bi bi-database" aria-hidden="true"></i><span>Backup &amp; Restore</span></a></li>
+            <li class="nav-item"><a class="nav-link" href="/static/org_elecom/elecom_admin/elecom_live_chat.html"><i class="bi bi-chat-dots" aria-hidden="true"></i><span>Live Support Chat</span></a></li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Candidate Detail Modal -->
+    <div class="modal fade" id="candidateModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="d-flex align-items-center gap-2">
+                        <img id="cd_photo" src="" alt="Profile" class="rounded-circle border" style="width:42px;height:42px;object-fit:cover;display:none;">
+                        <h5 class="modal-title mb-0">Candidate Details</h5>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="form-floating">
+                                <input type="text" class="form-control" id="cd_name" readonly>
+                                <label for="cd_name">Name</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-floating">
+                                <input type="text" class="form-control" id="cd_student_id" readonly>
+                                <label for="cd_student_id">Student ID</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-floating">
+                                <input type="text" class="form-control" id="cd_position" readonly>
+                                <label for="cd_position">Position</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-floating">
+                                <input type="text" class="form-control" id="cd_org" readonly>
+                                <label for="cd_org">Organization</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-floating">
+                                <input type="text" class="form-control" id="cd_program" readonly>
+                                <label for="cd_program">Program</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-floating">
+                                <input type="text" class="form-control" id="cd_year" readonly>
+                                <label for="cd_year">Year/Section</label>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Platform</label>
+                            <div class="p-2 border rounded" id="cd_platform" style="min-height:64px;"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Navbar -->
+
+
+        <!-- Content Area -->
+        <div class="content-area">
+            <!-- Election Countdown -->
+            <div class="election-banner">
+                <div class="card election-hero-card">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 election-banner-layout">
+                            <div>
+                                <div class="fw-semibold fs-5">USTP-OROQUIETA Election</div>
+                                <div class="opacity-75">General Election for Legislative Assembly</div>
+                                <div class="small mt-2">
+                                    <span id="electionHelperText" class="election-state-badge" role="status">Loading election status...</span>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center gap-3 election-countdown">
+                                <div class="text-center">
+                                    <div id="ec_days" class="fs-3 fw-bold">00</div>
+                                    <div class="small">days</div>
+                                </div>
+                                <div class="text-center">
+                                    <div id="ec_hours" class="fs-3 fw-bold">00</div>
+                                    <div class="small">hours</div>
+                                </div>
+                                <div class="text-center">
+                                    <div id="ec_mins" class="fs-3 fw-bold">00</div>
+                                    <div class="small">mins</div>
+                                </div>
+                                <div class="text-center">
+                                    <div id="ec_secs" class="fs-3 fw-bold">00</div>
+                                    <div class="small">sec</div>
+                                </div>
+                            </div>
+                            <div>
+                                <a href="/static/org_elecom/elecom_admin/elecom_elections.html" class="btn btn-light text-primary fw-semibold">Manage</a>
+                            </div>
+                        </div>
+                        <div id="vwInfo" class="small election-schedule" style="display:none;"><div class="text-muted">Start: <span id="vwStartText"></span></div><div class="text-muted">End: <span id="vwEndText"></span></div><div class="text-muted">Status: <span id="vwStatusText"></span></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <section class="dashboard-overview" aria-label="Election overview">
+                <div class="row g-3 dashboard-stats">
+                        <div class="col-12 col-sm-6 col-xl-3">
+                            <div class="card h-100">
+                                <div class="card-body d-flex align-items-center">
+                                    <div class="stat-icon text-primary">
+                                        <i class="bi bi-people" style="font-size: 2rem;"></i>
+                                    </div>
+                                    <div>
+                                        <div class="small text-muted">Total Candidates</div>
+                                        <div class="h3 mb-0" id="kpiCandidates">0</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-sm-6 col-xl-3">
+                            <div class="card h-100" id="totalVotersCard">
+                                <div class="card-body d-flex align-items-center">
+                                    <div class="stat-icon text-primary">
+                                        <i class="bi bi-person-vcard" style="font-size: 2rem;"></i>
+                                    </div>
+                                    <div>
+                                        <div class="small text-muted">Total Voters</div>
+                                        <div class="h3 mb-0" id="kpiVoters">0</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-sm-6 col-xl-3">
+                            <div class="card h-100">
+                                <div class="card-body d-flex align-items-center">
+                                    <div class="stat-icon text-primary">
+                                        <i class="bi bi-check2-square" style="font-size: 2rem;"></i>
+                                    </div>
+                                    <div>
+                                        <div class="small text-muted">Total Cast Votes</div>
+                                        <div class="h3 mb-0" id="kpiCastVotes">0</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-sm-6 col-xl-3">
+                            <div class="card h-100">
+                                <div class="card-body d-flex align-items-center">
+                                    <div class="stat-icon text-primary">
+                                        <i class="bi bi-hourglass-split" style="font-size: 2rem;"></i>
+                                    </div>
+                                    <div>
+                                        <div class="small text-muted">Total Not Voted</div>
+                                        <div class="h3 mb-0" id="kpiNotVoted">0</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                <div class="dashboard-grid">
+                    <div class="dashboard-primary">
+                        <section class="card turnout-card" aria-labelledby="turnoutTitle">
+                            <div class="card-body">
+                                <div class="overview-card-heading">
+                                    <div><span class="overview-eyebrow">PARTICIPATION</span><h2 id="turnoutTitle">Voter turnout</h2></div>
+                                    <strong id="turnoutPercent" class="mountain-turnout-percent">--</strong>
+                                </div>
+                                <p id="turnoutSummary" class="mountain-turnout-summary">Loading election totals...</p>
+                                <div id="turnoutProgress" class="turnout-progress" role="progressbar" aria-label="Overall voter participation" aria-valuemin="0" aria-valuemax="100" aria-valuetext="Loading participation totals"><span id="turnoutProgressFill"></span></div>
+                                <div class="turnout-activity-heading"><span><i class="bi bi-bar-chart" aria-hidden="true"></i> Hourly voting activity</span><span id="turnoutActivityState" class="turnout-activity-state">Loading</span></div>
+                                <div class="turnout-chart-region">
+                                    <div class="turnout-plot" id="turnoutPlot" hidden><canvas id="turnoutLineChart" role="img" aria-label="Hourly votes cast during election hours" aria-describedby="turnoutLineCaption"></canvas></div>
+                                    <div class="turnout-empty" id="turnoutEmpty" role="status">
+                                      <div class="turnout-participation-ring" id="turnoutParticipationRing" aria-hidden="true"><div><strong id="turnoutRingCount">—</strong><span>voters participated</span></div></div>
+                                      <div class="turnout-empty-copy"><strong id="turnoutEmptyTitle">Loading hourly activity</strong><p id="turnoutEmptyMessage">Overall participation and hourly activity will appear when the election data loads.</p></div>
+                                    </div>
+                                </div>
+                                <p id="turnoutLineCaption" class="chart-caption">Loading hourly turnout...</p>
+                                <div class="turnout-data-accessible" id="turnoutDataTable"></div>
+                                <p id="turnoutChartStatus" class="chart-status" role="status" hidden></p>
+                            </div>
+                        </section>
+                    </div>
+                    <aside class="dashboard-secondary" aria-label="Election activities">
+                        <section class="card compact-calendar" aria-labelledby="activitiesTitle">
+                            <div class="card-body d-flex flex-column">
+                                <div class="activities-heading">
+                                    <h2 id="activitiesTitle"><i class="bi bi-calendar3" aria-hidden="true"></i>Activities</h2>
+                                    <button type="button" class="btn btn-sm activities-new-event" id="btnNewCalEvent"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>New event</button>
+                                </div>
+                                <div class="activities-month-navigation">
+                                    <button type="button" class="btn btn-sm btn-link" id="calPrevMonth" aria-label="Previous month"><i class="bi bi-chevron-left" aria-hidden="true"></i></button>
+                                    <strong id="calMonthLabel" aria-live="polite"></strong>
+                                    <button type="button" class="btn btn-sm btn-link" id="calNextMonth" aria-label="Next month"><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+                                </div>
+                                <div id="activitiesCalendarGrid"></div>
+                            </div>
+                            <div id="calDayEvents" class="calendar-event-overlay" role="region" aria-labelledby="calDayEventsLabel" hidden>
+                                <div class="d-flex align-items-center justify-content-between mb-2"><strong id="calDayEventsLabel"></strong><button type="button" class="btn btn-sm btn-link" id="calDayEventsClose" aria-label="Back to calendar"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>
+                                <div id="calDayEventsList"></div>
+                            </div>
+                        </section>
+                    </aside>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Detailed totals are outside the fixed dashboard grid. -->
+
+
+    <!-- New Event Modal -->
+    <div class="modal fade" id="calEventModal" tabindex="-1" aria-labelledby="calEventModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="calEventModalTitle"><i class="bi bi-calendar-plus me-2 text-warning"></i>New event</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-danger d-none" id="calEventError"></div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="activityTypeToggle">
+                            Activity type <span class="text-danger">*</span>
+                        </label>
+                        <button type="button" id="activityTypeToggle" class="form-select activity-type-toggle" aria-expanded="false" aria-controls="activityTypeMenu">Select activity</button>
+                        <select id="calEventType" hidden aria-hidden="true" tabindex="-1">
+                            <option value="" disabled selected>Select activity</option>
+                            <optgroup label="Election Calendar (Article VII)">
+                                <option value="Dissemination of Election Information">Dissemination of Election Information</option>
+                                <option value="Filing of Certificates of Candidacy">Filing of Certificates of Candidacy</option>
+                                <option value="Submission of Requirements">Submission of Requirements</option>
+                                <option value="Submission of Individual Platform">Submission of Individual Platform</option>
+                                <option value="Submission of Affidavit of Undertaking">Submission of Affidavit of Undertaking</option>
+                                <option value="Deliberation on Protests / Official List of Candidates">Deliberation on Protests / Official List of Candidates</option>
+                                <option value="Start of Official Campaign Period">Start of Official Campaign Period</option>
+                                <option value="Miting de Avance">Miting de Avance</option>
+                                <option value="Election Day (Voting)">Election Day (Voting)</option>
+                                <option value="Announcement of Winners">Announcement of Winners</option>
+                                <option value="Proclamation of Winning Candidates">Proclamation of Winning Candidates</option>
+                                <option value="Induction of Newly Elected Officers">Induction of Newly Elected Officers</option>
+                            </optgroup>
+                            <optgroup label="COMELEC Activities">
+                                <option value="COMELEC Meeting">COMELEC Meeting</option>
+                                <option value="COMELEC Orientation">COMELEC Orientation</option>
+                                <option value="Poll Clerk / Marshal Training">Poll Clerk / Marshal Training</option>
+                                <option value="Voters Education Drive">Voters Education Drive</option>
+                                <option value="Candidacy Protest Hearing">Candidacy Protest Hearing</option>
+                                <option value="Post-Election Protest Hearing">Post-Election Protest Hearing</option>
+                                <option value="Canvassing of Votes">Canvassing of Votes</option>
+                                <option value="Release of Official Results">Release of Official Results</option>
+                            </optgroup>
+                            <optgroup label="Other">
+                                <option value="__custom__">Other (type your own)</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <!-- Custom title - shown only when "Other" is selected -->
+                    <div class="mb-3 d-none" id="calCustomTitleWrap">
+                        <label class="form-label fw-semibold" for="calEventTitle">
+                            Custom title <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" class="form-control" id="calEventTitle" placeholder="Enter activity name" maxlength="255">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="event_date_range">Date range <span class="text-danger">*</span></label>
+                        <input type="text" id="event_date_range" class="form-control" placeholder="Select start &amp; end date" aria-describedby="eventDateHelp">
+                        <div id="eventDateHelp" class="form-text">Select one date for a single-day event, or two dates for a range.</div>
+                        <input type="hidden" id="calEventDate" name="start_date">
+                        <input type="hidden" id="calEventEndDate" name="end_date">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="event_time_range">Time range</label>
+                        <select id="event_time_range" class="form-select">
+                            <option value="all_day">All Day</option>
+                            <option value="08:00|12:00">08:00 AM - 12:00 PM</option>
+                            <option value="13:00|17:00">01:00 PM - 05:00 PM</option>
+                            <option value="custom">Custom times</option>
+                        </select>
+                        <div class="row g-2 mt-1 d-none" id="eventCustomTimes">
+                            <div class="col-6"><label class="form-label" for="calEventStartTime">From</label><select id="calEventStartTime" class="form-select"></select></div>
+                            <div class="col-6"><label class="form-label" for="calEventEndTime">To</label><select id="calEventEndTime" class="form-select"></select></div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="calEventLocation">Location <span class="text-muted fw-normal">(optional)</span></label>
+                        <input type="text" class="form-control" id="calEventLocation" placeholder="e.g. USTP Covered Court" maxlength="255">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="calEventDescription">Description <span class="text-muted fw-normal">(optional)</span></label>
+                        <textarea class="form-control" id="calEventDescription" rows="3" placeholder="Additional details about this activity"></textarea>
+                    </div>
+
+                    <div class="mb-1">
+                        <label class="form-label fw-semibold" for="calEventColor">Color</label>
+                        <div class="d-flex gap-2 flex-wrap" id="calColorPicker">
+                            <label class="cal-color-opt" style="--c:#1D4ED8;" title="Blue"><input type="radio" name="calColor" value="#1D4ED8" checked><span></span></label>
+                            <label class="cal-color-opt" style="--c:#16A34A;" title="Green"><input type="radio" name="calColor" value="#16A34A"><span></span></label>
+                            <label class="cal-color-opt" style="--c:#DC2626;" title="Red"><input type="radio" name="calColor" value="#DC2626"><span></span></label>
+                            <label class="cal-color-opt" style="--c:#D97706;" title="Amber"><input type="radio" name="calColor" value="#D97706"><span></span></label>
+                            <label class="cal-color-opt" style="--c:#7C3AED;" title="Purple"><input type="radio" name="calColor" value="#7C3AED"><span></span></label>
+                            <label class="cal-color-opt" style="--c:#0891B2;" title="Cyan"><input type="radio" name="calColor" value="#0891B2"><span></span></label>
+                            <label class="cal-color-opt" style="--c:#475569;" title="Slate"><input type="radio" name="calColor" value="#475569"><span></span></label>
+                        </div>
+                    </div>
+                </div>
+                <div id="activityTypeMenu" class="activity-type-menu" hidden>
+                    <div class="activity-type-search-wrap">
+                        <label class="visually-hidden" for="activityTypeSearch">Search activity</label>
+                        <input type="search" id="activityTypeSearch" class="form-control" placeholder="Search activity..." autocomplete="off">
+                    </div>
+                    <div id="activityTypeResults" class="activity-type-results" aria-label="Activity choices"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-warning fw-semibold" id="btnSaveCalEvent">
+                        <i class="bi bi-check-lg me-1"></i>Save
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+    /* Color picker swatches */
+    .cal-color-opt { cursor:pointer; margin:0; }
+    .cal-color-opt input[type=radio] { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; border:0; }
+    .cal-color-opt span {
+        display:block; width:22px; height:22px; border-radius:50%;
+        background:var(--c); border:2px solid transparent;
+        transition:border-color .15s, transform .15s;
+    }
+    .cal-color-opt input[type=radio]:checked + span {
+        border-color:#fff; outline:2px solid #64748b; outline-offset:2px;
+    }
+    /* Activity calendar grid */
+    #activitiesCalendarGrid table { width:100%; table-layout:fixed; }
+    #activitiesCalendarGrid th {
+        text-align:center; font-size:11px; color:#6b7280;
+        font-weight:600; border:0; padding:2px 0;
+    }
+    #activitiesCalendarGrid td { border:0; padding:2px; text-align:center; }
+    .acal-day {
+        width:30px; height:30px; line-height:30px; font-size:12px;
+        border-radius:6px; display:inline-block; cursor:pointer;
+        transition:background .12s;
+        position:relative;
+    }
+
+    .acal-day.is-today { box-shadow:0 0 0 2px #1D4ED8; font-weight:700; }
+    .acal-day.is-selected { background:#1D4ED8 !important; color:#fff !important; }
+    .acal-dot {
+        position:absolute; bottom:2px; left:50%; transform:translateX(-50%);
+        width:5px; height:5px; border-radius:50%;
+    }
+    /* Day events list */
+    .cal-event-chip {
+        display:flex; align-items:flex-start; gap:8px;
+        background:#f8fafc; border-radius:7px;
+        padding:6px 10px; margin-bottom:5px; font-size:12px;
+    }
+    .cal-event-chip-dot {
+        width:8px; height:8px; border-radius:50%;
+        flex-shrink:0; margin-top:3px;
+    }
+    .cal-event-chip-body { flex:1; min-width:0; }
+    .cal-event-chip-title { font-weight:600; line-height:1.3; }
+    .cal-event-chip-meta { color:#6b7280; font-size:11px; }
+    .cal-event-del {
+        background:none; border:none; color:#9ca3af; cursor:pointer;
+        padding:0 2px; line-height:1; font-size:13px;
+    }
+    .cal-event-del:hover { color:#DC2626; }
+    </style>
+
+    <div class="modal fade" id="votersAccessModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Admin Password Required</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted mb-3">Enter your admin password to open voters management.</p>
+                    <label class="form-label" for="votersAccessPassword">Password</label>
+                    <input type="password" class="form-control" id="votersAccessPassword" autocomplete="current-password">
+                    <div class="invalid-feedback d-block mt-2" id="votersAccessError" style="display:none!important;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-dark" id="votersAccessConfirmBtn">
+                        <i class="bi bi-shield-lock"></i> Continue
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+    
+
+    
+    
+    
+    
+    
+<div id="adminNavigationLoading" class="admin-navigation-loading" role="status" aria-live="polite" aria-atomic="true" tabindex="-1" hidden><div class="admin-navigation-loading-message"><span class="admin-loading-emblem" aria-hidden="true"><img src="/static/assets/no_bg_elecom.png?v=20261029-favicon1" alt=""></span><strong>Loading…</strong><p class="admin-loading-detail">Please wait while we open the next page. No need to click again.</p><button type="button" class="btn btn-outline-secondary btn-sm admin-loading-cancel" hidden>Cancel navigation</button></div></div>
+<noscript><span id="admin-page-ready" hidden></span></noscript>
+</body>
+</html>

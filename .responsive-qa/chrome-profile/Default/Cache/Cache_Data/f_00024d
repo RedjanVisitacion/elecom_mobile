@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <style>html { background: #F0F4F8; } @view-transition { navigation: auto; }</style>
+    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="/static/org_elecom/elecom_admin/admin_components/admin_js/admin_viewport.js?v=20261031-phone1"></script>
+    
+    <title>ELECOM | Register Candidate</title>
+    <link rel="icon" type="image/png" href="/static/assets/no_bg_elecom.png?v=20261029-favicon1">
+    <link rel="shortcut icon" type="image/png" href="/static/assets/no_bg_elecom.png?v=20261029-favicon1">
+    <link rel="apple-touch-icon" href="/static/assets/no_bg_elecom.png?v=20261029-favicon1">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/static/org_elecom/elecom_admin/admin_components/admin_css/admin_dashboard.css?v=20261029-small-center-loader1">
+    <style>
+
+.reg-candidate-page #submitBtn { background:#0284c7; border-color:#0284c7; color:#fff; font-weight:600; }
+.reg-candidate-page #submitBtn:hover { background:#0369a1; border-color:#0369a1; }
+.reg-candidate-page [data-app-decision="approve"] { background:#16a34a; border-color:#16a34a; color:#fff; font-weight:600; }
+.reg-candidate-page [data-app-decision="approve"]:hover { background:#15803d; border-color:#15803d; }
+.reg-candidate-page [data-app-decision="reject"] { background:transparent; border-color:#dc2626; color:#dc2626; }
+.reg-candidate-page [data-app-decision="reject"]:hover { background:#dc2626; color:#fff; }
+.candidate-upload-zone { position:relative; display:flex; flex-direction:column; align-items:center; gap:6px; width:100%; border:2px dashed #cbd5e1; border-radius:8px; padding:12px; text-align:center; cursor:pointer; background:#f8fafc; }
+.candidate-upload-zone:hover, .candidate-upload-zone:focus-within, .candidate-upload-zone.is-dragging { border-color:#0284c7; background:#f0f9ff; }
+.candidate-upload-zone input[type="file"] { position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; }
+.candidate-upload-zone .upload-filename { max-width:100%; overflow-wrap:anywhere; color:#64748b; font-size:13px; }
+
+#registerCandidateForm [hidden] { display:none !important; }
+.candidate-stepper { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; list-style:none; margin:0 0 16px; padding:0; }
+.wizard-step-control { display:flex; align-items:center; gap:8px; width:100%; padding:10px 8px; border:1px solid #e2e8f0; border-radius:8px; background:#f8fafc; color:#64748b; font-size:13px; text-align:left; }
+.wizard-step-number { display:grid; place-items:center; flex:0 0 26px; height:26px; border-radius:50%; background:#e2e8f0; font-weight:600; }
+.wizard-step-control[aria-current="step"] { border-color:#0284c7; background:#f0f9ff; color:#0369a1; font-weight:600; }
+.wizard-step-control[aria-current="step"] .wizard-step-number { background:#0284c7; color:white; }
+.wizard-step-control.is-complete .wizard-step-number { background:#dcfce7; color:#15803d; }
+.wizard-step-control:focus-visible { outline:2px solid #0284c7; outline-offset:2px; }
+.wizard-step-control:disabled { cursor:default; opacity:.65; }
+.candidate-wizard-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:18px; padding-top:12px; border-top:1px solid #e2e8f0; }
+#registerCandidateForm .wizard-step .row { --bs-gutter-y:10px; }
+#registerCandidateForm .wizard-step .form-label { margin-bottom:4px; }
+#registerCandidateForm #wizardNextBtn { background:#0284c7; border-color:#0284c7; color:white; font-weight:600; }
+#registerCandidateForm #wizardNextBtn:hover { background:#0369a1; border-color:#0369a1; }
+@media(max-width:767px) { .candidate-stepper { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+        .reg-collapse-chevron { transition: transform .2s ease; }
+        [aria-expanded="false"] .reg-collapse-chevron { transform: rotate(-180deg); }
+    /* Align both registration cards with the breadcrumb edges. */
+.reg-candidate-page .reg-page-container { width:100%; max-width:none; margin:0; }
+@media(max-width:575px) {
+  body.admin-framed-shell.reg-candidate-page .content-area { padding-left:12px; padding-right:12px; }
+}
+</style>
+<style>
+.candidate-preview-modal .modal-content { overflow:hidden; }
+.candidate-preview-modal .modal-title { font-size:15px; overflow-wrap:anywhere; }
+#candidatePreviewBody { height:72vh; min-height:300px; padding:0; display:flex; align-items:center; justify-content:center; background:#f3f4f6; overflow:auto; }
+.candidate-preview-photo { width:100%; height:100%; object-fit:contain; padding:12px; }
+.candidate-preview-pdf { width:100%; height:100%; border:0; }
+.preview-message { padding:24px; margin:0; max-width:650px; text-align:center; color:#6b7280; }
+@media(max-width:576px) { #candidatePreviewBody { height:auto; flex:1; min-height:0; } .candidate-preview-modal .modal-content { height:100%; } }
+
+</style>
+    <link rel="stylesheet" href="/static/org_elecom/elecom_admin/admin_components/admin_css/admin_mobile.css?v=20261031-all-pages5">
+</head>
+<body data-admin-page="elecom_register_candidate.html" class="admin-framed-shell theme-elecom reg-candidate-page">
+<nav class="top-navbar"><div class="admin-frame-brand"><img class="admin-frame-ustp-logo" src="/static/assets/ustp-logo.png" alt="USTP"><img class="admin-frame-logo" src="/static/assets/elecom.png" alt="ELECOM"><span class="admin-frame-title">Electoral Commission</span></div>
+            <button class="menu-toggle" id="menuToggle">
+                <i class="bi bi-list"></i>
+            </button>
+            <div id="userMenuMount"></div>
+        </nav>
+
+    <!-- Sidebar Overlay for Mobile -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-header-content">
+                <button type="button" class="sidebar-collapse-toggle" id="sidebarCollapseToggle" aria-controls="sidebar" aria-expanded="true" aria-label="Collapse navigation" title="Collapse navigation">
+                    <i class="bi bi-list" aria-hidden="true"></i>
+                </button>
+                <div class="logo-container">
+                    <img class="sidebar-logo" src="/static/assets/elecom.png" alt="ELECOM Logo" onerror="this.onerror=null;this.src='/static/assets/elecom.png';">
+                    <img class="wordmark" src="/static/assets/img_text/elecom_white1.png" alt="Electoral Commission">
+                </div>
+            </div>
+        </div>
+        <div class="sidebar-menu">
+            <ul class="nav flex-column">
+            <li class="nav-section-label">Overview</li>
+            <li class="nav-item"><a class="nav-link" href="/static/org_elecom/elecom_admin/admin_dashboard.html"><i class="bi bi-grid" aria-hidden="true"></i><span>Dashboard</span></a></li>
+            <li class="nav-section-label">Election Operations</li>
+            <li class="nav-item"><a class="nav-link" href="/static/org_elecom/elecom_admin/elecom_elections.html"><i class="bi bi-calendar2-range" aria-hidden="true"></i><span>Election Management</span></a></li>
+            <li class="nav-item">
+            <a class="nav-link active" href="#candidatesSubmenu" data-bs-toggle="collapse" role="button" aria-expanded="true" aria-controls="candidatesSubmenu"><i class="bi bi-people" aria-hidden="true"></i><span>Candidates</span><i class="bi bi-chevron-right chevron ms-auto" aria-hidden="true"></i></a>
+            <div class="collapse candidates-submenu show" id="candidatesSubmenu">
+            <ul class="nav flex-column">
+            <li class="nav-item"><a class="nav-link" href="/static/org_elecom/elecom_admin/elecom_candidates.html"><i class="bi bi-people" aria-hidden="true"></i><span>List Candidates</span></a></li>
+            <li class="nav-item"><a class="nav-link active" href="/static/org_elecom/elecom_admin/elecom_register_candidate.html" aria-current="page"><i class="bi bi-person-plus" aria-hidden="true"></i><span>Register Candidate</span></a></li>
+            <li class="nav-item"><a class="nav-link" href="/static/org_elecom/elecom_admin/elecom_candidates_files.html"><i class="bi bi-folder2-open" aria-hidden="true"></i><span>Candidate Files</span></a></li>
+            <li class="nav-item"><a class="nav-link" href="/static/org_elecom/elecom_admin/elecom_certificate_of_candidacy.html"><i class="bi bi-file-earmark-pdf" aria-hidden="true"></i><span>Certificate of Candidacy</span></a></li>
+            </ul>
+            </div>
+            </li>
+            <li class="nav-item"><a class="nav-link" href="/static/org_elecom/elecom_admin/elecom_network_authorize.html"><i class="bi bi-wifi" aria-hidden="true"></i><span>Network Authorization</span></a></li>
+            <li class="nav-section-label">Insights &amp; Reports</li>
+            <li class="nav-item"><a class="nav-link" href="/static/org_elecom/elecom_admin/elecom_results.html"><i class="bi bi-graph-up" aria-hidden="true"></i><span>Election Results</span></a></li>
+            <li class="nav-item"><a class="nav-link" href="/static/org_elecom/elecom_admin/elecom_reports.html"><i class="bi bi-file-earmark-bar-graph" aria-hidden="true"></i><span>Generate Reports</span></a></li>
+            <li class="nav-section-label">System &amp; Support</li>
+            <li class="nav-item"><a class="nav-link" href="/static/org_elecom/elecom_admin/elecom_transparency.html"><i class="bi bi-shield-check" aria-hidden="true"></i><span>Transparency Logs</span></a></li>
+            <li class="nav-item"><a class="nav-link" href="/static/org_elecom/elecom_admin/elecom_backup_restore.html"><i class="bi bi-database" aria-hidden="true"></i><span>Backup &amp; Restore</span></a></li>
+            <li class="nav-item"><a class="nav-link" href="/static/org_elecom/elecom_admin/elecom_live_chat.html"><i class="bi bi-chat-dots" aria-hidden="true"></i><span>Live Support Chat</span></a></li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Navbar -->
+
+
+        <!-- Candidate Detail Modal -->
+        <div class="modal fade" id="candidateModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <div class="d-flex align-items-center gap-2">
+                            <img id="cd_photo" src="" alt="Profile" class="rounded-circle border" style="width:42px;height:42px;object-fit:cover;display:none;">
+                            <h5 class="modal-title mb-0">Candidate Details</h5>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" id="cd_name" readonly>
+                                    <label for="cd_name">Name</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" id="cd_student_id" readonly>
+                                    <label for="cd_student_id">Student ID</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" id="cd_position" readonly>
+                                    <label for="cd_position">Position</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" id="cd_org" readonly>
+                                    <label for="cd_org">Organization</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" id="cd_program" readonly>
+                                    <label for="cd_program">Program</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" id="cd_year" readonly>
+                                    <label for="cd_year">Year/Section</label>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Platform</label>
+                                <div class="p-2 border rounded" id="cd_platform" style="min-height:64px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rejection Remarks Modal -->
+        <div class="modal fade" id="rejectionRemarksModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Reject Candidate Filing</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-muted small mb-3">Add remarks explaining why this filing is being rejected. The candidate will receive this reason in their notification.</p>
+                        <label for="rejectionRemarksInput" class="form-label">Rejection remarks</label>
+                        <textarea id="rejectionRemarksInput" class="form-control" rows="4" maxlength="500" placeholder="Example: Missing required document, invalid candidate photo, or incorrect filing details." required></textarea>
+                        <div class="form-text">Required. Maximum 500 characters.</div>
+                        <div class="text-danger small mt-2 d-none" id="rejectionRemarksError">Please enter rejection remarks.</div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-danger" id="confirmRejectApplicationBtn">Reject Filing</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content Area -->
+        <div class="content-area">
+
+            <div class="reg-page-container">
+                <div class="alert alert-success" id="successAlert" role="alert" style="display:none;"></div>
+                <div class="alert alert-danger" id="errorAlert" role="alert" style="display:none;"></div>
+
+                <!-- Register Candidate collapsible card -->
+                <div class="card shadow-sm border-0 reg-form-card mb-3">
+                    <button type="button"
+                            class="d-flex align-items-center justify-content-between w-100 px-3 py-3 border-0 bg-transparent fw-semibold fs-6"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#registerCandidateCollapse"
+                            aria-expanded="false"
+                            aria-controls="registerCandidateCollapse">
+                        <span><i class="bi bi-person-plus me-2"></i>Register Candidate</span>
+                        <i class="bi bi-chevron-up reg-collapse-chevron"></i>
+                    </button>
+                    <div class="collapse" id="registerCandidateCollapse">
+                        <div class="px-3 pb-3">
+                <form id="registerCandidateForm" method="post" enctype="multipart/form-data" novalidate>
+<nav aria-label="Registration progress"><ol class="candidate-stepper">
+<li><button type="button" class="wizard-step-control" data-wizard-target="0" aria-controls="candidateWizardStep1" aria-current="step"><span class="wizard-step-number">1</span><span>Candidate Info</span></button></li>
+<li><button type="button" class="wizard-step-control" data-wizard-target="1" aria-controls="candidateWizardStep2" disabled><span class="wizard-step-number">2</span><span>Media & Party</span></button></li>
+<li><button type="button" class="wizard-step-control" data-wizard-target="2" aria-controls="candidateWizardStep3" disabled><span class="wizard-step-number">3</span><span>COC Details</span></button></li>
+<li><button type="button" class="wizard-step-control" data-wizard-target="3" aria-controls="candidateWizardStep4" disabled><span class="wizard-step-number">4</span><span>Signature & Review</span></button></li>
+</ol></nav><p id="wizardStepStatus" class="visually-hidden" aria-live="polite">Step 1 of 4: Candidate Info</p>
+<section class="wizard-step active" id="candidateWizardStep1" aria-label="Candidate Info"><h6 class="visually-hidden" tabindex="-1">Candidate Info</h6><div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label" for="studentLookup">Find student by name or Student ID</label>
+                        <input id="studentLookup" class="form-control" type="search" autocomplete="off" placeholder="Type at least two characters">
+                        <div id="studentLookupResults" class="list-group mt-2" style="max-height:220px;overflow-y:auto;" aria-live="polite"></div>
+                        <input type="hidden" id="selectedProfilePhoto">
+                        <div id="studentProfileSummary" class="form-text"></div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Candidate student ID</label>
+                        <input type="text" name="student_id" class="form-control" readonly required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Program</label>
+                        <select id="programSelect" name="program" class="form-select" required>
+                            <option value="" selected disabled>Select program</option>
+                            <option value="BSIT">BSIT</option>
+                            <option value="BTLED">BTLED</option>
+                            <option value="BFPT">BFPT</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Year/Section</label>
+                        <select id="yearSectionSelect" name="year_section" class="form-select" required>
+                            <option value="" selected disabled>Select year/section</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">First name</label>
+                        <input type="text" name="first_name" class="form-control" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Middle name <span class="text-muted fw-normal">(optional)</span></label>
+                        <input type="text" name="middle_name" class="form-control" placeholder="Leave blank if none">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Last name</label>
+                        <input type="text" name="last_name" class="form-control" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Organization</label>
+                        <select name="organization" class="form-select" required>
+                            <option value="" selected disabled>Select organization</option>
+                            <option>USG</option>
+                            <option>SITE</option>
+                            <option>PAFE</option>
+                            <option>AFPROTECHS</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Position</label>
+                        <select name="position" class="form-select" required>
+                            <option value="" selected disabled>Select position</option>
+                            <option>President</option>
+                            <option>Vice President</option>
+                            <option>General Secretary</option>
+                            <option>Associate Secretary</option>
+                            <option>Treasurer</option>
+                            <option>Auditor</option>
+                            <option>Public Information Officer</option>
+                            <option>BSIT Representative</option>
+                            <option>BTLED Representative</option>
+                            <option>BFPT Representative</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Platform</label>
+                        <textarea name="platform" class="form-control" rows="2" required></textarea>
+                    </div>
+
+</div></section>
+<section class="wizard-step" id="candidateWizardStep2" aria-label="Media & Party" hidden><h6 class="visually-hidden" tabindex="-1">Media & Party</h6><div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label">Candidate Type</label>
+                        <div class="d-flex gap-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="candidate_type" id="type_ind" value="Independent">
+                                <label class="form-check-label" for="type_ind">Independent</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="candidate_type" id="type_party" value="Political Party" checked>
+                                <label class="form-check-label" for="type_party">Political Party</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12"><hr class="my-2"></div>
+                    <div class="col-md-6">
+                        <label class="form-label">Upload Candidate Photo</label>
+                        <label class="candidate-upload-zone" for="candidate_photo">
+                            <i class="bi bi-cloud-arrow-up fs-4" aria-hidden="true"></i>
+                            <span>Drop candidate photo here or click to browse</span>
+                            <span class="upload-filename" aria-live="polite">No file selected</span>
+                            <input id="candidate_photo" type="file" name="photo_file" accept="image/*" aria-label="Upload candidate photo" required>
+                        </label>
+                        <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
+                            <button id="openCandidateCamera" type="button" class="btn btn-outline-primary btn-sm"><i class="bi bi-camera" aria-hidden="true"></i> Use camera / webcam</button>
+                            <img id="candidatePhotoThumbnail" alt="Selected candidate photo" width="80" height="80" style="object-fit:cover;border-radius:8px;" hidden>
+                        </div>
+                        <div class="form-text">Upload a photo or take one using a built-in camera or USB webcam.</div>
+                    </div>
+
+                    <div class="col-12 party-fields d-none"><hr class="my-2"></div>
+                    <div class="col-md-6 party-fields d-none">
+                        <label class="form-label" for="existingPartySelect">Party</label>
+                        <select id="existingPartySelect" class="form-select mb-2" required>
+                            <option value="">Select an existing party or create a new one</option>
+                            <option value="new">Create new party</option>
+                        </select>
+                        <div id="partyPickerStatus" class="form-text mb-2" aria-live="polite"></div><div id="partyCapacityStatus" class="form-text mb-2" aria-live="polite"></div>
+                        <label class="form-label" for="party_name">Party name</label>
+                        <input type="text" id="party_name" name="party_name" class="form-control">
+                        <div class="form-text">New parties receive a security code. Existing parties use their shared logo; admins do not need to enter the code.</div>
+                    </div>
+                    <div class="col-md-6 party-fields d-none">
+                        <label class="form-label">Upload Party Logo (optional)</label>
+                        <div id="sharedPartyLogo" class="mb-2" hidden><img id="sharedPartyLogoImage" alt="Selected party logo" width="80" height="80" style="object-fit:contain;border:1px solid #e2e8f0;border-radius:8px;"><p class="form-text">This shared party logo will be used automatically.</p></div>
+                        <label id="partyLogoUploadZone" class="candidate-upload-zone" for="party_logo">
+                            <i class="bi bi-cloud-arrow-up fs-4" aria-hidden="true"></i>
+                            <span>Drop party logo here or click to browse</span>
+                            <span class="upload-filename" aria-live="polite">No file selected</span>
+                            <input id="party_logo" type="file" name="party_logo_file" accept="image/*" aria-label="Upload party logo">
+                        </label>
+                    </div>
+
+                    </div></section>
+<section class="wizard-step" id="candidateWizardStep3" aria-label="COC Details" hidden><h6 class="visually-hidden" tabindex="-1">COC Details</h6><div class="row g-3">
+<div class="col-12"><h6>Certificate of Candidacy</h6><p class="form-text">Complete the candidate details and signature, then preview the COC. Registration publishes the candidate directly.</p></div>
+<div class="col-md-6"><label class="form-label" for="coc_curriculum_program">Curriculum program</label><input id="coc_curriculum_program" name="curriculum_program" type="text" class="form-control" required></div>
+<div class="col-md-6"><label class="form-label" for="coc_major">Major (optional)</label><input id="coc_major" name="major" type="text" class="form-control"></div>
+<div class="col-md-6"><label class="form-label" for="coc_gender">Gender</label><select id="coc_gender" name="gender" class="form-select" required><option value="" selected disabled>Select gender</option><option>Male</option><option>Female</option><option>Other</option><option>Prefer not to say</option></select></div>
+<div class="col-md-6"><label class="form-label" for="coc_date_of_birth">Date of birth</label><input id="coc_date_of_birth" name="date_of_birth" type="date" class="form-control" required></div>
+<div class="col-md-6"><label class="form-label" for="coc_contact_number">Contact number</label><input id="coc_contact_number" name="contact_number" type="tel" class="form-control" required></div>
+<div class="col-md-6"><label class="form-label" for="coc_email">Email</label><input id="coc_email" name="email" type="email" class="form-control" required></div>
+<div class="col-md-6"><label class="form-label" for="coc_address">Address</label><input id="coc_address" name="address" type="text" class="form-control" required></div>
+<div class="col-12">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+        <span>Club / organization memberships <span class="text-muted">(optional, up to three)</span></span>
+        <div class="d-flex gap-2">
+            <button id="removeMembershipBtn" type="button" class="btn btn-outline-secondary btn-sm" hidden><i class="bi bi-dash" aria-hidden="true"></i> Remove last</button>
+            <button id="addMembershipBtn" type="button" class="btn btn-outline-primary btn-sm"><i class="bi bi-plus-lg" aria-hidden="true"></i> Add membership</button>
+        </div>
+    </div>
+    <div id="membershipRows">
+        <div class="membership-row row g-2 mb-2">
+            <div class="col-md-4"><label class="form-label" for="affiliation_0_organization">Club / Organization 1</label><select class="form-select membership-org-select" id="affiliation_0_organization" data-membership-index="0"><option value="">Select club / organization</option><option>University Student Government (USG)</option><option>Society of Information Technology Enthusiasts (SITE)</option><option>Prime Association of Future Educators (PAFE)</option><option>Association of Food Processing and Technology Students (AFPROTECHS)</option><option>Active Certified Computer-Enhanced Student Society (ACCESS)</option><option>Red Cross Youth (RCY)</option><option>Others</option><option>None</option></select><input type="hidden" class="membership-org-value" name="affiliation_0_organization"><input class="form-control mt-2 membership-org-other" id="affiliation_0_organization_other" aria-label="Other club / organization 1" placeholder="Enter the full organization name" maxlength="255" hidden disabled></div>
+            <div class="col-md-4"><label class="form-label" for="affiliation_0_years">Year/s of Membership 1</label><input type="hidden" class="membership-years-value" name="affiliation_0_years">
+                <details class="membership-year-picker"><summary id="affiliation_0_years" class="form-control" aria-label="Membership years 1"><span class="membership-year-summary">Select start and end years</span></summary>
+                <div class="border rounded p-2 mt-2"><output class="membership-year-output d-block text-center" aria-live="polite"></output>
+                <label class="small" for="membership_start_0">Start year</label><input id="membership_start_0" class="form-range membership-year-start" type="range" step="1">
+                <label class="small" for="membership_end_0">End year</label><input id="membership_end_0" class="form-range membership-year-end" type="range" step="1">
+                <button class="btn btn-outline-primary btn-sm membership-year-apply" type="button">Use these years</button></div></details></div>
+            <div class="col-md-4"><label class="form-label" for="affiliation_0_position">Position 1</label><select class="form-select membership-position-select" id="affiliation_0_position" aria-label="Membership position 1"><option value="">Select position</option></select><input type="hidden" class="membership-position-value" name="affiliation_0_position"><input class="form-control mt-2 membership-position-other" aria-label="Other membership position 1" placeholder="Enter your position" maxlength="255" hidden disabled></div>
+        </div>
+        <div class="membership-row row g-2 mb-2" hidden>
+            <div class="col-md-4"><label class="form-label" for="affiliation_1_organization">Club / Organization 2</label><select class="form-select membership-org-select" id="affiliation_1_organization" data-membership-index="1" disabled><option value="">Select club / organization</option><option>University Student Government (USG)</option><option>Society of Information Technology Enthusiasts (SITE)</option><option>Prime Association of Future Educators (PAFE)</option><option>Association of Food Processing and Technology Students (AFPROTECHS)</option><option>Active Certified Computer-Enhanced Student Society (ACCESS)</option><option>Red Cross Youth (RCY)</option><option>Others</option><option>None</option></select><input type="hidden" class="membership-org-value" name="affiliation_1_organization" disabled><input class="form-control mt-2 membership-org-other" id="affiliation_1_organization_other" aria-label="Other club / organization 2" placeholder="Enter the full organization name" maxlength="255" hidden disabled></div>
+            <div class="col-md-4"><label class="form-label" for="affiliation_1_years">Year/s of Membership 2</label><input type="hidden" class="membership-years-value" name="affiliation_1_years" disabled>
+                <details class="membership-year-picker"><summary id="affiliation_1_years" class="form-control" aria-label="Membership years 2"><span class="membership-year-summary">Select start and end years</span></summary>
+                <div class="border rounded p-2 mt-2"><output class="membership-year-output d-block text-center" aria-live="polite"></output>
+                <label class="small" for="membership_start_1">Start year</label><input id="membership_start_1" class="form-range membership-year-start" type="range" step="1" disabled>
+                <label class="small" for="membership_end_1">End year</label><input id="membership_end_1" class="form-range membership-year-end" type="range" step="1" disabled>
+                <button class="btn btn-outline-primary btn-sm membership-year-apply" type="button">Use these years</button></div></details></div>
+            <div class="col-md-4"><label class="form-label" for="affiliation_1_position">Position 2</label><select class="form-select membership-position-select" id="affiliation_1_position" aria-label="Membership position 2" disabled><option value="">Select position</option></select><input type="hidden" class="membership-position-value" name="affiliation_1_position" disabled><input class="form-control mt-2 membership-position-other" aria-label="Other membership position 2" placeholder="Enter your position" maxlength="255" hidden disabled></div>
+        </div>
+        <div class="membership-row row g-2 mb-2" hidden>
+            <div class="col-md-4"><label class="form-label" for="affiliation_2_organization">Club / Organization 3</label><select class="form-select membership-org-select" id="affiliation_2_organization" data-membership-index="2" disabled><option value="">Select club / organization</option><option>University Student Government (USG)</option><option>Society of Information Technology Enthusiasts (SITE)</option><option>Prime Association of Future Educators (PAFE)</option><option>Association of Food Processing and Technology Students (AFPROTECHS)</option><option>Active Certified Computer-Enhanced Student Society (ACCESS)</option><option>Red Cross Youth (RCY)</option><option>Others</option><option>None</option></select><input type="hidden" class="membership-org-value" name="affiliation_2_organization" disabled><input class="form-control mt-2 membership-org-other" id="affiliation_2_organization_other" aria-label="Other club / organization 3" placeholder="Enter the full organization name" maxlength="255" hidden disabled></div>
+            <div class="col-md-4"><label class="form-label" for="affiliation_2_years">Year/s of Membership 3</label><input type="hidden" class="membership-years-value" name="affiliation_2_years" disabled>
+                <details class="membership-year-picker"><summary id="affiliation_2_years" class="form-control" aria-label="Membership years 3"><span class="membership-year-summary">Select start and end years</span></summary>
+                <div class="border rounded p-2 mt-2"><output class="membership-year-output d-block text-center" aria-live="polite"></output>
+                <label class="small" for="membership_start_2">Start year</label><input id="membership_start_2" class="form-range membership-year-start" type="range" step="1" disabled>
+                <label class="small" for="membership_end_2">End year</label><input id="membership_end_2" class="form-range membership-year-end" type="range" step="1" disabled>
+                <button class="btn btn-outline-primary btn-sm membership-year-apply" type="button">Use these years</button></div></details></div>
+            <div class="col-md-4"><label class="form-label" for="affiliation_2_position">Position 3</label><select class="form-select membership-position-select" id="affiliation_2_position" aria-label="Membership position 3" disabled><option value="">Select position</option></select><input type="hidden" class="membership-position-value" name="affiliation_2_position" disabled><input class="form-control mt-2 membership-position-other" aria-label="Other membership position 3" placeholder="Enter your position" maxlength="255" hidden disabled></div>
+        </div>
+    </div><span id="membershipRowStatus" class="visually-hidden" aria-live="polite">One optional membership row</span>
+</div>
+</div></section>
+<section class="wizard-step" id="candidateWizardStep4" aria-label="Signature & Review" hidden><h6 class="visually-hidden" tabindex="-1">Signature & Review</h6><div class="row g-3">
+<div class="col-12"><label class="form-label" for="candidateSignature">Candidate signature</label><canvas id="candidateSignature" width="680" height="180" tabindex="0" aria-label="Candidate signature pad" style="display:block;width:100%;max-width:680px;height:180px;background:white;border:1px solid #cbd5e1;border-radius:8px;touch-action:none;"></canvas><button id="clearCandidateSignature" type="button" class="btn btn-outline-secondary btn-sm mt-2">Clear signature</button><label class="btn btn-outline-primary btn-sm mt-2 ms-2" for="candidateSignatureFile"><i class="bi bi-upload" aria-hidden="true"></i> Import signature PNG</label><input id="candidateSignatureFile" type="file" accept="image/png" class="visually-hidden"><p class="form-text">Sign using a mouse, touch screen, stylus, or USB pen tablet configured as a pointing device. A signature exported by a dedicated pad can be imported as a PNG.</p><p id="candidateSignatureStatus" class="form-text" aria-live="polite"></p></div>
+<div class="col-12"><label class="form-check"><input name="coc_confirmed" type="checkbox" class="form-check-input" required> <span class="form-check-label">The candidate reviewed these details and provided this signature.</span></label></div>
+<div class="col-12"><button id="previewAdminCoc" type="button" class="btn btn-outline-primary">Preview Certificate of Candidacy</button><a id="registeredCocLink" class="btn btn-outline-success d-none ms-2" target="_blank" rel="noopener">View issued COC</a></div>
+</div></section>
+<div class="candidate-wizard-actions">
+    <button id="wizardBackBtn" type="button" class="btn btn-outline-secondary" hidden>Back</button>
+    <button id="wizardNextBtn" type="button" class="btn btn-primary">Next Step <i class="bi bi-arrow-right" aria-hidden="true"></i></button>
+    <button id="submitBtn" type="submit" class="btn btn-primary" hidden><i class="bi bi-check-lg" aria-hidden="true"></i> Submit Registration</button>
+</div>
+                </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pending Candidate Filings collapsible card -->
+                <div class="card shadow-sm border-0 reg-form-card" id="candidateApplicationsPanel">
+                    <button type="button"
+                            class="d-flex align-items-center justify-content-between w-100 px-3 py-3 border-0 bg-transparent fw-semibold fs-6"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#pendingFilingsCollapse"
+                            aria-expanded="true"
+                            aria-controls="pendingFilingsCollapse">
+                        <span><i class="bi bi-inbox me-2"></i>Pending Candidate Filings</span>
+                        <i class="bi bi-chevron-up reg-collapse-chevron"></i>
+                    </button>
+                    <div class="collapse show" id="pendingFilingsCollapse">
+                        <div class="px-3 pb-3">
+                            <div class="d-flex align-items-center justify-content-between mb-3">
+                                <div class="text-muted small">Review mobile filing requests before they become official candidates.</div>
+                                <span id="applicationsSyncStatus" class="text-muted small" role="status">Connecting...</span>
+                            </div>
+                            <div id="candidateApplicationsList" class="vstack gap-2">
+                                <section aria-labelledby="initialApplicationsHeading">
+                                    <h6 id="initialApplicationsHeading">Initial Filing Review <span id="initialApplicationsCount" class="text-muted small ms-1">0</span></h6>
+                                    <p class="text-muted small">Step 1: Review the filing and allow submission of supporting documents.</p>
+                                    <div id="initialApplicationsList" class="vstack gap-2"><div class="text-muted small">Loading initial filings...</div></div>
+                                </section>
+                                <section class="border-top pt-3 mt-3" aria-labelledby="requirementsApplicationsHeading">
+                                    <h6 id="requirementsApplicationsHeading">Supporting Documents Review <span id="requirementsApplicationsCount" class="text-muted small ms-1">0</span></h6>
+                                    <p class="text-muted small">Step 2: Review the three supporting documents. Final approval publishes the candidate.</p>
+                                    <div id="requirementsApplicationsList" class="vstack gap-2"><div class="text-muted small">Loading supporting documents...</div></div>
+                                </section>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade candidate-preview-modal" id="candidatePreviewModal" tabindex="-1" aria-labelledby="candidatePreviewTitle" aria-hidden="true">
+      <div class="modal-dialog modal-xl modal-dialog-centered modal-fullscreen-sm-down"><div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title" id="candidatePreviewTitle">File preview</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close preview"></button></div>
+        <div class="modal-body" id="candidatePreviewBody"></div>
+        <div class="modal-footer"><button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button></div>
+      </div></div>
+    </div>
+    
+    
+
+    
+    
+    
+    
+    
+    
+    
+<div class="modal fade" id="adminCocPreviewModal" tabindex="-1" aria-labelledby="adminCocPreviewTitle" aria-hidden="true"><div class="modal-dialog modal-xl modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="adminCocPreviewTitle">Certificate of Candidacy Preview</h5><button class="btn-close btn-close-white" type="button" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body p-0"><iframe id="adminCocPreviewFrame" title="COC preview" style="width:100%;height:72vh;border:0;"></iframe></div></div></div></div>
+<div class="modal fade" id="candidateCameraModal" tabindex="-1" aria-labelledby="candidateCameraTitle" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content">
+<div class="modal-header"><h5 class="modal-title" id="candidateCameraTitle">Take candidate photo</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button></div>
+<div class="modal-body"><label class="form-label" for="candidateCameraSelect">Camera</label><select id="candidateCameraSelect" class="form-select mb-2" aria-label="Choose camera"></select>
+<video id="candidateCameraVideo" autoplay playsinline muted style="width:100%;max-height:50vh;background:#0d1b3e;border-radius:8px;"></video>
+<img id="candidateCameraSnapshot" alt="Captured candidate photo" style="width:100%;max-height:50vh;object-fit:contain;border-radius:8px;" hidden>
+<p id="candidateCameraStatus" class="form-text" role="status" aria-live="polite"></p></div>
+<div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button><button id="candidateCameraRetake" type="button" class="btn btn-outline-primary" hidden>Retake</button><button id="candidateCameraCapture" type="button" class="btn btn-primary" disabled>Capture photo</button><button id="candidateCameraUse" type="button" class="btn btn-primary" hidden disabled>Use photo</button></div>
+</div></div></div>
+<div class="position-fixed end-0 p-3" style="top:64px;z-index:1090;max-width:100%;"><div id="registrationToast" class="toast bg-white" role="status" aria-live="polite" aria-atomic="true"><div class="toast-header"><i id="registrationToastIcon" class="bi bi-check-circle-fill text-success me-2" aria-hidden="true"></i><strong id="registrationToastTitle" class="me-auto">Registration</strong><button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Dismiss notification"></button></div><div id="registrationToastBody" class="toast-body" style="white-space:pre-line;overflow-wrap:anywhere;max-height:240px;overflow-y:auto;"></div></div></div>
+<div id="adminNavigationLoading" class="admin-navigation-loading" role="status" aria-live="polite" aria-atomic="true" tabindex="-1" hidden><div class="admin-navigation-loading-message"><span class="admin-loading-emblem" aria-hidden="true"><img src="/static/assets/no_bg_elecom.png?v=20261029-favicon1" alt=""></span><strong>Loading…</strong><p class="admin-loading-detail">Please wait while we open the next page. No need to click again.</p><button type="button" class="btn btn-outline-secondary btn-sm admin-loading-cancel" hidden>Cancel navigation</button></div></div>
+<noscript><span id="admin-page-ready" hidden></span></noscript>
+</body>
+</html>
+

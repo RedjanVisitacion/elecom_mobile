@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <style>html { background: #F0F4F8; } @view-transition { navigation: auto; }</style>
+    
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="/static/org_elecom/elecom_admin/admin_components/admin_js/admin_viewport.js?v=20261031-phone1"></script>
+    
+  <title>ELECOM | Backup & Restore</title>
+  <link rel="icon" type="image/png" href="/static/assets/no_bg_elecom.png?v=20261029-favicon1">
+  <link rel="shortcut icon" type="image/png" href="/static/assets/no_bg_elecom.png?v=20261029-favicon1">
+  <link rel="apple-touch-icon" href="/static/assets/no_bg_elecom.png?v=20261029-favicon1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="/static/org_elecom/elecom_admin/admin_components/admin_css/admin_dashboard.css?v=20261029-small-center-loader1">
+  <link rel="stylesheet" href="/static/org_elecom/elecom_admin/admin_components/admin_css/elecom_backup_restore.css?v=20261027-sidebar-consistency1">
+    <link rel="stylesheet" href="/static/org_elecom/elecom_admin/admin_components/admin_css/admin_mobile.css?v=20261031-all-pages5">
+</head>
+<body data-admin-page="elecom_backup_restore.html" class="admin-framed-shell theme-elecom backup-page-body">
+<nav class="top-navbar d-flex align-items-center gap-3"><div class="admin-frame-brand"><img class="admin-frame-ustp-logo" src="/static/assets/ustp-logo.png" alt="USTP"><img class="admin-frame-logo" src="/static/assets/elecom.png" alt="ELECOM"><span class="admin-frame-title">Electoral Commission</span></div>
+      <button class="menu-toggle" id="menuToggle"><i class="bi bi-list"></i></button>
+      <div id="userMenuMount"></div>
+    </nav>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-header-content">
+                <button type="button" class="sidebar-collapse-toggle" id="sidebarCollapseToggle" aria-controls="sidebar" aria-expanded="true" aria-label="Collapse navigation" title="Collapse navigation">
+                    <i class="bi bi-list" aria-hidden="true"></i>
+                </button>
+        <div class="logo-container">
+          <img class="sidebar-logo" src="/static/assets/elecom.png" alt="ELECOM Logo" onerror="this.onerror=null;this.src='/static/assets/elecom.png';">
+          <img class="wordmark" src="/static/assets/img_text/elecom_white1.png" alt="Electoral Commission">
+        </div>
+      </div>
+    </div>
+    <div class="sidebar-menu">
+      <ul class="nav flex-column">
+            <li class="nav-section-label">Overview</li>
+            <li class="nav-item"><a class="nav-link" href="/static/org_elecom/elecom_admin/admin_dashboard.html"><i class="bi bi-grid" aria-hidden="true"></i><span>Dashboard</span></a></li>
+            <li class="nav-section-label">Election Operations</li>
+            <li class="nav-item"><a class="nav-link" href="/static/org_elecom/elecom_admin/elecom_elections.html"><i class="bi bi-calendar2-range" aria-hidden="true"></i><span>Election Management</span></a></li>
+            <li class="nav-item">
+            <a class="nav-link" href="#candidatesSubmenu" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="candidatesSubmenu"><i class="bi bi-people" aria-hidden="true"></i><span>Candidates</span><i class="bi bi-chevron-right chevron ms-auto" aria-hidden="true"></i></a>
+            <div class="collapse candidates-submenu" id="candidatesSubmenu">
+            <ul class="nav flex-column">
+            <li class="nav-item"><a class="nav-link" href="/static/org_elecom/elecom_admin/elecom_candidates.html"><i class="bi bi-people" aria-hidden="true"></i><span>List Candidates</span></a></li>
+            <li class="nav-item"><a class="nav-link" href="/static/org_elecom/elecom_admin/elecom_register_candidate.html"><i class="bi bi-person-plus" aria-hidden="true"></i><span>Register Candidate</span></a></li>
+            <li class="nav-item"><a class="nav-link" href="/static/org_elecom/elecom_admin/elecom_candidates_files.html"><i class="bi bi-folder2-open" aria-hidden="true"></i><span>Candidate Files</span></a></li>
+            <li class="nav-item"><a class="nav-link" href="/static/org_elecom/elecom_admin/elecom_certificate_of_candidacy.html"><i class="bi bi-file-earmark-pdf" aria-hidden="true"></i><span>Certificate of Candidacy</span></a></li>
+            </ul>
+            </div>
+            </li>
+            <li class="nav-item"><a class="nav-link" href="/static/org_elecom/elecom_admin/elecom_network_authorize.html"><i class="bi bi-wifi" aria-hidden="true"></i><span>Network Authorization</span></a></li>
+            <li class="nav-section-label">Insights &amp; Reports</li>
+            <li class="nav-item"><a class="nav-link" href="/static/org_elecom/elecom_admin/elecom_results.html"><i class="bi bi-graph-up" aria-hidden="true"></i><span>Election Results</span></a></li>
+            <li class="nav-item"><a class="nav-link" href="/static/org_elecom/elecom_admin/elecom_reports.html"><i class="bi bi-file-earmark-bar-graph" aria-hidden="true"></i><span>Generate Reports</span></a></li>
+            <li class="nav-section-label">System &amp; Support</li>
+            <li class="nav-item"><a class="nav-link" href="/static/org_elecom/elecom_admin/elecom_transparency.html"><i class="bi bi-shield-check" aria-hidden="true"></i><span>Transparency Logs</span></a></li>
+            <li class="nav-item"><a class="nav-link active" href="/static/org_elecom/elecom_admin/elecom_backup_restore.html" aria-current="page"><i class="bi bi-database" aria-hidden="true"></i><span>Backup &amp; Restore</span></a></li>
+            <li class="nav-item"><a class="nav-link" href="/static/org_elecom/elecom_admin/elecom_live_chat.html"><i class="bi bi-chat-dots" aria-hidden="true"></i><span>Live Support Chat</span></a></li>
+            </ul>
+    </div>
+  </div>
+
+  <div class="main-content">
+
+
+    <main class="content-area">
+      <section class="backup-shell">
+        <div class="backup-alert d-none" id="backupAlert" role="alert"></div>
+
+        <section class="backup-panel backup-command-center">
+          <div class="backup-command-main">
+            <span class="quick-icon"><i class="bi bi-shield-check"></i></span>
+            <div>
+              <h2>Automatic Protection</h2>
+              <strong id="autoBackupText">Loading schedule</strong>
+              <div class="command-meta">
+                <span>Next: <b id="nextScheduleText">Not scheduled</b></span>
+                <span>Latest: <b id="latestSuccessText">None yet</b></span>
+              </div>
+            </div>
+          </div>
+          <div class="backup-command-actions">
+            <button class="btn backup-primary-action" id="btnCreateBackup" type="button" data-backup-type="postgres">
+              <i class="bi bi-database-add"></i>
+              <span>Create Backup Now</span>
+            </button>
+            <button class="btn backup-secondary-action" type="button" id="downloadLatestBtn">
+              <i class="bi bi-download"></i>
+              <span>Download Latest</span>
+            </button>
+          </div>
+          <div class="backup-progress d-none" id="backupProgress">
+            <div class="spinner-border spinner-border-sm" aria-hidden="true"></div>
+            <span id="backupProgressText">Preparing backup...</span>
+          </div>
+          <div class="backup-command-stats">
+            <div><small>Total</small><strong id="statTotalBackups">0</strong></div>
+            <div><small>Successful</small><strong id="statSuccessBackups">0</strong></div>
+            <div><small>Failed</small><strong id="statFailedBackups">0</strong></div>
+            <div><small>Storage</small><strong id="statStorageUsed">0 B</strong></div>
+            <div><small>Last Backup</small><strong id="statLastBackup">None yet</strong></div>
+          </div>
+        </section>
+
+        <details class="backup-panel backup-advanced">
+          <summary>
+            <span><i class="bi bi-sliders"></i> More backup choices</span>
+            <i class="bi bi-chevron-down"></i>
+          </summary>
+          <div class="backup-button-grid">
+            <button class="backup-type-btn backup-primary" type="button" data-backup-type="election_records">
+              <i class="bi bi-archive"></i>
+              <span>Election Records</span>
+              <small>Votes &amp; voting windows</small>
+            </button>
+            <button class="backup-type-btn backup-primary" type="button" data-backup-type="candidates">
+              <i class="bi bi-people"></i>
+              <span>Candidates Only</span>
+              <small>Registered candidate list</small>
+            </button>
+            <button class="backup-type-btn backup-primary" type="button" data-backup-type="voters">
+              <i class="bi bi-person-lines-fill"></i>
+              <span>Voters Data</span>
+              <small>Student &amp; user accounts</small>
+            </button>
+            <button class="backup-type-btn backup-primary" type="button" data-backup-type="reports">
+              <i class="bi bi-bar-chart-line"></i>
+              <span>Report Data</span>
+              <small>Vote records for reports</small>
+            </button>
+            <button class="backup-type-btn backup-primary" type="button" data-backup-type="postgres">
+              <i class="bi bi-database-fill-check"></i>
+              <span>Full Database</span>
+              <small>All tables &mdash; complete backup</small>
+            </button>
+          </div>
+        </details>
+
+        <section class="backup-panel">
+          <div class="panel-heading table-heading">
+            <div>
+              <h2>Backup History</h2>
+              <p>Manage saved backups.</p>
+            </div>
+          </div>
+          <div class="table-responsive backup-table-wrap">
+            <table class="table backup-history-table mb-0">
+              <colgroup>
+                <col style="width:30%"><col style="width:10%"><col style="width:14%">
+                <col style="width:8%"><col style="width:12%"><col style="width:12%"><col style="width:14%">
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>Backup Name</th>
+                  <th>Type</th>
+                  <th>Date & Time</th>
+                  <th>File Size</th>
+                  <th>Created By</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="backupHistoryBody">
+                <tr><td colspan="7" class="text-center text-muted py-4">Loading backup history...</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="backup-pagination">
+            <button class="btn btn-sm btn-outline-dark" type="button" id="backupPrevBtn"><i class="bi bi-chevron-left"></i> Previous</button>
+            <span id="backupPageText">Page 1</span>
+            <button class="btn btn-sm btn-outline-dark" type="button" id="backupNextBtn">Next <i class="bi bi-chevron-right"></i></button>
+          </div>
+        </section>
+
+        <div class="backup-layout">
+          <section class="backup-panel" id="restorePanel">
+            <div class="panel-heading">
+              <div>
+                <h2>Restore From Backup</h2>
+              </div>
+            </div>
+            <form id="restoreForm" class="restore-form">
+              <div class="restore-step">
+                <div class="restore-step-badge">1</div>
+                <div class="restore-step-body">
+                  <div class="restore-step-title">Select backup file</div>
+                  <label class="backup-upload-zone" for="backupFileInput">
+                    <i class="bi bi-cloud-arrow-up"></i>
+                    <span id="backupFileLabel">Choose backup file</span>
+                    <small>Accepts ELECOM .sql or .zip backups</small>
+                  </label>
+                  <input id="backupFileInput" name="backup_file" type="file" accept=".sql,.zip" hidden>
+                </div>
+              </div>
+              <div class="restore-step">
+                <div class="restore-step-badge">2</div>
+                <div class="restore-step-body">
+                  <div class="restore-step-title">Choose what to restore</div>
+                  <div class="restore-options">
+                    <label>
+                      <input type="radio" name="scope" value="database" checked>
+                      <span><strong>Everything</strong><small>Best for full recovery</small></span>
+                    </label>
+                    <label>
+                      <input type="radio" name="scope" value="election_year">
+                      <span><strong>Election records</strong><small>Votes and voting windows</small></span>
+                    </label>
+                    <label>
+                      <input type="radio" name="scope" value="candidates">
+                      <span><strong>Candidates only</strong><small>Registered candidate list</small></span>
+                    </label>
+                    <label>
+                      <input type="radio" name="scope" value="voters">
+                      <span><strong>Voters data</strong><small>Student &amp; user accounts</small></span>
+                    </label>
+                    <label>
+                      <input type="radio" name="scope" value="reports">
+                      <span><strong>Report data</strong><small>Vote records for reports</small></span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+              <div class="restore-warning"><i class="bi bi-exclamation-octagon"></i> Restore can replace current data. Create a fresh backup first if you are unsure.</div>
+              <button class="btn restore-submit btn-restore" id="btnContinueRestore" type="submit"><i class="bi bi-shield-check"></i> Continue to Password Check</button>
+            </form>
+          </section>
+
+          <section class="backup-panel">
+            <div class="panel-heading">
+              <div>
+                <h2>Auto Backup Settings</h2>
+                <p>Configure scheduled backup preferences for the admin dashboard.</p>
+              </div>
+            </div>
+            <div class="auto-settings">
+              <label class="auto-toggle">
+                <input type="checkbox" id="autoBackupEnabled">
+                <span class="toggle-track" aria-hidden="true"></span>
+                <span>Enable automatic backup</span>
+              </label>
+              <div class="frequency-grid">
+                <label><input type="radio" name="backupFrequency" value="hourly"><span>Hourly backup</span></label>
+                <label><input type="radio" name="backupFrequency" value="daily"><span>Daily backup</span></label>
+                <label><input type="radio" name="backupFrequency" value="weekly" checked><span>Weekly backup</span></label>
+                <label><input type="radio" name="backupFrequency" value="monthly"><span>Monthly backup</span></label>
+              </div>
+              <div class="mt-3">
+                <div class="form-label fw-semibold small mb-1">Backup type</div>
+                <select class="form-select form-select-sm" id="autoBackupType">
+                  <option value="postgres">Full Database (All Tables)</option>
+                  <option value="election_records">Election Records</option>
+                  <option value="candidates">Candidates Only</option>
+                  <option value="voters">Voters Data</option>
+                  <option value="reports">Report Data</option>
+                </select>
+              </div>
+              <button class="btn btn-save-settings w-100" type="button" id="btnSaveBackupSettings"><i class="bi bi-save"></i> Save Settings</button>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal fade" id="restoreConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content restore-modal">
+        <div class="modal-header">
+          <h5 class="modal-title">Confirm Restore</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="restore-modal-warning">Restoring a backup may overwrite current system data.</p>
+          <label class="form-label" for="restorePasswordInput">Admin Password</label>
+          <input class="form-control" id="restorePasswordInput" type="password" autocomplete="current-password">
+          <div class="restore-password-error" id="restorePasswordError"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-dark" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-restore" id="confirmRestoreBtn"><i class="bi bi-database-down"></i> Restore Backup</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="deleteBackupModal" tabindex="-1" aria-labelledby="deleteBackupTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+      <div class="modal-header" style="background:#b91c1c;color:#fff;">
+        <h5 id="deleteBackupTitle" class="modal-title" style="color:#fff;">Delete backup</h5>
+        <button type="button" class="btn-close" style="filter:brightness(0) invert(1);" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">Delete this backup file and its history record? This action cannot be undone.</div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" id="confirmDeleteBackupBtn" class="btn btn-danger">Delete backup</button>
+      </div>
+    </div></div>
+  </div>
+  <div class="position-fixed end-0 p-3" style="top:64px;z-index:1090;max-width:100%;">
+    <div id="backupToast" class="toast bg-white" role="status" aria-live="polite" aria-atomic="true">
+      <div class="toast-header"><i id="backupToastIcon" class="bi bi-check-circle-fill text-success me-2" aria-hidden="true"></i><strong id="backupToastTitle" class="me-auto">Backup &amp; Restore</strong><button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Dismiss notification"></button></div>
+      <div id="backupToastBody" class="toast-body" style="white-space:pre-line;overflow-wrap:anywhere;max-height:240px;overflow-y:auto;"></div>
+    </div>
+  </div>
+  
+  
+
+  
+<div id="adminNavigationLoading" class="admin-navigation-loading" role="status" aria-live="polite" aria-atomic="true" tabindex="-1" hidden><div class="admin-navigation-loading-message"><span class="admin-loading-emblem" aria-hidden="true"><img src="/static/assets/no_bg_elecom.png?v=20261029-favicon1" alt=""></span><strong>Loading…</strong><p class="admin-loading-detail">Please wait while we open the next page. No need to click again.</p><button type="button" class="btn btn-outline-secondary btn-sm admin-loading-cancel" hidden>Cancel navigation</button></div></div>
+<noscript><span id="admin-page-ready" hidden></span></noscript>
+</body>
+</html>
