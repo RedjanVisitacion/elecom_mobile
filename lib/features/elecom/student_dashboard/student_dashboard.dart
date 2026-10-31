@@ -701,21 +701,21 @@ class _StudentDashboardState extends State<StudentDashboard>
                     forceDarkMode: shouldUseDarkMode && !shouldUsePremiumMode,
                     titleText: _currentIndex == 4 ? 'Account' : null,
                   ),
-            body: shouldUsePremiumMode
-                ? _PremiumDashboardBackground(
-                    child: Stack(
-                      children: [
-                        _dashboardTabs(context),
-                        if (_currentIndex == 0)
-                          _AnimatedPremiumAssistantBubble(
-                            visible: _assistantVisibleOnHome,
-                            animationNonce: _assistantAnimationNonce,
-                            onDismiss: EleVotePreferences.dismissForSession,
-                          ),
-                      ],
-                    ),
-                  )
-                : _dashboardTabs(context),
+            body: Stack(
+              fit: StackFit.expand,
+              children: [
+                if (shouldUsePremiumMode)
+                  _PremiumDashboardBackground(child: _dashboardTabs(context))
+                else
+                  _dashboardTabs(context),
+                if (_currentIndex == 0)
+                  _AnimatedPremiumAssistantBubble(
+                    visible: _assistantVisibleOnHome,
+                    animationNonce: _assistantAnimationNonce,
+                    onDismiss: EleVotePreferences.dismissForSession,
+                  ),
+              ],
+            ),
             floatingActionButton: _currentIndex == 0 && _showBackToTop
                 ? Padding(
                     padding: const EdgeInsets.only(bottom: 24),
