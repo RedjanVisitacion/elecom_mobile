@@ -452,12 +452,23 @@ class _StudentDashboardState extends State<StudentDashboard>
         await showDialog<void>(
           context: context,
           builder: (context) => AlertDialog(
+            backgroundColor: Colors.white,
+            surfaceTintColor: Colors.transparent,
+            titleTextStyle: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(color: const Color(0xFF0F172A)),
+            contentTextStyle: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: const Color(0xFF334155)),
             title: const Text('Already a candidate'),
             content: const Text(
               'Your Student ID is already registered as a candidate for this election. You cannot file again.',
             ),
             actions: [
               TextButton(
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFF2563EB),
+                ),
                 onPressed: () => Navigator.pop(context),
                 child: const Text('OK'),
               ),
