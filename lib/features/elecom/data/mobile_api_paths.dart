@@ -29,6 +29,10 @@ class MobileApiPaths {
   static String get results => '$base/results/';
   static String get resultsAnalytics => '$base/results/analytics/';
 
+  static String get accountSessions => '$base/account/sessions/';
+  static String get accountSessionsLogout => '$base/account/sessions/logout/';
+  static String get accountLogout => '$base/account/logout/';
+
   static String get accountProfile => '$base/account/profile/';
   static String get accountProfilePhoto => '$base/account/profile/photo/';
   static String get accountProfileUpdate => '$base/account/profile/update/';

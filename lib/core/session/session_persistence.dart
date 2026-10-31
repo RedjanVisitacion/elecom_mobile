@@ -48,7 +48,7 @@ class SessionPersistence {
     }
 
     final cookies = decoded.map((k, v) => MapEntry(k, (v ?? '').toString()));
-    if (cookies.isEmpty) return false;
+    if ((cookies['sessionid'] ?? '').isEmpty) return false;
 
     ApiClient.importCookies(cookies);
 
@@ -66,12 +66,21 @@ class SessionPersistence {
   }
 
   static Future<void> clear() async {
-    await PushNotificationService.disableForLoggedOutOrDisabled();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_kCookies);
-    await prefs.remove(_kUser);
+    // Remove in-memory access before any optional network cleanup.
     ApiClient.clearSession();
     NotificationCenterStore.clearLocal();
     UserSession.clear();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_kCookies);
+      await prefs.remove(_kUser);
+    } catch (_) {
+      // The server has revoked this session; local access is already cleared.
+    }
+    try {
+      await PushNotificationService.disableForLoggedOutOrDisabled();
+    } catch (_) {
+      // A push-service failure must not keep an account signed in.
+    }
   }
 }

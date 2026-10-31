@@ -1,9 +1,40 @@
 import 'dart:async';
+import 'dart:io';
+
+import 'package:flutter/services.dart';
 
 import 'package:http/http.dart' as http;
 
+import '../config/api_config.dart';
+
 class SessionHttpClient extends http.BaseClient {
-  SessionHttpClient({http.Client? inner}) : _inner = inner ?? http.Client();
+  SessionHttpClient({
+    http.Client? inner,
+    this.onUnauthorized,
+    this.deviceName,
+    Uri? apiOrigin,
+  }) : _inner = inner ?? http.Client(),
+       _apiOrigin = apiOrigin ?? Uri.parse(ApiConfig.baseUrl);
+
+  final Uri _apiOrigin;
+
+  final void Function()? onUnauthorized;
+  final String? deviceName;
+  static Future<String>? _deviceNameFuture;
+
+  static Future<String> _readDeviceName() async {
+    if (!Platform.isAndroid) return Platform.operatingSystem;
+    try {
+      final value = await const MethodChannel(
+        'com.elecom.mobile/device_info',
+      ).invokeMethod<String>('deviceName');
+      return (value ?? 'Android')
+          .replaceAll(RegExp(r'[^\x20-\x7E]'), '')
+          .trim();
+    } catch (_) {
+      return 'Android';
+    }
+  }
 
   static const Duration requestTimeout = Duration(seconds: 20);
 
@@ -12,6 +43,23 @@ class SessionHttpClient extends http.BaseClient {
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    if (request.url.origin != _apiOrigin.origin) {
+      return _inner.send(request).timeout(requestTimeout);
+    }
+    request.headers.putIfAbsent(
+      'User-Agent',
+      () => 'ELECOM-Mobile (${Platform.operatingSystem})',
+    );
+    request.headers['X-ELECOM-Device'] =
+        deviceName ?? await (_deviceNameFuture ??= _readDeviceName());
+    final sentSession = _cookies['sessionid'];
+    if (!const ['GET', 'HEAD', 'OPTIONS'].contains(request.method)) {
+      final csrf = _cookies['csrftoken'];
+      if (csrf != null && csrf.isNotEmpty) {
+        request.headers['X-CSRFToken'] = csrf;
+        request.headers.putIfAbsent('Referer', () => '${_apiOrigin.origin}/');
+      }
+    }
     final cookieHeader = _cookieHeader;
     if (cookieHeader.isNotEmpty) {
       request.headers['Cookie'] = cookieHeader;
@@ -19,11 +67,21 @@ class SessionHttpClient extends http.BaseClient {
 
     final streamed = await _inner.send(request).timeout(requestTimeout);
 
-    final setCookie = streamed.headers['set-cookie'];
-    if (setCookie != null && setCookie.isNotEmpty) {
-      _storeSetCookie(setCookie);
+    // A response from an old account must not clear a more recent login.
+    final stillSameSession = _cookies['sessionid'] == sentSession;
+    if (stillSameSession) {
+      final setCookie = streamed.headers['set-cookie'];
+      if (setCookie != null && setCookie.isNotEmpty) _storeSetCookie(setCookie);
+      final authenticatedApi =
+          request.url.path.startsWith('/api/mobile/') &&
+          !request.url.path.startsWith('/api/mobile/auth/');
+      if (streamed.statusCode == 401 &&
+          authenticatedApi &&
+          sentSession != null &&
+          sentSession.isNotEmpty) {
+        onUnauthorized?.call();
+      }
     }
-
     return streamed;
   }
 
@@ -41,7 +99,11 @@ class SessionHttpClient extends http.BaseClient {
       final name = cookiePair.substring(0, eq).trim();
       final value = cookiePair.substring(eq + 1).trim();
       if (name.isEmpty) continue;
-      _cookies[name] = value;
+      if (value.isEmpty) {
+        _cookies.remove(name);
+      } else {
+        _cookies[name] = value;
+      }
     }
   }
 

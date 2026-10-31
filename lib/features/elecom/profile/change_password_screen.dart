@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/notifications/local_push_service.dart';
 import '../../../core/utils/toast_service.dart';
-import '../../../core/notifications/notification_center_store.dart';
-import '../../../core/session/notification_preferences.dart';
+import '../../../core/network/api_client.dart';
 import '../data/elecom_mobile_api.dart';
 import '../../../core/theme/app_shape.dart';
 
@@ -22,6 +20,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   final _confirmPasswordController = TextEditingController();
 
   bool _submitting = false;
+  bool _passwordChanged = false;
   bool _obscureOld = true;
   bool _obscureNew = true;
   bool _obscureConfirm = true;
@@ -51,38 +50,16 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
       if (!mounted) return;
 
-      final inAppEnabled = await NotificationPreferences.isInAppEnabled();
-      final pushEnabled = await NotificationPreferences.isPushEnabled();
-      const notifTitle = 'Password Updated';
-      const notifBody = 'Your account password was changed successfully.';
-
-      // Always persist to the backend so notifications are per-account.
-      await NotificationCenterStore.add(
-        title: notifTitle,
-        body: notifBody,
-      );
-
-      if (pushEnabled) {
-        await LocalPushService.show(
-          id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
-          title: notifTitle,
-          body: notifBody,
-        );
-      }
-
-      if (!mounted) return;
-
-      if (inAppEnabled) {
-        AppToast.success(context, notifBody);
-      }
-
-      if (!mounted) return;
-      Navigator.of(context).pop();
+      _passwordChanged = true;
+      ApiClient.endSession(message: 'Password updated. Please sign in again.');
     } catch (_) {
       if (!mounted) return;
-      AppToast.error(context, 'Failed to change password. Please check your old password.');
+      AppToast.error(
+        context,
+        'Failed to change password. Please check your old password.',
+      );
     } finally {
-      if (mounted) {
+      if (mounted && !_passwordChanged) {
         setState(() {
           _submitting = false;
         });
@@ -101,10 +78,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       appBar: AppBar(
         title: Text(
           'Change Password',
-          style: TextStyle(
-            fontWeight: FontWeight.w900,
-            color: titleColor,
-          ),
+          style: TextStyle(fontWeight: FontWeight.w900, color: titleColor),
         ),
       ),
       body: SingleChildScrollView(
@@ -113,6 +87,10 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
           key: _formKey,
           child: Column(
             children: [
+              const Text(
+                'Changing your password signs out all devices. You will need to sign in again.',
+              ),
+              const SizedBox(height: 16),
               _PasswordField(
                 controller: _oldPasswordController,
                 label: 'Old Password',
@@ -121,7 +99,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 cardColor: cardColor,
                 borderColor: borderColor,
                 validator: (value) {
-                  if (value == null || value.isEmpty) return 'Please enter old password';
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter old password';
+                  }
                   return null;
                 },
               ),
@@ -134,8 +114,12 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 cardColor: cardColor,
                 borderColor: borderColor,
                 validator: (value) {
-                  if (value == null || value.isEmpty) return 'Please enter new password';
-                  if (value.length < 8) return 'New password must be at least 8 characters';
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter new password';
+                  }
+                  if (value.length < 8) {
+                    return 'New password must be at least 8 characters';
+                  }
                   return null;
                 },
               ),
@@ -144,12 +128,17 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 controller: _confirmPasswordController,
                 label: 'Confirm Password',
                 obscureText: _obscureConfirm,
-                onToggle: () => setState(() => _obscureConfirm = !_obscureConfirm),
+                onToggle: () =>
+                    setState(() => _obscureConfirm = !_obscureConfirm),
                 cardColor: cardColor,
                 borderColor: borderColor,
                 validator: (value) {
-                  if (value == null || value.isEmpty) return 'Please confirm new password';
-                  if (value != _newPasswordController.text) return 'Passwords do not match';
+                  if (value == null || value.isEmpty) {
+                    return 'Please confirm new password';
+                  }
+                  if (value != _newPasswordController.text) {
+                    return 'Passwords do not match';
+                  }
                   return null;
                 },
               ),
@@ -162,7 +151,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: isDarkMode ? Colors.white : Colors.black,
                     foregroundColor: isDarkMode ? Colors.black : Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: AppShape.controlBorderRadius),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: AppShape.controlBorderRadius,
+                    ),
                   ),
                   child: _submitting
                       ? SizedBox(
@@ -218,13 +209,17 @@ class _PasswordField extends StatelessWidget {
       style: TextStyle(color: textColor, fontWeight: FontWeight.w700),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black54),
+        labelStyle: TextStyle(
+          color: isDarkMode ? Colors.white70 : Colors.black54,
+        ),
         filled: true,
         fillColor: cardColor,
         suffixIcon: IconButton(
           onPressed: onToggle,
           icon: Icon(
-            obscureText ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+            obscureText
+                ? Icons.visibility_off_outlined
+                : Icons.visibility_outlined,
             color: isDarkMode ? Colors.white70 : Colors.black54,
           ),
         ),
@@ -234,7 +229,9 @@ class _PasswordField extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: AppShape.controlBorderRadius,
-          borderSide: BorderSide(color: isDarkMode ? Colors.white38 : Colors.black38),
+          borderSide: BorderSide(
+            color: isDarkMode ? Colors.white38 : Colors.black38,
+          ),
         ),
       ),
     );

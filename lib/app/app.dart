@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:toastification/toastification.dart';
 
 import '../core/update/app_update_service.dart';
+import '../core/session/session_guard.dart';
 import '../features/auth/presentation/splash_screen.dart';
 import '../features/auth/state/login_view_model.dart';
 import '../features/elecom/student_dashboard/utils/theme_notifier.dart';
@@ -34,6 +35,7 @@ class ElecomApp extends StatelessWidget {
             child: MaterialApp(
               debugShowCheckedModeBanner: false,
               title: 'Elecom',
+              navigatorKey: sessionNavigatorKey,
               theme: ThemeData(
                 useMaterial3: true,
                 fontFamily: GoogleFonts.nunito().fontFamily,
@@ -53,7 +55,9 @@ class ElecomApp extends StatelessWidget {
               navigatorObservers: [elecomRouteObserver],
               builder: (context, child) {
                 return _AppUpdateGate(
-                  child: _SoftKeyboardFocusGuard(child: child),
+                  child: SessionGuard(
+                    child: _SoftKeyboardFocusGuard(child: child),
+                  ),
                 );
               },
             ),
@@ -175,7 +179,9 @@ ThemeData _premiumTheme() {
       style: ElevatedButton.styleFrom(
         backgroundColor: royalBlue,
         foregroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: AppShape.controlBorderRadius),
+        shape: RoundedRectangleBorder(
+          borderRadius: AppShape.controlBorderRadius,
+        ),
         textStyle: const TextStyle(fontWeight: FontWeight.w800),
       ),
     ),

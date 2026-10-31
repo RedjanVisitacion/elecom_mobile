@@ -6,6 +6,7 @@ import '../../../services/tutorial_service.dart';
 import '../elevote/elevote_chat_screen.dart';
 import 'account_settings_screen.dart';
 import 'change_password_screen.dart';
+import 'account_sessions_screen.dart';
 import 'notification_settings_screen.dart';
 import '../student_dashboard/utils/theme_notifier.dart';
 import 'elecom_privacy_notice_screen.dart';
@@ -142,6 +143,19 @@ class SettingsScreen extends StatelessWidget {
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (_) => const AccountSettingsScreen(),
+                  ),
+                );
+              },
+            ),
+            _SettingsTile(
+              title: "Where you're logged in",
+              subtitle: 'Manage devices and log out remotely',
+              isPremiumMode: isPremiumMode,
+              premiumIcon: HugeIcons.strokeRoundedUserShield01,
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const AccountSessionsScreen(),
                   ),
                 );
               },

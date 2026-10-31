@@ -638,6 +638,11 @@ class _AccountBodyState extends State<AccountBody> {
   }
 
   Future<void> _logout() async {
+    try {
+      await _api.logout();
+    } catch (_) {
+      // Local logout remains available when offline.
+    }
     await SessionPersistence.clear();
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(

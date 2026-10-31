@@ -28,6 +28,20 @@ class ElecomMobileApi {
     return _getJson(MobileApiPaths.appUpdate);
   }
 
+  Future<Map<String, dynamic>> getAccountSessions() =>
+      _getJson(MobileApiPaths.accountSessions);
+
+  Future<Map<String, dynamic>> revokeAccountSessions({
+    String? sessionId,
+    bool all = false,
+  }) => _postJson(
+    MobileApiPaths.accountSessionsLogout,
+    all ? {'all': true} : {'session_id': sessionId},
+  );
+
+  Future<Map<String, dynamic>> logout() =>
+      _postJson(MobileApiPaths.accountLogout, {});
+
   Future<Map<String, dynamic>> getProfile() async {
     return _getJson(MobileApiPaths.accountProfile);
   }
