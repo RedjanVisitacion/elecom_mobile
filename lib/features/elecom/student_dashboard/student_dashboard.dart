@@ -78,7 +78,7 @@ class _StudentDashboardState extends State<StudentDashboard>
   Timer? _clockTimer;
   bool _homeTutorialRequested = false;
   bool _dashboardRouteVisible = true;
-  bool _assistantVisibleOnHome = EleVotePreferences.enabledNotifier.value;
+  bool _assistantVisibleOnHome = EleVotePreferences.assistantVisible;
   int _assistantAnimationNonce = 0;
   PageRoute<dynamic>? _dashboardRoute;
 
@@ -122,7 +122,7 @@ class _StudentDashboardState extends State<StudentDashboard>
 
   void _syncAssistantBubbleVisibility({bool replayIfStillEnabled = false}) {
     if (!mounted) return;
-    final enabled = EleVotePreferences.enabledNotifier.value;
+    final enabled = EleVotePreferences.assistantVisible;
 
     if (_assistantVisibleOnHome != enabled) {
       setState(() {
@@ -216,6 +216,9 @@ class _StudentDashboardState extends State<StudentDashboard>
         WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
     TutorialReplayBus.register(_onReplayDashboardTutorial);
     EleVotePreferences.enabledNotifier.addListener(
+      _handleAssistantPreferenceChanged,
+    );
+    EleVotePreferences.dismissedNotifier.addListener(
       _handleAssistantPreferenceChanged,
     );
     _ensureProfileBasics();
@@ -705,6 +708,7 @@ class _StudentDashboardState extends State<StudentDashboard>
                           _AnimatedPremiumAssistantBubble(
                             visible: _assistantVisibleOnHome,
                             animationNonce: _assistantAnimationNonce,
+                            onDismiss: EleVotePreferences.dismissForSession,
                           ),
                       ],
                     ),
@@ -1655,6 +1659,9 @@ class _StudentDashboardState extends State<StudentDashboard>
     EleVotePreferences.enabledNotifier.removeListener(
       _handleAssistantPreferenceChanged,
     );
+    EleVotePreferences.dismissedNotifier.removeListener(
+      _handleAssistantPreferenceChanged,
+    );
     _homeScrollController.removeListener(_onHomeScroll);
     _homeScrollController.dispose();
     super.dispose();
@@ -1956,10 +1963,12 @@ class _AnimatedPremiumAssistantBubble extends StatefulWidget {
   const _AnimatedPremiumAssistantBubble({
     required this.visible,
     required this.animationNonce,
+    required this.onDismiss,
   });
 
   final bool visible;
   final int animationNonce;
+  final VoidCallback onDismiss;
 
   @override
   State<_AnimatedPremiumAssistantBubble> createState() =>
@@ -2036,6 +2045,7 @@ class _AnimatedPremiumAssistantBubbleState
     _controller.stop();
     setState(() => _renderBubble = false);
     _controller.value = 0;
+    widget.onDismiss();
   }
 
   @override
@@ -2095,7 +2105,10 @@ class _AnimatedPremiumAssistantBubbleState
                             child: _renderBubble
                                 ? Stack(
                                     children: [
-                                      const _PremiumAssistantBubble(),
+                                      const Padding(
+                                        padding: EdgeInsets.only(top: 20),
+                                        child: _PremiumAssistantBubble(),
+                                      ),
                                       Positioned(
                                         top: 0,
                                         right: 0,
