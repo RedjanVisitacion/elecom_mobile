@@ -1997,7 +1997,7 @@ class _AnimatedPremiumAssistantBubbleState
   late final Animation<double> _turns;
   late final Animation<Offset> _offset;
   bool _renderBubble = false;
-  Alignment _bubbleAlignment = Alignment.bottomRight;
+  Alignment _bubbleAlignment = Alignment.topRight;
   late final AnimationController _snapController;
   double _snapStartX = 1;
   final GlobalKey _bubbleKey = GlobalKey();
@@ -2095,7 +2095,8 @@ class _AnimatedPremiumAssistantBubbleState
     return Positioned.fill(
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          // Start beside the banner, above the profile/countdown card.
+          padding: const EdgeInsets.fromLTRB(16, 47, 16, 12),
           child: LayoutBuilder(
             builder: (context, constraints) {
               return Align(
