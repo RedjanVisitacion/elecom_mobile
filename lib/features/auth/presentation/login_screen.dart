@@ -11,6 +11,7 @@ import '../../elecom/presentation/elecom_dashboard.dart';
 import '../../elecom/profile/elecom_terms_conditions_screen.dart';
 import 'forgot_password_screen.dart';
 import '../state/login_view_model.dart';
+import '../../../core/theme/app_shape.dart';
 
 const _navy = Color(0xFF0D1B3E);
 const _inputInk = Color(0xFF1E293B);
@@ -117,7 +118,7 @@ class _LoginScreenState extends State<LoginScreen> {
       builder: (_) => const FractionallySizedBox(
         heightFactor: 0.94,
         child: ClipRRect(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(AppShape.cardRadius)),
           child: ElecomTermsConditionsScreen(requireAgreement: true),
         ),
       ),
@@ -137,7 +138,7 @@ class _LoginScreenState extends State<LoginScreen> {
           seedColor: _primary,
         ).copyWith(primary: _primary),
         scaffoldBackgroundColor: const Color(0xFFF8FAFC),
-      ),
+      ).withCompactShapes(),
       child: Scaffold(
         resizeToAvoidBottomInset: true,
         body: Stack(
@@ -367,9 +368,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                                       ),
                                                   shape: RoundedRectangleBorder(
                                                     borderRadius:
-                                                        BorderRadius.circular(
-                                                          12,
-                                                        ),
+                                                        AppShape.controlBorderRadius,
                                                   ),
                                                 ).copyWith(
                                                   elevation:

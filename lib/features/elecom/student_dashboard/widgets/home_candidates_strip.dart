@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../candidates/candidate_profile_screen.dart';
+import '../../../../core/theme/app_shape.dart';
 
 String homeCandidateFirstName(Map<String, dynamic> c) {
   final f = (c['first_name'] ?? '').toString().trim();
@@ -103,7 +104,7 @@ class HomeCandidatesStrip extends StatelessWidget {
                         ),
                       );
                     },
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppShape.cardBorderRadius,
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [

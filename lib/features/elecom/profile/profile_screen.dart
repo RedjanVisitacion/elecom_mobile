@@ -19,6 +19,7 @@ import 'elecom_about_screen.dart';
 import 'elecom_faqs_screen.dart';
 import 'settings_screen.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../../core/theme/app_shape.dart';
 
 const _premiumBlue = Color(0xFF2563EB);
 const _premiumGold = Color(0xFFFACC15);
@@ -144,7 +145,7 @@ class _RateAppSheetState extends State<_RateAppSheet> {
       padding: EdgeInsets.only(left: 10, right: 10, bottom: safeBottom + 10),
       child: Material(
         color: sheetColor,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: AppShape.cardBorderRadius,
         clipBehavior: Clip.antiAlias,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
@@ -768,7 +769,7 @@ class _AccountBodyState extends State<AccountBody> {
           ),
           child: Material(
             color: isDarkMode ? const Color(0xFF2A2A35) : Colors.white,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: AppShape.cardBorderRadius,
             clipBehavior: Clip.antiAlias,
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -884,7 +885,7 @@ class _AccountBodyState extends State<AccountBody> {
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         border: Border.all(color: isDarkMode ? Colors.white12 : Colors.black12),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppShape.cardBorderRadius,
         color: cardColor,
       ),
       child: ListTile(
@@ -894,7 +895,7 @@ class _AccountBodyState extends State<AccountBody> {
           height: 40,
           decoration: BoxDecoration(
             color: iconContainerColor,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: AppShape.cardBorderRadius,
           ),
           child: Icon(displayIcon, color: color),
         ),
@@ -947,7 +948,7 @@ class _AccountBodyState extends State<AccountBody> {
                   border: Border.all(
                     color: isDarkMode ? Colors.white12 : Colors.black12,
                   ),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: AppShape.cardBorderRadius,
                   color: isDarkMode ? const Color(0xFF2A2A35) : Colors.white,
                 ),
                 child: Row(
@@ -1220,7 +1221,7 @@ class _ProfileBodyState extends State<ProfileBody> {
           children: [
             Container(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: AppShape.cardBorderRadius,
                 gradient: const LinearGradient(
                   colors: [Color(0xFF5B6CFF), Color(0xFFFFF176)],
                   begin: Alignment.centerLeft,
@@ -1230,7 +1231,7 @@ class _ProfileBodyState extends State<ProfileBody> {
               child: Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: AppShape.cardBorderRadius,
                   color: Colors.white.withValues(alpha: 0.86),
                 ),
                 child: Row(
@@ -1540,7 +1541,7 @@ class _ProfileField extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: AppShape.controlBorderRadius,
         border: Border.all(color: Colors.black12),
         color: Colors.white,
       ),

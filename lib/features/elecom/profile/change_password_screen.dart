@@ -5,6 +5,7 @@ import '../../../core/utils/toast_service.dart';
 import '../../../core/notifications/notification_center_store.dart';
 import '../../../core/session/notification_preferences.dart';
 import '../data/elecom_mobile_api.dart';
+import '../../../core/theme/app_shape.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -161,7 +162,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: isDarkMode ? Colors.white : Colors.black,
                     foregroundColor: isDarkMode ? Colors.black : Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(borderRadius: AppShape.controlBorderRadius),
                   ),
                   child: _submitting
                       ? SizedBox(
@@ -228,11 +229,11 @@ class _PasswordField extends StatelessWidget {
           ),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppShape.controlBorderRadius,
           borderSide: BorderSide(color: borderColor),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppShape.controlBorderRadius,
           borderSide: BorderSide(color: isDarkMode ? Colors.white38 : Colors.black38),
         ),
       ),

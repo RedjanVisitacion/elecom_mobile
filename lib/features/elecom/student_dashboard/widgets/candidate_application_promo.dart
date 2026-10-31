@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../dashboard_card_style.dart';
+import '../../../../core/theme/app_shape.dart';
 
 class CandidateApplicationPromo extends StatefulWidget {
   const CandidateApplicationPromo({
@@ -86,7 +88,7 @@ class _CandidateApplicationPromoState extends State<CandidateApplicationPromo> {
           aspectRatio: 2.22,
           child: DecoratedBox(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: DashboardCardStyle.borderRadius,
               boxShadow: [
                 BoxShadow(
                   color: shadowColor,
@@ -96,7 +98,7 @@ class _CandidateApplicationPromoState extends State<CandidateApplicationPromo> {
               ],
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: DashboardCardStyle.borderRadius,
               child: PageView.builder(
                 controller: _controller,
                 physics: const BouncingScrollPhysics(),
@@ -236,7 +238,7 @@ class _CandidateApplicationSlide extends StatelessWidget {
                         letterSpacing: 0.1,
                       ),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(999),
+                        borderRadius: AppShape.controlBorderRadius,
                       ),
                     ),
                   ),

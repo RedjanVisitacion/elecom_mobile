@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'personal_information_screen.dart';
+import '../../../core/theme/app_shape.dart';
 
 class AccountSettingsScreen extends StatelessWidget {
   const AccountSettingsScreen({super.key});
@@ -32,7 +33,7 @@ class AccountSettingsScreen extends StatelessWidget {
                 height: 30,
                 decoration: BoxDecoration(
                   color: const Color(0xFF3B82F6),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: AppShape.cardBorderRadius,
                 ),
               ),
               const SizedBox(width: 10),

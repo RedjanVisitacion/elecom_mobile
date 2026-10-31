@@ -10,6 +10,7 @@ import '../core/update/app_update_service.dart';
 import '../features/auth/presentation/splash_screen.dart';
 import '../features/auth/state/login_view_model.dart';
 import '../features/elecom/student_dashboard/utils/theme_notifier.dart';
+import '../core/theme/app_shape.dart';
 
 final RouteObserver<PageRoute<dynamic>> elecomRouteObserver =
     RouteObserver<PageRoute<dynamic>>();
@@ -45,7 +46,7 @@ class ElecomApp extends StatelessWidget {
                 textSelectionTheme: const TextSelectionThemeData(
                   cursorColor: Colors.black,
                 ),
-              ),
+              ).withCompactShapes(),
               darkTheme: darkTheme,
               themeMode: themeState.themeMode,
               home: const SplashScreen(),
@@ -71,7 +72,7 @@ ThemeData _darkTheme() {
       seedColor: Colors.black,
       brightness: Brightness.dark,
     ),
-  );
+  ).withCompactShapes();
 }
 
 ThemeData _premiumTheme() {
@@ -145,28 +146,28 @@ ThemeData _premiumTheme() {
       color: surface.withValues(alpha: 0.78),
       surfaceTintColor: Colors.transparent,
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+      shape: RoundedRectangleBorder(borderRadius: AppShape.cardBorderRadius),
     ),
     listTileTheme: ListTileThemeData(
       iconColor: royalBlue,
       textColor: Colors.white,
       subtitleTextStyle: TextStyle(color: Colors.white.withValues(alpha: 0.68)),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      shape: RoundedRectangleBorder(borderRadius: AppShape.cardBorderRadius),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: Colors.white.withValues(alpha: 0.055),
       hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.42)),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: AppShape.controlBorderRadius,
         borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: AppShape.controlBorderRadius,
         borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
       ),
       focusedBorder: const OutlineInputBorder(
-        borderRadius: BorderRadius.all(Radius.circular(18)),
+        borderRadius: AppShape.controlBorderRadius,
         borderSide: BorderSide(color: gold, width: 1.3),
       ),
     ),
@@ -174,13 +175,13 @@ ThemeData _premiumTheme() {
       style: ElevatedButton.styleFrom(
         backgroundColor: royalBlue,
         foregroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        shape: RoundedRectangleBorder(borderRadius: AppShape.controlBorderRadius),
         textStyle: const TextStyle(fontWeight: FontWeight.w800),
       ),
     ),
     textSelectionTheme: const TextSelectionThemeData(cursorColor: gold),
     dividerTheme: DividerThemeData(color: Colors.white.withValues(alpha: 0.10)),
-  );
+  ).withCompactShapes();
 }
 
 class _AppUpdateGate extends StatefulWidget {

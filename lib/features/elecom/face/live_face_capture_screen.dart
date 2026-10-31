@@ -12,6 +12,7 @@ import 'enrollment_liveness_controller.dart';
 import '../data/elecom_mobile_api.dart';
 import 'enrollment_liveness_progress.dart';
 import 'biometric_tracking_overlay.dart';
+import '../../../core/theme/app_shape.dart';
 
 enum LiveFaceMode { enrollment, verification }
 
@@ -1245,7 +1246,7 @@ class _LiveFaceCaptureScreenState extends State<LiveFaceCaptureScreen>
                     ),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.30),
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: AppShape.cardBorderRadius,
                       border: Border.all(color: Colors.white24),
                     ),
                     child: Row(
@@ -1426,7 +1427,7 @@ class _InstructionPill extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       decoration: BoxDecoration(
         color: const Color(0xFF1A202C).withValues(alpha: 0.82),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: AppShape.cardBorderRadius,
         border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
         boxShadow: const [
           BoxShadow(

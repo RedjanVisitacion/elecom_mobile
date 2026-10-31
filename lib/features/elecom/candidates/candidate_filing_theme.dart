@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_shape.dart';
 
 /// Dashboard colors for filing controls, including separately pushed routes.
 ThemeData candidateFilingTheme(ThemeData base) {
@@ -40,7 +41,7 @@ ThemeData candidateFilingTheme(ThemeData base) {
       ),
     ),
     textSelectionTheme: base.textSelectionTheme.copyWith(cursorColor: blue),
-  );
+  ).withCompactShapes();
 }
 
 class CandidateFilingStyle extends StatelessWidget {

@@ -3,6 +3,7 @@ import 'package:hugeicons/hugeicons.dart';
 
 import '../../../core/config/api_config.dart';
 import '../student_dashboard/utils/theme_notifier.dart';
+import '../../../core/theme/app_shape.dart';
 
 const _premiumBlue = Color(0xFF2563EB);
 const _premiumGold = Color(0xFFFACC15);
@@ -303,7 +304,7 @@ class CandidateProfileScreen extends StatelessWidget {
                     child: DecoratedBox(
                       decoration: BoxDecoration(
                         color: cardColor,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: AppShape.cardBorderRadius,
                         boxShadow: isPremiumMode
                             ? [
                                 BoxShadow(
@@ -474,7 +475,7 @@ class _PremiumChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.78),
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: AppShape.controlBorderRadius,
         border: Border.all(color: Colors.white.withValues(alpha: 0.9)),
         boxShadow: [
           BoxShadow(

@@ -17,6 +17,7 @@ import '../face/live_face_capture_screen.dart';
 import '../student_dashboard/utils/theme_notifier.dart';
 import 'election_transparency_screen.dart';
 import 'receipt_screen.dart';
+import '../../../core/theme/app_shape.dart';
 
 const _premiumBlue = Color(0xFF2563EB);
 const _premiumGold = Color(0xFFFACC15);
@@ -785,7 +786,7 @@ class _ElectionScreenState extends State<ElectionScreen>
               margin: const EdgeInsets.only(bottom: 8),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: AppShape.cardBorderRadius,
                 border: Border.all(
                   color: isDark ? Colors.white12 : const Color(0xFFD7D7D7),
                 ),
@@ -840,7 +841,7 @@ class _ElectionScreenState extends State<ElectionScreen>
       isScrollControlled: true,
       backgroundColor: bg,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppShape.cardRadius)),
       ),
       builder: (ctx) {
         final h = MediaQuery.sizeOf(ctx).height;
@@ -1093,7 +1094,7 @@ class _ElectionScreenState extends State<ElectionScreen>
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppShape.cardBorderRadius,
                     border: Border.all(
                       color: Theme.of(ctx).brightness == Brightness.dark
                           ? Colors.white12
@@ -1180,7 +1181,7 @@ class _ElectionScreenState extends State<ElectionScreen>
                 backgroundColor: dialogBg,
                 surfaceTintColor: Colors.transparent,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: AppShape.cardBorderRadius,
                 ),
                 child: SizedBox(
                   height: dialogH.toDouble(),
@@ -1340,7 +1341,7 @@ class _ElectionScreenState extends State<ElectionScreen>
               padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
               decoration: BoxDecoration(
                 color: bg,
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: AppShape.cardBorderRadius,
                 border: Border.all(
                   color: isDark ? Colors.white12 : const Color(0xFFD7D7D7),
                 ),
@@ -1798,7 +1799,7 @@ class _ElectionScreenState extends State<ElectionScreen>
                           ),
                           decoration: BoxDecoration(
                             color: cardBg,
-                            borderRadius: BorderRadius.circular(22),
+                            borderRadius: AppShape.cardBorderRadius,
                             border: Border.all(color: cardBorder),
                             boxShadow: [
                               BoxShadow(
@@ -2113,7 +2114,7 @@ class _ElectionScreenState extends State<ElectionScreen>
     );
 
     return Theme(
-      data: electionThemeData,
+      data: compactAppTheme(electionThemeData),
       child: Column(
         children: [
           Expanded(
@@ -2273,7 +2274,7 @@ class _ElectionScreenState extends State<ElectionScreen>
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
           decoration: BoxDecoration(
             color: card,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: AppShape.cardBorderRadius,
             border: Border.all(color: border, width: 1),
             boxShadow: isPremiumMode
                 ? [
@@ -2406,11 +2407,11 @@ class _ElectionScreenState extends State<ElectionScreen>
                     child: Material(
                       color: Colors.transparent,
                       child: InkWell(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: AppShape.cardBorderRadius,
                         onTap: onTap,
                         child: Ink(
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: AppShape.cardBorderRadius,
                             border: Border.all(color: rowBorder),
                           ),
                           padding: const EdgeInsets.symmetric(
@@ -2575,7 +2576,7 @@ class _ElectionScreenState extends State<ElectionScreen>
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
         decoration: BoxDecoration(
           color: card,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: AppShape.cardBorderRadius,
           border: Border.all(color: border),
           boxShadow: isPremiumMode
               ? [
@@ -2591,7 +2592,7 @@ class _ElectionScreenState extends State<ElectionScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             InkWell(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: AppShape.cardBorderRadius,
               onTap: () => setState(
                 () => _straightPartyCollapsed = !_straightPartyCollapsed,
               ),
@@ -2779,16 +2780,16 @@ class _StraightPartyButton extends StatelessWidget {
 
     return Material(
       color: bg,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: AppShape.controlBorderRadius,
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppShape.controlBorderRadius,
         onTap: onTap,
         child: Container(
           width: double.infinity,
           constraints: const BoxConstraints(minHeight: 50),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: AppShape.controlBorderRadius,
             border: Border.all(
               color: selected
                   ? (isPremiumMode ? _premiumGold : palette.accent)
@@ -3026,12 +3027,12 @@ class _SecureActionButtonState extends State<_SecureActionButton> {
           onTapDown: disabled ? null : (_) => setState(() => _pressed = true),
           onTapCancel: disabled ? null : () => setState(() => _pressed = false),
           onTapUp: disabled ? null : (_) => setState(() => _pressed = false),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: AppShape.controlBorderRadius,
           child: Ink(
             height: 56,
             decoration: BoxDecoration(
               color: widget.background,
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: AppShape.controlBorderRadius,
               border: Border.all(
                 color: widget.gold.withValues(alpha: disabled ? 0.25 : 0.75),
                 width: 1,

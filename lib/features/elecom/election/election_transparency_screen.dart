@@ -7,6 +7,7 @@ import '../../../core/utils/toast_service.dart';
 
 import '../data/elecom_mobile_api.dart';
 import '../student_dashboard/utils/theme_notifier.dart';
+import '../../../core/theme/app_shape.dart';
 
 class ElectionTransparencyScreen extends StatefulWidget {
   const ElectionTransparencyScreen({super.key});
@@ -157,9 +158,7 @@ class _ElectionTransparencyScreenState
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
                         color: card,
-                        borderRadius: BorderRadius.circular(
-                          isPremiumMode ? 22 : 20,
-                        ),
+                        borderRadius: AppShape.cardBorderRadius,
                         border: Border.all(color: border),
                         boxShadow: [
                           BoxShadow(
@@ -393,9 +392,7 @@ class _ElectionTransparencyScreenState
                         child: Container(
                           decoration: BoxDecoration(
                             color: card,
-                            borderRadius: BorderRadius.circular(
-                              isPremiumMode ? 16 : 14,
-                            ),
+                            borderRadius: AppShape.cardBorderRadius,
                             border: Border.all(color: border),
                             boxShadow: isPremiumMode
                                 ? [
@@ -531,7 +528,7 @@ class _ElectionTransparencyScreenState
     return Container(
       decoration: BoxDecoration(
         color: card,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppShape.cardBorderRadius,
         border: Border.all(color: border),
       ),
       child: ListTile(
@@ -632,7 +629,7 @@ class _ElectionTransparencyScreenState
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
       decoration: BoxDecoration(
         color: const Color(0xFFB3261E).withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppShape.cardBorderRadius,
         border: Border.all(
           color: const Color(0xFFB3261E).withValues(alpha: 0.35),
         ),

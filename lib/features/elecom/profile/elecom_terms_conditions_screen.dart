@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/theme/app_shape.dart';
 
 // ── Login-screen–matched palette ─────────────────────────────────────────────
 const Color _tNavy      = Color(0xFF0F1F3D);
@@ -153,7 +154,7 @@ class _ElecomTermsConditionsScreenState
               padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
               decoration: BoxDecoration(
                 color: _tWhite,
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: AppShape.cardBorderRadius,
                 border: Border.all(color: _tBorder.withValues(alpha: 0.6)),
                 boxShadow: [
                   BoxShadow(
@@ -302,7 +303,7 @@ class _ElecomTermsConditionsScreenState
                             side: BorderSide(color: _tBorder, width: 1.5),
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
+                              borderRadius: AppShape.controlBorderRadius,
                             ),
                           ),
                           child: Text(
@@ -320,7 +321,7 @@ class _ElecomTermsConditionsScreenState
                       Expanded(
                         child: DecoratedBox(
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: AppShape.cardBorderRadius,
                             gradient: const LinearGradient(
                               colors: [Color(0xFFF59E0B), Color(0xFFFACC15)],
                             ),
@@ -340,7 +341,7 @@ class _ElecomTermsConditionsScreenState
                               foregroundColor: _tNavy,
                               padding: const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
+                                borderRadius: AppShape.controlBorderRadius,
                               ),
                             ),
                             child: Text(

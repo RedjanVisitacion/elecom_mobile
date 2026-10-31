@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
 import '../features/elecom/data/elecom_mobile_api.dart';
+import '../core/theme/app_shape.dart';
 
 /// SharedPreferences keys for ELECOM onboarding (login + home + voting).
 class TutorialPrefs {
@@ -413,7 +414,7 @@ class TutorialService {
                     DecoratedBox(
                       decoration: BoxDecoration(
                         color: const Color(0xFF1E1E24).withValues(alpha: 0.94),
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: AppShape.cardBorderRadius,
                         border: Border.all(color: Colors.white24),
                       ),
                       child: Padding(
@@ -453,7 +454,7 @@ class TutorialService {
                               vertical: 12,
                             ),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(24),
+                              borderRadius: AppShape.controlBorderRadius,
                             ),
                           ),
                           onPressed: ctrl.next,

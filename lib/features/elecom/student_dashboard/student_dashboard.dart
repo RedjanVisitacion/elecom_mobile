@@ -35,6 +35,8 @@ import 'widgets/omnibus_code_carousel.dart';
 import 'widgets/student_dashboard_appbar.dart';
 import '../candidates/candidate_search_screen.dart';
 import '../profile/notifications_screen.dart';
+import 'dashboard_card_style.dart';
+import '../../../core/theme/app_shape.dart';
 
 class StudentDashboard extends StatefulWidget {
   const StudentDashboard({
@@ -684,7 +686,7 @@ class _StudentDashboardState extends State<StudentDashboard>
                   backgroundColor: Color(0xFF171620),
                   foregroundColor: Colors.white,
                 ),
-              )
+              ).withCompactShapes()
             : Theme.of(context);
 
         return Theme(
@@ -785,7 +787,7 @@ class _StudentDashboardState extends State<StudentDashboard>
       height: double.infinity,
       decoration: BoxDecoration(
         color: cardBg,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: DashboardCardStyle.borderRadius,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: isDarkMode ? 0.20 : 0.07),
@@ -795,7 +797,7 @@ class _StudentDashboardState extends State<StudentDashboard>
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: DashboardCardStyle.borderRadius,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.max,
@@ -1413,7 +1415,7 @@ class _StudentDashboardState extends State<StudentDashboard>
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: elecomGold.withValues(alpha: 0.16),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: AppShape.controlBorderRadius,
       ),
       child: iconWidget,
     );
@@ -1846,7 +1848,7 @@ ThemeData _premiumDashboardTheme() {
     cardColor: surface.withValues(alpha: 0.86),
     iconTheme: const IconThemeData(color: royalBlue, size: 24),
     textSelectionTheme: const TextSelectionThemeData(cursorColor: gold),
-  );
+  ).withCompactShapes();
 }
 
 class _PremiumDashboardBackground extends StatelessWidget {

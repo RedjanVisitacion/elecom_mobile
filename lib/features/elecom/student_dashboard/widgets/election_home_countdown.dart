@@ -9,6 +9,8 @@ import '../../../../core/notifications/notification_center_store.dart';
 import '../../../../core/session/user_session.dart';
 import '../../data/elecom_mobile_api.dart';
 import '../../data/election_window_utils.dart';
+import '../dashboard_card_style.dart';
+import '../../../../core/theme/app_shape.dart';
 
 /// Home-tab election countdown fed by [GET /api/mobile/election/window/] (same schedule as the web).
 class ElectionHomeCountdown extends StatefulWidget {
@@ -260,7 +262,7 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
           ),
         Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(widget.isPremiumMode ? 22 : 18),
+            borderRadius: DashboardCardStyle.borderRadius,
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
@@ -403,7 +405,7 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
       color: Colors.white,
       elevation: 3,
       shadowColor: Colors.black.withValues(alpha: 0.2),
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: AppShape.controlBorderRadius,
       child: InkWell(
         onTap: () {
           if (_hasVoted) {
@@ -416,7 +418,7 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
           }
           widget.onVoteNow?.call();
         },
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppShape.controlBorderRadius,
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 16),
           child: Row(
@@ -468,7 +470,7 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
             padding: const EdgeInsets.symmetric(vertical: 8),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.22),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: DashboardCardStyle.insetBorderRadius,
               border: Border.all(color: Colors.white.withValues(alpha: 0.30)),
             ),
             alignment: Alignment.center,

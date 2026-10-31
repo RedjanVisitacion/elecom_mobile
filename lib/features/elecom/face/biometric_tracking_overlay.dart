@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'biometric_laser.dart';
+import '../../../core/theme/app_shape.dart';
 
 const _cyan = Color(0xFF00F0FF);
 const _teal = Color(0xFF72E8DD);
@@ -352,7 +353,7 @@ class BiometricCaptureActions extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 decoration: BoxDecoration(
                   color: const Color(0xFF1A202C).withValues(alpha: .9),
-                  borderRadius: BorderRadius.circular(32),
+                  borderRadius: AppShape.cardBorderRadius,
                   border: Border.all(color: _cyan),
                   boxShadow: [
                     BoxShadow(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:intl/intl.dart';
+import '../dashboard_card_style.dart';
 
 class ElectionTransparencyCard extends StatelessWidget {
   const ElectionTransparencyCard({
@@ -61,7 +62,7 @@ class ElectionTransparencyCard extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: cardColor,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: DashboardCardStyle.borderRadius,
             border: Border.all(color: borderColor),
           ),
           child: isLoading
@@ -303,7 +304,7 @@ class ElectionTransparencyCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(9),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: DashboardCardStyle.insetBorderRadius,
         color: Colors.black.withValues(alpha: 0.03),
       ),
       child: Column(

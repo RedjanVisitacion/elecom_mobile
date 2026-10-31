@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
 import '../features/auth/presentation/login_screen.dart';
+import '../core/theme/app_shape.dart';
 
 class GetStartedScreen extends StatefulWidget {
   const GetStartedScreen({super.key});
@@ -92,7 +93,7 @@ class _GetStartedScreenState extends State<GetStartedScreen> {
         colorScheme: ColorScheme.fromSeed(seedColor: _black),
         scaffoldBackgroundColor: Colors.white,
         textSelectionTheme: const TextSelectionThemeData(cursorColor: _blue),
-      ),
+      ).withCompactShapes(),
       child: Scaffold(
         body: Stack(
           children: [
@@ -180,7 +181,7 @@ class _GetStartedScreenState extends State<GetStartedScreen> {
                                       fontWeight: FontWeight.w800,
                                       fontSize: 14,
                                     ),
-                                    shape: const StadiumBorder(),
+                                    shape: AppShape.control,
                                   ),
                                   child: Text(
                                     _isCompleting
@@ -345,7 +346,7 @@ class _IllustrationCard extends StatelessWidget {
             key: ValueKey('onboarding-graphic-${kind.name}'),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: AppShape.cardBorderRadius,
               border: Border.all(color: const Color(0xFFE8EDF3)),
               boxShadow: const [
                 BoxShadow(

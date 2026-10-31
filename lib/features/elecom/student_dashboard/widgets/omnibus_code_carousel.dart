@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
+import '../dashboard_card_style.dart';
+import '../../../../core/theme/app_shape.dart';
 
 /// Opens a full-screen omnibus reader (multi-page, PDF-style).
 void showOmnibusFullScreen(
@@ -144,7 +146,7 @@ class _OmnibusFullscreenReaderState extends State<_OmnibusFullscreenReader> {
                                   color: isDark
                                       ? Colors.white10
                                       : Colors.black.withValues(alpha: 0.04),
-                                  borderRadius: BorderRadius.circular(14),
+                                  borderRadius: AppShape.cardBorderRadius,
                                   border: Border.all(
                                     color: isDark
                                         ? Colors.white12
@@ -152,7 +154,7 @@ class _OmnibusFullscreenReaderState extends State<_OmnibusFullscreenReader> {
                                   ),
                                 ),
                                 child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(13),
+                                  borderRadius: AppShape.cardBorderRadius,
                                   child: GestureDetector(
                                     onDoubleTap: () => _resetZoom(i),
                                     child: InteractiveViewer(
@@ -210,7 +212,7 @@ class _OmnibusFullscreenReaderState extends State<_OmnibusFullscreenReader> {
                     ),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.70),
-                      borderRadius: BorderRadius.circular(24),
+                      borderRadius: AppShape.cardBorderRadius,
                     ),
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
@@ -431,18 +433,18 @@ class _OmnibusCard extends StatelessWidget {
           assetPaths: allPaths,
           initialIndex: index,
         ),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: DashboardCardStyle.borderRadius,
         child: Ink(
           height: height,
           decoration: BoxDecoration(
             color: isDark
                 ? _frame.withValues(alpha: 0.35)
                 : _frame.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: DashboardCardStyle.borderRadius,
             border: Border.all(color: _frame, width: 2),
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: DashboardCardStyle.insetBorderRadius,
             child: Image.asset(
               path,
               fit: BoxFit.cover,

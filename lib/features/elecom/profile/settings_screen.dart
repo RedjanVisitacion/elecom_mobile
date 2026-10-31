@@ -10,6 +10,7 @@ import 'notification_settings_screen.dart';
 import '../student_dashboard/utils/theme_notifier.dart';
 import 'elecom_privacy_notice_screen.dart';
 import 'elecom_terms_conditions_screen.dart';
+import '../../../core/theme/app_shape.dart';
 
 const _premiumBlue = Color(0xFF2563EB);
 const _premiumGold = Color(0xFFFACC15);
@@ -246,7 +247,7 @@ class SettingsScreen extends StatelessWidget {
           child: Material(
             color: sheetColor,
             surfaceTintColor: sheetColor,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: AppShape.cardBorderRadius,
             clipBehavior: Clip.antiAlias,
             child: SafeArea(
               child: Padding(
@@ -284,7 +285,7 @@ class SettingsScreen extends StatelessWidget {
                                   ],
                                 )
                               : null,
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: AppShape.cardBorderRadius,
                         ),
                         child: Padding(
                           padding: EdgeInsets.symmetric(
@@ -378,7 +379,7 @@ class _SectionTitle extends StatelessWidget {
           height: 24,
           decoration: BoxDecoration(
             color: accentColor,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: AppShape.cardBorderRadius,
           ),
         ),
         const SizedBox(width: 10),
@@ -524,7 +525,7 @@ class _ThemeModeTile extends StatelessWidget {
       curve: Curves.easeOutCubic,
       margin: const EdgeInsets.symmetric(vertical: 3),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppShape.cardBorderRadius,
         gradient: selected
             ? LinearGradient(
                 begin: Alignment.topLeft,

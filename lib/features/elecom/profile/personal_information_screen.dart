@@ -11,6 +11,7 @@ import '../../../core/notifications/notification_center_store.dart';
 import '../../../core/session/notification_preferences.dart';
 import '../../../core/session/user_session.dart';
 import '../data/elecom_mobile_api.dart';
+import '../../../core/theme/app_shape.dart';
 
 class PersonalInformationScreen extends StatefulWidget {
   const PersonalInformationScreen({super.key});
@@ -420,7 +421,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                         style: OutlinedButton.styleFrom(
                           side: BorderSide(color: borderColor),
                           foregroundColor: titleColor,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          shape: RoundedRectangleBorder(borderRadius: AppShape.controlBorderRadius),
                         ),
                         child: const Text(
                           'Cancel',
@@ -437,7 +438,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: accentSurface,
                           foregroundColor: accentContent,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          shape: RoundedRectangleBorder(borderRadius: AppShape.controlBorderRadius),
                           side: BorderSide(color: borderColor),
                         ),
                         icon: _saving
@@ -497,7 +498,7 @@ class _InfoField extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppShape.controlBorderRadius,
         border: Border.all(color: borderColor),
       ),
       child: Column(

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/notifications/push_notification_service.dart';
 
 import '../../../core/session/notification_preferences.dart';
+import '../../../core/theme/app_shape.dart';
 
 class NotificationSettingsScreen extends StatefulWidget {
   const NotificationSettingsScreen({super.key});
@@ -137,7 +138,7 @@ class _NotificationRow extends StatelessWidget {
           height: 48,
           decoration: BoxDecoration(
             color: iconBackgroundColor,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: AppShape.cardBorderRadius,
           ),
           child: Icon(icon, color: iconColor),
         ),

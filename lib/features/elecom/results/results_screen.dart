@@ -9,6 +9,7 @@ import '../candidates/candidate_profile_screen.dart';
 import '../data/elecom_mobile_api.dart';
 import '../data/election_window_utils.dart';
 import '../student_dashboard/utils/theme_notifier.dart';
+import '../../../core/theme/app_shape.dart';
 
 const _premiumBlue = Color(0xFF2563EB);
 const _premiumGold = Color(0xFFFACC15);
@@ -204,7 +205,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       decoration: BoxDecoration(
         color: card,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppShape.cardBorderRadius,
         border: Border.all(color: border),
         boxShadow: isPremiumMode
             ? [
@@ -371,7 +372,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
     return Container(
       padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppShape.cardBorderRadius,
         border: Border.all(color: border),
         color: Colors.transparent,
       ),
@@ -442,7 +443,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
     return Container(
       padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppShape.cardBorderRadius,
         border: Border.all(color: border),
         color: Colors.transparent,
       ),
@@ -570,7 +571,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
     return Container(
       padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppShape.cardBorderRadius,
         border: Border.all(color: border),
         color: Colors.transparent,
       ),
@@ -1201,7 +1202,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
               padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
               decoration: BoxDecoration(
                 color: card,
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: AppShape.cardBorderRadius,
                 border: Border.all(color: border),
                 boxShadow: isPremiumMode
                     ? [
@@ -1389,7 +1390,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
                             ),
                             decoration: BoxDecoration(
                               color: card,
-                              borderRadius: BorderRadius.circular(14),
+                              borderRadius: AppShape.cardBorderRadius,
                               border: Border.all(color: border),
                             ),
                             child: Row(
@@ -1576,7 +1577,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
                             padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
                             decoration: BoxDecoration(
                               color: card,
-                              borderRadius: BorderRadius.circular(14),
+                              borderRadius: AppShape.cardBorderRadius,
                               border: Border.all(color: border),
                               boxShadow: isPremiumMode
                                   ? [
@@ -1712,7 +1713,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
                             padding: const EdgeInsets.all(18),
                             decoration: BoxDecoration(
                               color: card,
-                              borderRadius: BorderRadius.circular(14),
+                              borderRadius: AppShape.cardBorderRadius,
                               border: Border.all(color: border),
                             ),
                             child: Text(
@@ -1746,7 +1747,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
                               margin: const EdgeInsets.only(bottom: 10),
                               decoration: BoxDecoration(
                                 color: card,
-                                borderRadius: BorderRadius.circular(14),
+                                borderRadius: AppShape.cardBorderRadius,
                                 border: Border.all(color: border),
                                 boxShadow: isPremiumMode
                                     ? [
@@ -2157,7 +2158,7 @@ class _LegendChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: AppShape.controlBorderRadius,
           border: Border.all(color: borderColor),
         ),
         child: Row(

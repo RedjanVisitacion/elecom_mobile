@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/elecom_mobile_api.dart';
 import '../student_dashboard/utils/theme_notifier.dart';
 import 'candidate_profile_screen.dart';
+import '../../../core/theme/app_shape.dart';
 
 // ── colour tokens ─────────────────────────────────────────────────────────────
 const _blue = Color(0xFF2563EB);
@@ -609,7 +610,7 @@ class _FilterRow extends StatelessWidget {
                             : isDark
                             ? const Color(0xFF3A3B3C)
                             : const Color(0xFFE4E6EB),
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: AppShape.controlBorderRadius,
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -659,7 +660,7 @@ class _FilterRow extends StatelessWidget {
       context: context,
       backgroundColor: sheetBg,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppShape.cardRadius)),
       ),
       builder: (ctx) {
         return SafeArea(
@@ -779,7 +780,7 @@ class _FilterChipButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: isActive ? activeBg : inactiveBg,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: AppShape.controlBorderRadius,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -963,7 +964,7 @@ class _CandidateCard extends StatelessWidget {
                                     ),
                                     padding: EdgeInsets.zero,
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
+                                      borderRadius: AppShape.controlBorderRadius,
                                     ),
                                     textStyle: const TextStyle(
                                       fontWeight: FontWeight.w600,
@@ -987,7 +988,7 @@ class _CandidateCard extends StatelessWidget {
                                     ),
                                     padding: EdgeInsets.zero,
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
+                                      borderRadius: AppShape.controlBorderRadius,
                                     ),
                                     textStyle: const TextStyle(
                                       fontWeight: FontWeight.w600,
@@ -1135,7 +1136,7 @@ class _SearchBar extends StatelessWidget {
       height: 40,
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: AppShape.controlBorderRadius,
       ),
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Row(

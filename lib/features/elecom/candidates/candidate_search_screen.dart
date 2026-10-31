@@ -6,6 +6,7 @@ import 'package:hugeicons/hugeicons.dart';
 import '../data/elecom_mobile_api.dart';
 import '../student_dashboard/utils/theme_notifier.dart';
 import 'candidate_profile_screen.dart';
+import '../../../core/theme/app_shape.dart';
 
 const _premiumBlue = Color(0xFF2563EB);
 const _premiumGold = Color(0xFFFACC15);
@@ -162,7 +163,7 @@ class _CandidateSearchScreenState extends State<CandidateSearchScreen> {
                   child: Container(
                     decoration: BoxDecoration(
                       color: cardColor,
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: AppShape.controlBorderRadius,
                       border: Border.all(color: borderColor),
                       boxShadow: isPremiumMode
                           ? [
@@ -319,7 +320,7 @@ class _CandidateSearchScreenState extends State<CandidateSearchScreen> {
                           return Container(
                             decoration: BoxDecoration(
                               color: cardColor,
-                              borderRadius: BorderRadius.circular(14),
+                              borderRadius: AppShape.cardBorderRadius,
                               border: Border.all(color: borderColor),
                               boxShadow: isPremiumMode
                                   ? [
@@ -438,13 +439,13 @@ class _PremiumSearchHint extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: InkWell(
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: AppShape.controlBorderRadius,
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14),
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.76),
-            borderRadius: BorderRadius.circular(999),
+            borderRadius: AppShape.controlBorderRadius,
             border: Border.all(color: Colors.white.withValues(alpha: 0.92)),
             boxShadow: [
               BoxShadow(

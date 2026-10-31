@@ -3,6 +3,7 @@ import 'package:hugeicons/hugeicons.dart';
 
 import '../../../core/notifications/notification_center_store.dart';
 import '../student_dashboard/utils/theme_notifier.dart';
+import '../../../core/theme/app_shape.dart';
 
 // ── Category definitions ──────────────────────────────────────────────────────
 
@@ -188,7 +189,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         child: Material(
           color: sheetColor,
           surfaceTintColor: sheetColor,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: AppShape.cardBorderRadius,
           shadowColor: isPremium ? _premiumBlue.withValues(alpha: 0.22) : null,
           elevation: isPremium ? 18 : 0,
           clipBehavior: Clip.antiAlias,
@@ -611,7 +612,7 @@ class _FilterChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
         decoration: BoxDecoration(
           color: selected ? selectedBg : unselectedBg,
-          borderRadius: BorderRadius.circular(99),
+          borderRadius: AppShape.controlBorderRadius,
           border: isPremium
               ? Border.all(
                   color: selected
@@ -677,13 +678,13 @@ class _NotifCard extends StatelessWidget {
 
     return Material(
       color: cardColor,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: AppShape.cardBorderRadius,
       shadowColor: isPremium
           ? _premiumBlue.withValues(alpha: 0.18)
           : Colors.transparent,
       elevation: isPremium ? 8 : 0,
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppShape.cardBorderRadius,
         onTap: () async {
           if (!isRead) {
             await NotificationCenterStore.markAsRead(id);
@@ -691,7 +692,7 @@ class _NotifCard extends StatelessWidget {
         },
         child: Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: AppShape.cardBorderRadius,
             border: Border.all(color: borderColor),
             gradient: isPremium
                 ? LinearGradient(

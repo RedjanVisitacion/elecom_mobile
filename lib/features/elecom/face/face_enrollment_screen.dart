@@ -11,6 +11,7 @@ import '../data/elecom_mobile_api.dart';
 import '../presentation/elecom_dashboard.dart';
 import 'live_face_capture_screen.dart';
 import 'biometric_scan_guide.dart';
+import '../../../core/theme/app_shape.dart';
 
 class FaceEnrollmentScreen extends StatefulWidget {
   const FaceEnrollmentScreen({
@@ -110,7 +111,7 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
         builder: (ctx) => AlertDialog(
           backgroundColor: Colors.white,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: AppShape.cardBorderRadius,
           ),
           title: const Text(
             'Enrollment successful',
@@ -185,7 +186,7 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: AppShape.cardBorderRadius),
         title: const Text(
           'Log out?',
           style: TextStyle(fontWeight: FontWeight.w800),
@@ -263,7 +264,7 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
         ),
         child: Material(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: AppShape.cardBorderRadius,
           clipBehavior: Clip.antiAlias,
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -437,7 +438,7 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
                           end: Alignment.bottomRight,
                           colors: [Color(0xFF0C1E70), Color(0xFF2563EB)],
                         ),
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: AppShape.cardBorderRadius,
                         boxShadow: [
                           BoxShadow(
                             color: _blue.withValues(alpha: 0.28),
@@ -546,7 +547,7 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
                       key: ElecomTutorialKeys.faceEnrollFrame,
                       decoration: BoxDecoration(
                         color: _cardBg,
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: AppShape.cardBorderRadius,
                         border: Border.all(
                           color: _blue.withValues(alpha: 0.12),
                         ),
@@ -559,7 +560,7 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
                         ],
                       ),
                       child: ClipRRect(
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: AppShape.cardBorderRadius,
                         child: Column(
                           children: [
                             // Blue accent bar at top
@@ -647,7 +648,7 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
                       ),
                       decoration: BoxDecoration(
                         color: _cardBg,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: AppShape.cardBorderRadius,
                         border: Border.all(
                           color: _uploadFailed
                               ? const Color(0xFFFCA5A5)
@@ -720,7 +721,7 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
                         disabledBackgroundColor: _blue.withValues(alpha: 0.40),
                         disabledForegroundColor: Colors.white70,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: AppShape.controlBorderRadius,
                         ),
                       ),
                     ),
@@ -747,7 +748,7 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen> {
                         side: const BorderSide(color: Color(0xFFD1D1D6)),
                         backgroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: AppShape.controlBorderRadius,
                         ),
                       ),
                     ),

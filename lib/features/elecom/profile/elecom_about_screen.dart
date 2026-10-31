@@ -6,6 +6,7 @@ import '../../../core/utils/toast_service.dart';
 import 'elecom_privacy_notice_screen.dart';
 import 'elecom_terms_conditions_screen.dart';
 import '../student_dashboard/utils/theme_notifier.dart';
+import '../../../core/theme/app_shape.dart';
 
 const _premiumBlue = Color(0xFF2563EB);
 const _premiumGold = Color(0xFFFACC15);
@@ -136,7 +137,7 @@ class ElecomAboutScreen extends StatelessWidget {
           ),
           child: Material(
             color: sheetColor,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: AppShape.cardBorderRadius,
             clipBehavior: Clip.antiAlias,
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -263,7 +264,7 @@ class ElecomAboutScreen extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppShape.cardBorderRadius,
         border: Border.all(
           color: isPremiumMode
               ? Colors.black12
@@ -384,7 +385,7 @@ class ElecomAboutScreen extends StatelessWidget {
                           horizontal: 14,
                         ),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: AppShape.controlBorderRadius,
                         ),
                       ),
                       child: const Text(
@@ -422,7 +423,7 @@ class ElecomAboutScreen extends StatelessWidget {
                           horizontal: 14,
                         ),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: AppShape.controlBorderRadius,
                         ),
                       ),
                       child: const Text(
@@ -452,7 +453,7 @@ class ElecomAboutScreen extends StatelessWidget {
                         ? Colors.black
                         : Colors.white,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: AppShape.controlBorderRadius,
                     ),
                   ),
                   child: const Text(

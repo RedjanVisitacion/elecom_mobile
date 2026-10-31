@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/utils/toast_service.dart';
 import '../student_dashboard/utils/theme_notifier.dart';
+import '../../../core/theme/app_shape.dart';
 
 const _premiumBlue = Color(0xFF2563EB);
 const _premiumGold = Color(0xFFFACC15);
@@ -133,7 +134,7 @@ class ElecomFaqsScreen extends StatelessWidget {
           ),
           child: Material(
             color: sheetColor,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: AppShape.cardBorderRadius,
             clipBehavior: Clip.antiAlias,
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -334,7 +335,7 @@ class ElecomFaqsScreen extends StatelessWidget {
                       margin: const EdgeInsets.only(bottom: 12),
                       decoration: BoxDecoration(
                         color: cardColor,
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: AppShape.cardBorderRadius,
                         border: Border.all(color: borderColor),
                       ),
                       child: Theme(
@@ -400,7 +401,7 @@ class ElecomFaqsScreen extends StatelessWidget {
                         ? Colors.black
                         : Colors.white,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: AppShape.controlBorderRadius,
                     ),
                   ),
                   child: const Text(

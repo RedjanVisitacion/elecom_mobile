@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_shape.dart';
 
 class EnrollmentLivenessProgress extends StatelessWidget {
   const EnrollmentLivenessProgress({super.key, required this.completedSteps});
@@ -12,7 +13,7 @@ class EnrollmentLivenessProgress extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: const Color(0xFF1A202C).withValues(alpha: 0.82),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: AppShape.cardBorderRadius,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -83,7 +84,7 @@ class VerificationBlinkProgress extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: const Color(0xFF1A202C).withValues(alpha: .82),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: AppShape.cardBorderRadius,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

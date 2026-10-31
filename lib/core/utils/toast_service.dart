@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:toastification/toastification.dart';
+import '../theme/app_shape.dart';
 
 /// Global toast helper for the ELECOM Electoral Commission app.
 ///
@@ -281,7 +282,7 @@ class _ElecomPremiumToastState extends State<_ElecomPremiumToast>
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: AppShape.cardBorderRadius,
             splashColor: widget.accent.withValues(alpha: 0.08),
             highlightColor: widget.accent.withValues(alpha: 0.05),
             onTap: () => toastification.dismiss(widget.item),
@@ -289,14 +290,14 @@ class _ElecomPremiumToastState extends State<_ElecomPremiumToast>
             onTapCancel: () => setState(() => _pressed = false),
             onTapUp: (_) => setState(() => _pressed = false),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(22),
+              borderRadius: AppShape.cardBorderRadius,
               child: BackdropFilter(
                 filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
                 child: Container(
                   width: width,
                   decoration: BoxDecoration(
                     color: AppToast._dark.withValues(alpha: 0.84),
-                    borderRadius: BorderRadius.circular(22),
+                    borderRadius: AppShape.cardBorderRadius,
                     border: Border.all(
                       color: widget.accent.withValues(alpha: 0.30),
                     ),

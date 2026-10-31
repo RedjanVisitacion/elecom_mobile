@@ -8,6 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/utils/toast_service.dart';
 import '../data/forgot_password_api.dart';
+import '../../../core/theme/app_shape.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Design tokens — light palette matching login screen
@@ -521,7 +522,7 @@ class _FpScaffold extends StatelessWidget {
         useMaterial3: true,
         brightness: Brightness.light,
         scaffoldBackgroundColor: _fpBgLight,
-      ),
+      ).withCompactShapes(),
       child: Scaffold(
         backgroundColor: _fpBgLight,
         appBar: AppBar(
@@ -736,7 +737,7 @@ class _OtpFieldState extends State<_OtpField> {
                 height: 48,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: AppShape.controlBorderRadius,
                   color: active
                       ? _fpGold.withValues(alpha: 0.06)
                       : _fpWhite,
@@ -808,7 +809,7 @@ class _FpButtonState extends State<_FpButton> {
         child: Container(
           height: 52,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: AppShape.controlBorderRadius,
             gradient: const LinearGradient(
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
@@ -826,7 +827,7 @@ class _FpButtonState extends State<_FpButton> {
           child: Material(
             color: Colors.transparent,
             child: InkWell(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: AppShape.controlBorderRadius,
               onTap: widget.loading ? null : widget.onPressed,
               child: SizedBox(
                 height: 52,
@@ -912,7 +913,7 @@ class _ChannelOption extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
           color: selected ? _fpGold.withValues(alpha: 0.10) : _fpWhite,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppShape.controlBorderRadius,
           border: Border.all(
             color: selected ? _fpGold : _fpBorder,
             width: selected ? 1.6 : 1.0,

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../dashboard_card_style.dart';
+import '../../../../core/theme/app_shape.dart';
 
 /// A card showing the election Calendar of Activities, matching the height
 /// of the ElectionHomeCountdown card.  Displays the current month with event
@@ -128,7 +130,7 @@ class _CalendarEventsCardState extends State<CalendarEventsCard> {
       context: context,
       backgroundColor: _cardBg,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppShape.cardRadius)),
       ),
       builder: (ctx) => SafeArea(
         child: Padding(
@@ -498,7 +500,7 @@ class _CalendarEventsCardState extends State<CalendarEventsCard> {
     return Container(
       decoration: BoxDecoration(
         color: _cardBg,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: DashboardCardStyle.borderRadius,
         border: Border.all(color: _blue.withValues(alpha: 0.14)),
         boxShadow: [
           BoxShadow(
@@ -509,7 +511,7 @@ class _CalendarEventsCardState extends State<CalendarEventsCard> {
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: DashboardCardStyle.borderRadius,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

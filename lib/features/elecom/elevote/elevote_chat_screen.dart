@@ -7,6 +7,7 @@ import '../../../core/session/elevote_preferences.dart';
 import '../../../core/utils/toast_service.dart';
 import '../data/elecom_mobile_api.dart';
 import 'widgets/chat_typing_indicator.dart';
+import '../../../core/theme/app_shape.dart';
 
 class EleVoteChatScreen extends StatefulWidget {
   const EleVoteChatScreen({super.key});
@@ -364,7 +365,7 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
           ),
           child: Material(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: AppShape.cardBorderRadius,
             clipBehavior: Clip.antiAlias,
             child: SafeArea(
               child: Padding(
@@ -542,11 +543,11 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
                         vertical: 13,
                       ),
                       enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: AppShape.controlBorderRadius,
                         borderSide: BorderSide(color: Colors.grey.shade300),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: AppShape.controlBorderRadius,
                         borderSide: const BorderSide(
                           color: Color(0xFF2563EB),
                           width: 1.4,
@@ -565,7 +566,7 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
                       backgroundColor: const Color(0xFF2563EB),
                       disabledBackgroundColor: const Color(0xFF93C5FD),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: AppShape.controlBorderRadius,
                       ),
                       padding: EdgeInsets.zero,
                     ),
@@ -597,7 +598,7 @@ class _AssistantIntro extends StatelessWidget {
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: AppShape.cardBorderRadius,
               border: Border.all(color: Colors.black12),
               boxShadow: [
                 BoxShadow(
@@ -648,7 +649,7 @@ class _SuggestionPanel extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(14, 0, 14, 0),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppShape.cardBorderRadius,
         border: Border.all(color: Colors.grey.shade300),
       ),
       clipBehavior: Clip.antiAlias,
@@ -716,7 +717,7 @@ class _SuggestionPanel extends StatelessWidget {
                               backgroundColor: Colors.white,
                               side: const BorderSide(color: Color(0xFFBFDBFE)),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
+                                borderRadius: AppShape.controlBorderRadius,
                               ),
                               onPressed: () => onSelect(suggestion),
                             ),
@@ -1018,7 +1019,7 @@ class _EleVoteSettingsScreenState extends State<EleVoteSettingsScreen> {
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
               color: const Color(0xFFEFF6FF),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: AppShape.cardBorderRadius,
               border: Border.all(color: const Color(0xFFBFDBFE)),
             ),
             child: const Row(
@@ -1054,7 +1055,7 @@ class _EleVoteSettingsScreenState extends State<EleVoteSettingsScreen> {
               style: FilledButton.styleFrom(
                 backgroundColor: const Color(0xFF2563EB),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: AppShape.controlBorderRadius,
                 ),
               ),
               icon: const Icon(Icons.chat_bubble_outline_rounded),
@@ -1069,7 +1070,7 @@ class _EleVoteSettingsScreenState extends State<EleVoteSettingsScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: AppShape.cardBorderRadius,
               border: Border.all(color: Colors.black12),
             ),
             child: SwitchListTile(
@@ -1081,7 +1082,7 @@ class _EleVoteSettingsScreenState extends State<EleVoteSettingsScreen> {
                 height: 40,
                 decoration: BoxDecoration(
                   color: const Color(0xFFEFF6FF),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: AppShape.cardBorderRadius,
                 ),
                 child: const Icon(
                   Icons.smart_toy_outlined,

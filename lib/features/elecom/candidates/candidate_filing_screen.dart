@@ -21,6 +21,7 @@ import 'candidate_certificate.dart';
 import 'candidate_certificate_preview_screen.dart';
 import 'candidate_signature_screen.dart';
 import 'candidate_filing_theme.dart';
+import '../../../core/theme/app_shape.dart';
 
 const _premiumBlue = Color(0xFF2563EB);
 const _premiumAccentBlue = Color(0xFF60A5FA);
@@ -1572,10 +1573,10 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
                 vertical: 12,
               ),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: AppShape.controlBorderRadius,
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: AppShape.controlBorderRadius,
                 borderSide: BorderSide(
                   color: isDark && !isPremiumMode
                       ? Colors.white24
@@ -1583,13 +1584,13 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
                 ),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: AppShape.controlBorderRadius,
                 borderSide: BorderSide(
                   color: isDark ? _premiumAccentBlue : _premiumBlue,
                 ),
               ),
               disabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: AppShape.controlBorderRadius,
                 borderSide: BorderSide(
                   color: isDark && !isPremiumMode
                       ? Colors.white12
@@ -1597,7 +1598,7 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
                 ),
               ),
             ),
-          ),
+          ).withCompactShapes(),
           child: Scaffold(
             backgroundColor: isPremiumMode ? Colors.white : null,
             appBar: AppBar(
@@ -1652,7 +1653,7 @@ class _CandidateFilingScreenState extends State<CandidateFilingScreen>
                                 fontWeight: FontWeight.w900,
                               ),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
+                                borderRadius: AppShape.controlBorderRadius,
                               ),
                             ),
                           ),
@@ -2059,7 +2060,7 @@ class _ApplicationStatusCard extends StatelessWidget {
             : isDark
             ? const Color(0xFF242433)
             : Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: AppShape.cardBorderRadius,
         border: Border.all(
           color: isPremiumMode
               ? Colors.white.withValues(alpha: 0.78)
@@ -2086,7 +2087,7 @@ class _ApplicationStatusCard extends StatelessWidget {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: colors.bg,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: AppShape.cardBorderRadius,
               ),
               child: Row(
                 children: [
@@ -2133,7 +2134,7 @@ class _ApplicationStatusCard extends StatelessWidget {
               DecoratedBox(
                 decoration: BoxDecoration(
                   color: _premiumBlue.withValues(alpha: 0.07),
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: AppShape.cardBorderRadius,
                   border: Border.all(
                     color: _premiumBlue.withValues(alpha: 0.16),
                   ),
@@ -2256,7 +2257,7 @@ class _ApplicationStatusCard extends StatelessWidget {
                     foregroundColor: Colors.white,
                     textStyle: const TextStyle(fontWeight: FontWeight.w900),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: AppShape.controlBorderRadius,
                     ),
                   ),
                 ),
@@ -2389,7 +2390,7 @@ class _CandidateRequirementsCardState
     return DecoratedBox(
       decoration: BoxDecoration(
         color: _premiumBlue.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppShape.cardBorderRadius,
         border: Border.all(color: _premiumBlue.withValues(alpha: 0.18)),
       ),
       child: Padding(
@@ -2504,10 +2505,10 @@ class _RequirementPicker extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 8),
       child: Material(
         color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.78),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppShape.cardBorderRadius,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppShape.cardBorderRadius,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
             child: Row(
@@ -2769,7 +2770,7 @@ class _MiniImagePicker extends StatelessWidget {
     return Row(
       children: [
         ClipRRect(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppShape.cardBorderRadius,
           child: SizedBox(
             width: 56,
             height: 56,
@@ -2978,7 +2979,7 @@ class _FilingSelectField extends StatelessWidget {
         label: label,
         value: value,
         child: InkWell(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: AppShape.controlBorderRadius,
           onTap: onChanged == null || options.isEmpty
               ? null
               : () async {

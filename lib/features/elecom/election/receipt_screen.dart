@@ -4,6 +4,7 @@ import 'package:hugeicons/hugeicons.dart';
 import '../candidates/candidate_profile_screen.dart';
 import '../data/elecom_mobile_api.dart';
 import '../student_dashboard/utils/theme_notifier.dart';
+import '../../../core/theme/app_shape.dart';
 
 const _premiumBlue = Color(0xFF2563EB);
 const _premiumInk = Color(0xFF0F172A);
@@ -352,7 +353,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
               margin: const EdgeInsets.only(bottom: 8),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: AppShape.cardBorderRadius,
                 border: Border.all(color: cardBorder),
               ),
               child: Row(
@@ -411,7 +412,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: AppShape.cardBorderRadius,
               border: Border.all(color: cardBorder),
               color: isDark ? const Color(0xFF1E1E2C) : const Color(0xFFF9F9F9),
             ),
