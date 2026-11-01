@@ -1,5 +1,30 @@
 # Agent Instructions (Flutter app: `elecom_mobile`)
 
+## Local PostgreSQL recovery after server termination (2026-11-02)
+
+- User reported the Kamatera server was terminated and set up a temporary local backend. Current backend checkout is `G:\elecom_web\backend`; PostgreSQL 16 is reachable at `localhost:5432`, database `elecom_db`, local administrator `postgres`. Never record the actual password. PostgreSQL 18 also appeared as an older pgAdmin registration; select the intended server explicitly.
+- Backend settings inspected during recovery had an active hardcoded DATABASES block, so `.env` edits alone did not change the connection. User was instructed to use `os.getenv` for `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, and `DB_PORT`. Verify the current settings before future changes; keep credentials in the untracked local `.env`.
+- Backup used: `E:\elecom_postgres_2026_20261027_022717.sql` (about 27.7 MB), PostgreSQL 16.15 dump. This particular backup contains data INSERTs and sequence resets, not CREATE TABLE definitions. It begins a transaction and TRUNCATEs application tables, so it replaces target data; do not import into a populated database without confirming the intended target. Do not print backup row contents: it contains personal/account data.
+- Confirmed recovery sequence on the user's local database:
+  1. Run Django migrations to create managed tables.
+  2. Run the existing system-table setup below. Migrations alone omitted `admin_candidate_documents`; the first import stopped at the initial TRUNCATE with that missing relation and did not restore data.
+  3. Import the SQL with psql and `ON_ERROR_STOP=1`; user screenshot confirmed final COMMIT.
+  4. Run migrations again after import because the backup also restores `django_migrations`. In this recovery `elecom_auth.0011_coc_text_formatting` applied successfully afterward.
+
+```powershell
+# Run one command at a time from G:\elecom_web\backend.
+.\venv\Scripts\python.exe manage.py migrate
+.\venv\Scripts\python.exe manage.py shell -c "from core.views import _ensure_all_system_tables; _ensure_all_system_tables(); print('Table setup complete')"
+& "C:\Program Files\PostgreSQL\16\bin\psql.exe" -h localhost -p 5432 -U postgres -d elecom_db -W -v ON_ERROR_STOP=1 -f "E:\elecom_postgres_2026_20261027_022717.sql"
+.\venv\Scripts\python.exe manage.py migrate
+.\venv\Scripts\python.exe manage.py runserver 0.0.0.0:8000
+```
+
+- Local venv was missing `numpy` (blocked manage.py check through local_face_service) and `whitenoise` (blocked WSGI middleware loading despite check passing). User installed each with `.\venv\Scripts\python.exe -m pip install <package>`. Screenshots then confirmed system checks passed and Django started at `http://0.0.0.0:8000/`. This does not verify face-recognition dependencies or all application flows. A successful plain manage.py check alone does not confirm database connectivity; showmigrations subsequently connected successfully.
+- Open `http://127.0.0.1:8000/` on the PC; `0.0.0.0` is the bind address. At handoff, server startup was confirmed, but browser login and Flutter-to-local connectivity were not yet verified. Keep the server terminal running.
+- Phone connection requires a reachable PC LAN IPv4 address, the phone on the same reachable network, suitable Django ALLOWED_HOSTS, private-network firewall access to port 8000, and Flutter launched/built with `--dart-define=API_BASE_URL=http://<PC-LAN-IP>:8000`. The normal APK defaults to production and will not automatically use localhost. Do not expose the development server as public production hosting.
+- Returning online: provision PostgreSQL/backend dependencies, deploy Django, restore the database, configure server-only `.env`, Gunicorn/Nginx/HTTPS, and point `el3com.duckdns.org` at the replacement server. If local records changed, take a fresh local backup for the move rather than reusing the October 27 backup. Existing production-configured APKs should reconnect when the same HTTPS API address works; local-configured builds need the production URL again. No replacement-server deployment was performed or verified in this recovery session.
+
 > Current-machine path correction (2026-11-01): this checkout is `G:\elecom_mobile`; the sibling web/backend checkout is `G:\elecom_web\backend`. Older `F:` examples below are historical; verify paths before using them. Production remains `/var/www/elecom/backend`.
 
 > Intended for any AI coding agent working in this workspace. If you maintain `CLAUDE.md` or `GEMINI.md` elsewhere, keep them aligned with this file.
