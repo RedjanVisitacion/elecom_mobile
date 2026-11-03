@@ -1739,14 +1739,14 @@ class _SlidingCardStackState extends State<_SlidingCardStack> {
       (widget.isDarkMode ? const Color(0xFF60A5FA) : const Color(0xFF2563EB))
           .withValues(alpha: 0.25);
 
-  // Single card height shared by BOTH slides.
-  // Must be >= the countdown card's natural content height to prevent overflow.
+  // Keep both slides in the original space; longer countdown content can scroll.
   static const double _cardH = 235.0;
 
   @override
   Widget build(BuildContext context) {
     // stackH = banner overlap (140) + card height + dots area (12)
-    const double stackH = 140 + _cardH + 12;
+    const cardHeight = _cardH;
+    final double stackH = 140 + cardHeight + 12;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -1764,7 +1764,7 @@ class _SlidingCardStackState extends State<_SlidingCardStack> {
                 top: 140,
                 left: 0,
                 right: 0,
-                height: _cardH,
+                height: cardHeight,
                 child: ClipRect(
                   child: PageView(
                     controller: _pageController,
@@ -1775,16 +1775,14 @@ class _SlidingCardStackState extends State<_SlidingCardStack> {
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: OverflowBox(
                           alignment: Alignment.topCenter,
-                          maxHeight: _cardH,
+                          maxHeight: cardHeight,
                           child: widget.profileCard,
                         ),
                       ),
                       // Slide 1 — Election countdown
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: OverflowBox(
-                          alignment: Alignment.topCenter,
-                          maxHeight: _cardH,
+                        child: SingleChildScrollView(
                           child: widget.countdownCard,
                         ),
                       ),

@@ -108,7 +108,10 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
     if (status == 'closed' && rs == 'published') {
       return 'Results are published. Open the Results tab for details.';
     }
-    return 'Election schedule will appear here when it is configured.';
+    if (ElectionWindowUtils.endUtc(e) != null) {
+      return 'Voting has ended. Stay tuned for election updates.';
+    }
+    return 'No election scheduled yet. Stay tuned for announcements.';
   }
 
   bool _isActive(Map<String, dynamic> e) {
@@ -197,7 +200,6 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
   Future<void> _refreshFromServer() async {
     try {
       final res = await _api.getElectionWindow();
-      final voteRes = await _api.getVoteStatus();
       final election = res['election'];
       final map = election is Map
           ? ElectionWindowUtils.normalizeElection(
@@ -205,30 +207,35 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
             )
           : const <String, dynamic>{};
       ElectionWindowUtils.debugLog(map, source: 'home countdown');
-      final voted = voteRes['voted'] == true;
       if (!mounted) return;
       setState(() {
         _election = map;
         _loadError = null;
-        _hasVoted = voted;
       });
-      await _maybeReactToPhaseChange(map);
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _loadError = 'Could not load election schedule';
+        _loadError =
+            'Schedule updates are temporarily unavailable. Please check again later.';
       });
+    }
+    // Receipt and notification refresh failures do not mean the schedule failed.
+    try {
+      final voteRes = await _api.getVoteStatus();
+      if (!mounted) return;
+      setState(() => _hasVoted = voteRes['voted'] == true);
+    } catch (_) {
+      // Keep the last known voting status until the next refresh.
+    }
+    try {
+      await _maybeReactToPhaseChange(_election);
+    } catch (_) {
+      // Notification refresh is independent of the schedule display.
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final titleColor = widget.isPremiumMode
-        ? const Color(0xFF0F172A)
-        : isDark
-        ? Colors.white
-        : Colors.black;
     final e = _election;
 
     final target = _countdownTarget(e);
@@ -246,20 +253,12 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
         : (isActive
               ? 'Vote Now'
               : (showViewResults ? 'View Results' : 'Vote Now'));
-    final headline = _countdownLabel(e);
 
     return Column(
+      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SizedBox(height: widget.embeddedInProfileCard ? 10 : 0),
-        if (_loadError != null)
-          Text(
-            _loadError!,
-            style: TextStyle(
-              color: isDark ? Colors.orangeAccent : Colors.red.shade800,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
         Container(
           decoration: BoxDecoration(
             borderRadius: DashboardCardStyle.borderRadius,
@@ -324,7 +323,7 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
               ),
             ],
           ),
-        ),    // Container
+        ), // Container
       ],
     );
   }
@@ -341,7 +340,7 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.max,
+      mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           'ELECOM USTP Oroquieta Campus',
@@ -356,7 +355,7 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
         ),
         const SizedBox(height: 3),
         Text(
-          'General election schedule',
+          _countdownLabel(e),
           style: TextStyle(
             color: Colors.white.withValues(alpha: 0.85),
             fontWeight: FontWeight.w500,
@@ -385,6 +384,17 @@ class _ElectionHomeCountdownState extends State<ElectionHomeCountdown> {
             height: 1.25,
           ),
         ),
+        if (_loadError != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            _loadError!,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.85),
+              fontSize: 11,
+              height: 1.25,
+            ),
+          ),
+        ],
         const SizedBox(height: 12),
         _voteNowButton(
           context,
