@@ -1,7 +1,7 @@
 class ApiConfig {
   static const String _envBaseUrl = String.fromEnvironment('API_BASE_URL');
-  // static const String _defaultBaseUrl = 'https://el3com.duckdns.org';
-  static const String _defaultBaseUrl = 'http://192.168.101.5:8000';
+  static const String _defaultBaseUrl = 'https://el3com.duckdns.org';
+  // static const String _defaultBaseUrl = 'http://192.168.101.5:8000';
 
   static String get baseUrl {
     if (_envBaseUrl.isNotEmpty) return _envBaseUrl;
