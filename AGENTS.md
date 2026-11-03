@@ -1,5 +1,93 @@
 # Agent Instructions (Flutter app: `elecom_mobile`)
 
+## Replacement Kamatera server and CloudBeaver recovery (2026-11-03)
+
+### Verified deployment and user preferences
+
+- User requested guided setup one screen/command at a time. Continue that style; distinguish the remote `root@elecom-servers` Linux terminal from local `PS G:\...` PowerShell. Wait for the prompt before the next command. In nano: Ctrl+O, Enter, Ctrl+X; `*` indicates unsaved changes. Do not paste prompts into commands.
+- Replacement Kamatera server label: `elecom-servers`; Singapore (AS-SG), B General, 1 CPU, 1GB RAM, 20GB NVMe, public networking on, private networking/management/daily backup off. Displayed monthly base price was $9; this is a historical quote, not a current price guarantee. Old server specs were NOT established. The earlier 2 CPU/4GB/40GB suggestion was $42/month and exceeded the user's under-$10 budget.
+- Public IPv4 at setup: `74.113.234.239`. Confirm the current address before future work. DuckDNS `el3com.duckdns.org` (website/mobile API) and `elecom-db.duckdns.org` (CloudBeaver) were pointed at it. Do not confuse `el3com` with `elecom-db`.
+- The new account displayed a 30-day promotional offer, but eligibility/remaining credit was NOT independently confirmed. A new account does not establish a new trial for a previous customer. Check current Kamatera terms and account billing; do not promise free hosting. Saved-card billing can be automatic.
+- Verified: database SQL import screenshot reached COMMIT; subsequent migration `elecom_auth.0011_coc_text_formatting` applied OK. Actual import command, backup filename/freshness and all preparatory restore steps were not visible in this session. Do not infer these from COMMIT alone. Web login and admin dashboard with restored records worked over HTTPS. CloudBeaver connected and displayed database tables. Mobile login, OTP delivery, uploads, face verification, load behavior, and all application flows were NOT verified.
+
+### Runtime, packages and repository
+
+- Ubuntu 22.04.5 was installed. IMPORTANT: choosing it for presumed older face dependency compatibility happened before checking requirements and caused a Python mismatch. The cloned requirements specify `django>=6.0`, requiring Python >=3.12; Ubuntu 22.04 default Python 3.10 cannot install them. Inspect current requirements before selecting an OS/runtime next time. Do not downgrade Django just to fit Python 3.10.
+- Setup used `apt update`, `apt upgrade -y`, accepted default needrestart selections, then rebooted and reconnected with `ssh root@74.113.234.239`. Kernel update notices are normal; finish apt before rebooting.
+- Installed system packages: `git nginx python3-venv python3-dev build-essential libpq-dev libgl1 libglib2.0-0 curl ca-certificates gnupg`. Added `postgresql-common`, ran `/usr/share/postgresql-common/pgdg/apt.postgresql.org.sh`, then installed `postgresql-16 postgresql-client-16`. `pg_lsclusters` confirmed 16/main online at 5432. Check official PostgreSQL Ubuntu instructions for changes.
+- Repository: `https://github.com/RedjanVisitacion/elecom_web.git`, cloned into `/var/www/elecom`; backend `/var/www/elecom/backend`. Local source is `G:\elecom_web`. Git does not restore the private `.env`.
+- To fix Python: installed `software-properties-common`, added third-party `ppa:deadsnakes/ppa`, installed `python3.12 python3.12-venv python3.12-dev`. Kept system Python unchanged. Renamed initial environment with `mv -T -n /var/www/elecom/venv /var/www/elecom/venv-python310`, then created `python3.12 -m venv /var/www/elecom/venv`. Verify destination state before repeating any rename. The old environment is preserved, not a usable relocated venv guarantee.
+- Updated pip/setuptools/wheel in the new venv, installed with `/var/www/elecom/venv/bin/python -m pip install --no-cache-dir -r /var/www/elecom/backend/requirements.txt`. Install succeeded; `pip check` reported no broken requirements. Broad minimum constraints resolved newer packages (including Django 6.1.2) at that time; this is not a pinned, fully regression-tested environment.
+- Memory preparation: `free -h` showed ~956Mi RAM and no swap. Checked `/swapfile` absent, then ran separately: `fallocate -l 2G /swapfile`, `chmod 600 /swapfile`, `mkswap /swapfile`, `swapon /swapfile`; `free -h` confirmed 2Gi swap. Persisted using `grep -qE '^/swapfile[[:space:]]' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab`. Swap does not establish adequate face-verification capacity. Check disk/memory before installing more services; ~9.9GB free was seen before pulling CloudBeaver.
+
+### Database and Django settings
+
+- Created dedicated PostgreSQL login with `sudo -u postgres createuser --pwprompt elecom_user`, then `sudo -u postgres createdb --owner=elecom_user elecom_db`. Password entered interactively and never recorded. Verified TCP authentication using `psql -h 127.0.0.1 -U elecom_user -d elecom_db -W -c "SELECT current_database(), current_user;"`.
+- Created private `/var/www/elecom/backend/.env` with mode 600. Only use `install -m 600 /dev/null ...` when the file is confirmed absent: it would overwrite an existing file. User copied local environment values, adapting server settings. Recheck Windows paths, Firebase credential file availability, and provider settings rather than assuming the copy is production-ready.
+- Actual supported names found: `DJANGO_DEBUG`, `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`. `DJANGO_DEBUG` defaulted to True when absent. Set `DJANGO_DEBUG=False`; allowed-host value used `el3com.duckdns.org,74.113.234.239,localhost,127.0.0.1`. Hosts are comma-separated names/IPs, not URLs.
+- Earlier active database settings still selected `postgres`/`localhost` despite `.env` edits. Backed up settings to `/root/elecom-settings-before-db-fix.py`; instructed replacing the active DATABASES block with PostgreSQL ENGINE and `os.getenv` for DB_NAME, DB_USER, DB_PASSWORD, DB_HOST, DB_PORT (defaults `elecom_db`, `elecom_user`, empty password, `127.0.0.1`, `5432`). A later settings check still showed postgres/localhost; final migration and application success do NOT prove this specific user/config discrepancy was resolved. Reverify effective sanitized settings before assuming the app uses elecom_user. Server settings changes must be reconciled with Git before future pulls; do not discard them blindly.
+- Run settings checks from `/var/www/elecom/backend`; running from repository root caused `ModuleNotFoundError: core`. Print only ENGINE/NAME/USER/HOST/PORT, DEBUG and other nonsecret settings; never print DATABASES wholesale or `.env`.
+- `manage.py check --deploy` initially warned about weak SECRET_KEY, SSL redirect, HSTS, session secure cookies and CSRF secure cookies. Generated a new random `DJANGO_SECRET_KEY` directly into `.env` without printing it. Secret replacement invalidates signed sessions. Remaining HTTPS/cookie/HSTS/proxy warnings were NOT subsequently resolved or rechecked; setup is not fully hardened just because login works. Configure proxy SSL handling correctly before enabling Django HTTPS redirects to avoid loops.
+- `collectstatic --noinput` copied 259 files to `/var/www/elecom_static`. Created system account `adduser --system --group --no-create-home elecom`; changed `.env` owner to elecom:elecom while retaining mode 600. Basic `sudo -u elecom ... manage.py check` passed; this is not comprehensive flow or database validation.
+
+### Gunicorn, Nginx and certificates
+
+- `/etc/systemd/system/gunicorn.service` created with the following configuration. Do not replace an existing service without inspecting it first:
+
+```ini
+[Unit]
+Description=ELECOM Gunicorn
+After=network.target postgresql.service
+
+[Service]
+User=elecom
+Group=elecom
+WorkingDirectory=/var/www/elecom/backend
+StateDirectory=elecom
+Environment=HOME=/var/lib/elecom
+Environment=OMP_NUM_THREADS=1
+Environment=OPENBLAS_NUM_THREADS=1
+ExecStart=/var/www/elecom/venv/bin/gunicorn core.wsgi:application --bind 127.0.0.1:8000 --workers 1 --threads 2 --timeout 120 --access-logfile - --error-logfile -
+Restart=on-failure
+RestartSec=5
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target
+```
+
+- Ran `systemctl daemon-reload`, `systemctl enable --now gunicorn`; status confirmed active. HOME under /var/lib/elecom provides writable runtime/model cache location, but model download/face flow was not tested. Check any other writable media/log/Firebase paths before broad ownership changes.
+- Gunicorn GET `/` with Host el3com.duckdns.org returned 302 to `/login/`; GET `/login/` returned 200. Later Nginx/domain HTTP test resolved 74.113.234.239 and returned 200. Browser IP first returned Django 400; added current IP to DJANGO_ALLOWED_HOSTS and restarted Gunicorn.
+- Nginx site `/etc/nginx/sites-available/elecom`, enabled by symlink under sites-enabled. Initial block: listen 80; server_name el3com.duckdns.org 74.113.234.239; client_max_body_size 20M; `/static/` alias `/var/www/elecom_static/`; `/` proxy_pass `http://127.0.0.1:8000`, headers Host `$host`, X-Real-IP `$remote_addr`, X-Forwarded-For `$proxy_add_x_forwarded_for`, X-Forwarded-Proto `$scheme`, proxy_read_timeout 130s. Always `nginx -t` before reload. Default site remained enabled.
+- Installed `certbot python3-certbot-nginx`, ran `certbot --nginx -d el3com.duckdns.org --redirect`. Certificate issued and deployed, automatic renewal scheduled. Browser HTTPS login and dashboard verified. Renewal dry-run, firewall/SSH hardening and automated database backups remain unverified. Certificate expiry shown was 2027-02-01; use current `certbot certificates` rather than relying on that historical date.
+- Production mobile API base is `https://el3com.duckdns.org`, without `/login/` or `/api/mobile/` suffix. Existing production APK should reconnect at same HTTPS address; builds with local override need production configuration again. User had api_config.dart edits visible; no mobile code change or rebuild was performed by this recovery workflow.
+
+### CloudBeaver: online HTTPS database browser
+
+- User explicitly wants direct online browser access, like their previous server, without requiring a PC SSH tunnel. Final address: `https://elecom-db.duckdns.org`. Initial localhost SSH tunnel worked but is optional now. PostgreSQL port 5432 and CloudBeaver port 8978 were NOT opened publicly.
+- Installed Ubuntu `docker.io`; `systemctl is-active docker` returned active. Pulled `dbeaver/cloudbeaver:latest`, created named volume `cloudbeaver_workspace`. Verify current image documentation before future deployment; latest is mutable.
+- Started container using:
+
+```bash
+docker run -d --name cloudbeaver --restart unless-stopped --memory=512m --memory-swap=1g -p 127.0.0.1:8978:8978 -e JAVA_TOOL_OPTIONS="-Xms64m -Xmx256m" -e CLOUDBEAVER_APP_ANONYMOUS_ACCESS_ENABLED=false -v cloudbeaver_workspace:/opt/cloudbeaver/workspace dbeaver/cloudbeaver:latest
+```
+
+- Container stayed Up; localhost UI loaded. Memory limits/JVM options were supplied, but effective heap and sustained concurrent app/CloudBeaver memory performance were not measured. Do not run a duplicate named container. Named volume preserves settings, not an independent database backup.
+- Nginx `/etc/nginx/sites-available/cloudbeaver` enabled with symlink. server_name elecom-db.duckdns.org; client_max_body_size 20M; location `/` proxies to `http://127.0.0.1:8978`, HTTP/1.1, same Host/client/proto headers as above, Upgrade `$http_upgrade`, Connection `"upgrade"`, proxy_read_timeout 300s. Initially restricted with `allow 127.0.0.1; deny all;` to protect the unclaimed setup wizard. Obtained certificate with `certbot --nginx -d elecom-db.duckdns.org --redirect` successfully.
+- Installed `apache2-utils`, created browser Basic Auth login `dbadmin` using `htpasswd -cB /etc/nginx/cloudbeaver.htpasswd dbadmin` with interactive private password. `-c` overwrites the file: omit it for subsequent user/password updates. Replaced temporary allow/deny with `auth_basic "CloudBeaver Administration";` and `auth_basic_user_file /etc/nginx/cloudbeaver.htpasswd;`. A typo `Aauth_basic_user_file` failed nginx -t; corrected it. A 403 persisted until Nginx was actually reloaded: file edits plus a passing test do not apply changes. Final HTTPS browser password prompt worked. Verify htpasswd file ownership/readability if future auth errors occur; never print hashes.
+- Completed setup online. Recommended server label ELECOM Database, allowed server URL elecom-db.duckdns.org, session lifetime 30min, anonymous access off, local authentication on. CloudBeaver administrator login `cbadmin`, private separate password. Force HTTPS mode left off pending proxy verification; Nginx already redirects HTTP to HTTPS. UI setup completed; do not assume every recommended toggle was independently inspected afterward.
+- Three distinct credentials: Nginx browser `dbadmin`; CloudBeaver application `cbadmin`; PostgreSQL `elecom_user`. Never confuse their passwords or include any in docs/screenshots.
+- Docker bridge inspection showed container `172.17.0.2`, gateway `172.17.0.1`. Container localhost is NOT host PostgreSQL. Added private host listener via `sudo -u postgres psql -c "ALTER SYSTEM SET listen_addresses = 'localhost,172.17.0.1';"`.
+- Backed up `/etc/postgresql/16/main/pg_hba.conf` to `/root/pg_hba-before-cloudbeaver.conf`; appended `host elecom_db elecom_user 172.17.0.2/32 scram-sha-256`. Checked `pg_hba_file_rules WHERE error IS NOT NULL` returned zero rows; restarted `postgresql@16-main`. `ss -ltnp 'sport = :5432'` confirmed only 127.0.0.1 and 172.17.0.1 listeners.
+- CloudBeaver PostgreSQL connection: host 172.17.0.1, port 5432, database elecom_db, username elecom_user, private database password. TEST succeeded against PostgreSQL 16.15; created connection and user displayed `users` table data. Schema navigation: connection -> Schemas -> public -> Tables. This is LIVE production data; edits/deletions affect the app.
+- The /32 HBA rule depends on the container IP. Recheck after recreation/network changes; do not broaden to public ranges to fix it. PostgreSQL binding to a Docker interface also needs boot-order/reboot verification (Docker must provide that interface); no reboot test was performed after this change. Consider a stable dedicated Docker network and explicit service ordering when making persistence robust.
+
+### Outstanding recovery work and confidentiality
+
+- Do not call the system bug-free: verified web login/dashboard and CloudBeaver reads only. Finish Django HTTPS secure-cookie/proxy configuration and rerun deploy checks, test certificate renewal, configure fresh automated off-server backups, review firewall/SSH access, verify app DB role, server Git diff and runtime write paths. Test mobile/API, face models, uploads, Firebase and OTP separately with user authorization for any test SMS.
+- TextBee key and DuckDNS token appeared in user screenshots. Rotation was advised but NOT verified. Never reproduce their values. User table screenshots included student identifiers/password hashes: do not transcribe or store them. Ask for sanitized screenshots and avoid displaying `.env`, credential files, SQL backup rows or password hashes.
+- Official references: https://www.postgresql.org/download/linux/ubuntu/ ; https://docs.djangoproject.com/en/dev/releases/6.0/ ; https://launchpad.net/~deadsnakes/+archive/ubuntu/ppa ; https://github.com/dbeaver/cloudbeaver/wiki/CloudBeaver-Community-deployment-from-docker-image . Verify current docs when repeating setup.
+
 ## Local PostgreSQL recovery after server termination (2026-11-02)
 
 - User reported the Kamatera server was terminated and set up a temporary local backend. Current backend checkout is `G:\elecom_web\backend`; PostgreSQL 16 is reachable at `localhost:5432`, database `elecom_db`, local administrator `postgres`. Never record the actual password. PostgreSQL 18 also appeared as an older pgAdmin registration; select the intended server explicitly.
