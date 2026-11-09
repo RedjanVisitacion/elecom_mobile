@@ -52,3 +52,7 @@ app.*.map.json
 
 # Environment Firebase configuration
 /android/app/google-services.json
+
+# Server-only credentials; never bundle with Flutter assets
+/.private/
+**/*firebase-adminsdk*.json

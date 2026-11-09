@@ -22,8 +22,11 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
       recipient != prefs.getString('elecom.notifications.push_student')) {
     return;
   }
-  // Firebase displays notification payloads itself; our server uses data messages.
-  if (message.notification != null) return;
+  // Android displays notification payloads without starting a Dart isolate.
+  if (message.notification != null) {
+    await LocalPushService.rememberRemoteDelivery(message);
+    return;
+  }
   await LocalPushService.init(requestPermission: false);
   await LocalPushService.showFromRemoteMessage(message);
 }
@@ -47,6 +50,7 @@ class PushNotificationService {
       await Firebase.initializeApp();
       _ready = true;
     } catch (_) {
+      _initialized = false;
       debugPrint(
         'Push unavailable: check Android Firebase configuration and notification permission.',
       );
@@ -67,9 +71,14 @@ class PushNotificationService {
         // A denied Android permission must not prevent inbox updates.
       }
     });
-    FirebaseMessaging.onMessageOpenedApp.listen((_) {
+    FirebaseMessaging.onMessageOpenedApp.listen((message) async {
+      await LocalPushService.rememberRemoteDelivery(message);
       unawaited(NotificationCenterStore.refresh());
     });
+    final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+    if (initialMessage != null) {
+      await LocalPushService.rememberRemoteDelivery(initialMessage);
+    }
     _tokenRefreshSub ??= FirebaseMessaging.instance.onTokenRefresh.listen((
       token,
     ) {

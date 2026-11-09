@@ -47,15 +47,36 @@ class LocalPushService {
     required String title,
     required String body,
   }) async {
+    await _enqueue(() => _show(id: id, title: title, body: body));
+  }
+
+  static Future<void> _enqueue(Future<void> Function() operation) async {
     final previous = _deliveryQueue;
     final completed = Completer<void>();
     _deliveryQueue = completed.future;
     await previous;
     try {
-      await _show(id: id, title: title, body: body);
+      await operation();
     } finally {
       completed.complete();
     }
+  }
+
+  // Android has already displayed notification-payload messages in the tray.
+  static Future<void> rememberRemoteDelivery(RemoteMessage message) async {
+    final id = int.tryParse('${message.data['notification_id'] ?? ''}');
+    if (id == null) return;
+    await _enqueue(() async {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.reload();
+      final ids =
+          prefs.getStringList('elecom.notifications.delivered_ids') ?? [];
+      if (ids.contains('$id')) return;
+      await prefs.setStringList(
+        'elecom.notifications.delivered_ids',
+        [...ids, '$id'].reversed.take(400).toList().reversed.toList(),
+      );
+    });
   }
 
   static Future<void> _show({
@@ -68,7 +89,19 @@ class LocalPushService {
     final delivered =
         prefs.getStringList('elecom.notifications.delivered_ids') ?? [];
     if (delivered.contains('$id')) return;
-    await init();
+    await init(requestPermission: false);
+    try {
+      final active = await _plugin.getActiveNotifications();
+      if (active.any((notification) => notification.tag == 'elecom_$id')) {
+        await prefs.setStringList(
+          'elecom.notifications.delivered_ids',
+          [...delivered, '$id'].reversed.take(400).toList().reversed.toList(),
+        );
+        return;
+      }
+    } catch (_) {
+      // Tray inspection is optional; local delivery must still work.
+    }
     final androidDetails = AndroidNotificationDetails(
       'elecom_general_notifications',
       'General Notifications',

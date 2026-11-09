@@ -44,9 +44,58 @@ void main() {
           },
         ),
       );
+      await LocalPushService.rememberRemoteDelivery(
+        const RemoteMessage(data: {'notification_id': '42'}),
+      );
+      await LocalPushService.show(
+        id: 42,
+        title: 'Calendar update',
+        body: 'Already displayed by Android.',
+      );
       expect(shown, [41]);
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getStringList('elecom.notifications.delivered_ids'), ['41']);
+      expect(prefs.getStringList('elecom.notifications.delivered_ids'), [
+        '41',
+        '42',
+      ]);
+    },
+  );
+  test(
+    'an active Android push is not repeated by foreground polling',
+    () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      AndroidFlutterLocalNotificationsPlugin.registerWith();
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      SharedPreferences.setMockInitialValues({});
+      const channel = MethodChannel(
+        'dexterous.com/flutter/local_notifications',
+      );
+      final shown = <int>[];
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+            if (call.method == 'getActiveNotifications') {
+              return [
+                {
+                  'id': 0,
+                  'tag': 'elecom_43',
+                  'title': 'Activity',
+                  'body': 'Update',
+                },
+              ];
+            }
+            if (call.method == 'show') {
+              shown.add((call.arguments as Map)['id'] as int);
+            }
+            return true;
+          });
+      addTearDown(
+        () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, null),
+      );
+      await LocalPushService.show(id: 43, title: 'Activity', body: 'Update');
+      expect(shown, isEmpty);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getStringList('elecom.notifications.delivered_ids'), ['43']);
     },
   );
 }
