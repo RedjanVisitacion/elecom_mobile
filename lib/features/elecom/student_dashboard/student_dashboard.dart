@@ -32,6 +32,7 @@ import 'widgets/election_home_countdown.dart';
 import 'widgets/election_transparency_card.dart';
 import 'widgets/home_candidates_strip.dart';
 import 'widgets/omnibus_code_carousel.dart';
+import 'widgets/home_header_background.dart';
 import 'widgets/student_dashboard_appbar.dart';
 import '../candidates/candidate_search_screen.dart';
 import '../profile/notifications_screen.dart';
@@ -70,6 +71,7 @@ class _StudentDashboardState extends State<StudentDashboard>
   bool _loadingLedger = false;
   int _totalVoters = 0;
   String? _filingCardBackground;
+  String? _topbarBackground;
   List<Map<String, dynamic>>? _filingCardSlides;
   List<Map<String, dynamic>>? _omnibusPages;
   int? _castVotes;
@@ -516,6 +518,7 @@ class _StudentDashboardState extends State<StudentDashboard>
       setState(() {
         _totalVoters = (metrics['total_voters'] as num?)?.toInt() ?? 0;
         _filingCardBackground = res['filing_card_background'] as String?;
+        _topbarBackground = res['topbar_background'] as String?;
         final omnibus = res['omnibus_pages'];
         _omnibusPages = omnibus is List
             ? omnibus
@@ -979,16 +982,7 @@ class _StudentDashboardState extends State<StudentDashboard>
     return Stack(
       children: [
         // ── Background image ────────────────────────────────────────────
-        SizedBox(
-          width: double.infinity,
-          height: 170,
-          child: Image.asset(
-            'assets/USTP PICS/USTP_FRONT.png',
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) =>
-                Container(color: const Color(0xFF0C1E70)),
-          ),
-        ),
+        HomeHeaderBackground(imageUrl: _topbarBackground),
         // ── Dark gradient overlay ───────────────────────────────────────
         Positioned.fill(
           child: DecoratedBox(
