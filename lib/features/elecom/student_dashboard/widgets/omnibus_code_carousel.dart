@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import '../dashboard_card_style.dart';
@@ -166,22 +167,28 @@ class _OmnibusFullscreenReaderState extends State<_OmnibusFullscreenReader> {
                                       // Clip so the zoomed image stays within
                                       // the card boundary.
                                       clipBehavior: Clip.hardEdge,
-                                      child: Image.asset(
-                                        widget.assetPaths[i],
+                                      child: Image(
+                                        image: _omnibusImage(
+                                          widget.assetPaths[i],
+                                        ),
                                         fit: BoxFit.fitWidth,
                                         alignment: Alignment.topCenter,
                                         filterQuality: FilterQuality.high,
                                         errorBuilder:
                                             (context, error, stackTrace) {
-                                          return Padding(
-                                            padding: const EdgeInsets.all(32),
-                                            child: Icon(
-                                              Icons.broken_image_outlined,
-                                              size: 72,
-                                              color: fg.withValues(alpha: 0.45),
-                                            ),
-                                          );
-                                        },
+                                              return Padding(
+                                                padding: const EdgeInsets.all(
+                                                  32,
+                                                ),
+                                                child: Icon(
+                                                  Icons.broken_image_outlined,
+                                                  size: 72,
+                                                  color: fg.withValues(
+                                                    alpha: 0.45,
+                                                  ),
+                                                ),
+                                              );
+                                            },
                                       ),
                                     ),
                                   ),
@@ -249,12 +256,14 @@ class OmnibusCodeCarousel extends StatefulWidget {
   const OmnibusCodeCarousel({
     super.key,
     this.assetPaths,
+    this.pages,
     this.height = 200,
     this.cardWidth = 168,
   });
 
   /// Defaults to [page01.jpg … page14.jpg] under `assets/omnibus/`.
   final List<String>? assetPaths;
+  final List<Map<String, dynamic>>? pages;
   final double height;
   final double cardWidth;
 
@@ -271,7 +280,19 @@ class OmnibusCodeCarousel extends StatefulWidget {
 
 class _OmnibusCodeCarouselState extends State<OmnibusCodeCarousel> {
   List<String> get _paths =>
-      widget.assetPaths ?? OmnibusCodeCarousel.defaultAssetPaths();
+      widget.assetPaths ?? omnibusPagePaths(widget.pages);
+
+  @override
+  void didUpdateWidget(covariant OmnibusCodeCarousel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!listEquals(
+      oldWidget.assetPaths ?? omnibusPagePaths(oldWidget.pages),
+      _paths,
+    )) {
+      _currentIndex = 0;
+    }
+  }
+
   int _currentIndex = 0;
 
   List<List<int>> _groupedPageIndices(int total) {
@@ -288,7 +309,6 @@ class _OmnibusCodeCarouselState extends State<OmnibusCodeCarousel> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final titleColor = isDark ? Colors.white : Colors.black;
     final paths = _paths;
     final groupedIndices = _groupedPageIndices(paths.length);
 
@@ -309,6 +329,7 @@ class _OmnibusCodeCarouselState extends State<OmnibusCodeCarousel> {
           child: paths.isEmpty
               ? const SizedBox.shrink()
               : CarouselSlider.builder(
+                  key: ValueKey(paths.join("|")),
                   itemCount: groupedIndices.length,
                   itemBuilder: (context, slideIndex, _) {
                     final group = groupedIndices[slideIndex];
@@ -394,9 +415,7 @@ class _OmnibusCodeCarouselState extends State<OmnibusCodeCarousel> {
                 dotColor: isDark
                     ? const Color(0xFF60A5FA).withValues(alpha: 0.30)
                     : const Color(0xFF2563EB).withValues(alpha: 0.30),
-                activeDotColor: isDark
-                    ? Colors.white
-                    : const Color(0xFF2563EB),
+                activeDotColor: isDark ? Colors.white : const Color(0xFF2563EB),
               ),
             ),
           ),
@@ -445,8 +464,8 @@ class _OmnibusCard extends StatelessWidget {
           ),
           child: ClipRRect(
             borderRadius: DashboardCardStyle.insetBorderRadius,
-            child: Image.asset(
-              path,
+            child: Image(
+              image: _omnibusImage(path),
               fit: BoxFit.cover,
               width: double.infinity,
               height: double.infinity,
@@ -465,3 +484,26 @@ class _OmnibusCard extends StatelessWidget {
     );
   }
 }
+
+/// Resolve only trusted image URLs or one of the original bundled pages.
+List<String> omnibusPagePaths(List<Map<String, dynamic>>? pages) {
+  if (pages == null || pages.isEmpty) {
+    return OmnibusCodeCarousel.defaultAssetPaths();
+  }
+  final result = <String>[];
+  for (final page in pages.take(30)) {
+    final url = Uri.tryParse('${page['image_url'] ?? ''}');
+    if (url?.scheme == 'https' && url?.host == 'res.cloudinary.com') {
+      result.add(url.toString());
+    } else {
+      final index = page['default_index'];
+      if (index is int && index >= 0 && index < 14) {
+        result.add(OmnibusCodeCarousel.defaultAssetPaths()[index]);
+      }
+    }
+  }
+  return result.isEmpty ? OmnibusCodeCarousel.defaultAssetPaths() : result;
+}
+
+ImageProvider _omnibusImage(String path) =>
+    path.startsWith('https://') ? NetworkImage(path) : AssetImage(path);

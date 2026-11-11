@@ -69,6 +69,9 @@ class _StudentDashboardState extends State<StudentDashboard>
   Map<String, dynamic>? _ledgerSummary;
   bool _loadingLedger = false;
   int _totalVoters = 0;
+  String? _filingCardBackground;
+  List<Map<String, dynamic>>? _filingCardSlides;
+  List<Map<String, dynamic>>? _omnibusPages;
   int? _castVotes;
   bool _loadingElectionMetrics = false;
   bool? _hasVoted;
@@ -512,6 +515,21 @@ class _StudentDashboardState extends State<StudentDashboard>
       if (!mounted) return;
       setState(() {
         _totalVoters = (metrics['total_voters'] as num?)?.toInt() ?? 0;
+        _filingCardBackground = res['filing_card_background'] as String?;
+        final omnibus = res['omnibus_pages'];
+        _omnibusPages = omnibus is List
+            ? omnibus
+                  .whereType<Map>()
+                  .map((page) => Map<String, dynamic>.from(page))
+                  .toList()
+            : null;
+        final slides = res['filing_card_slides'];
+        _filingCardSlides = slides is List
+            ? slides
+                  .whereType<Map>()
+                  .map((slide) => Map<String, dynamic>.from(slide))
+                  .toList()
+            : null;
         _castVotes = (metrics['total_cast_votes'] as num?)?.toInt();
       });
     } catch (_) {
@@ -1625,12 +1643,14 @@ class _StudentDashboardState extends State<StudentDashboard>
                         ),
                         const SizedBox(height: 12),
                         CandidateApplicationPromo(
+                          backgroundImageUrl: _filingCardBackground,
+                          slides: _filingCardSlides,
                           isDarkMode: isDarkMode && !isPremiumMode,
                           isPremiumMode: isPremiumMode,
                           onApplyNow: _openCandidateApplicationInfo,
                         ),
                         const SizedBox(height: 18),
-                        const OmnibusCodeCarousel(),
+                        OmnibusCodeCarousel(pages: _omnibusPages),
                         const SizedBox(height: 14),
                         Container(
                           key: ElecomTutorialKeys.homeReports,

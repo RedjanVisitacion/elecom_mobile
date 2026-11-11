@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import '../dashboard_card_style.dart';
@@ -10,11 +11,15 @@ class CandidateApplicationPromo extends StatefulWidget {
     required this.isDarkMode,
     required this.onApplyNow,
     this.isPremiumMode = false,
+    this.backgroundImageUrl,
+    this.slides,
   });
 
   final bool isDarkMode;
   final bool isPremiumMode;
   final VoidCallback onApplyNow;
+  final String? backgroundImageUrl;
+  final List<Map<String, dynamic>>? slides;
 
   @override
   State<CandidateApplicationPromo> createState() =>
@@ -54,12 +59,65 @@ class _CandidateApplicationPromoState extends State<CandidateApplicationPromo> {
   Timer? _autoScrollTimer;
   int _index = 0;
 
+  List<_CandidatePromoSlide> get _visibleSlides {
+    final configured = widget.slides;
+    if (configured != null && configured.isNotEmpty) {
+      return configured.take(10).map((slide) {
+        final index = slide['default_index'];
+        final fallback =
+            _slides[index is int && index >= 0 && index < _slides.length
+                ? index
+                : 2];
+        final url = Uri.tryParse('${slide['image_url'] ?? ''}');
+        final title = slide['title'] is String
+            ? (slide['title'] as String).trim()
+            : '';
+        final subtitle = slide['subtitle'] is String
+            ? (slide['subtitle'] as String).trim()
+            : '';
+        return _CandidatePromoSlide(
+          assetPath: fallback.assetPath,
+          title: title.isEmpty ? fallback.title : title,
+          subtitle: subtitle.isEmpty ? fallback.subtitle : subtitle,
+          imageUrl: url?.scheme == 'https' && url?.host == 'res.cloudinary.com'
+              ? url.toString()
+              : null,
+        );
+      }).toList();
+    }
+    final url = Uri.tryParse(widget.backgroundImageUrl ?? '');
+    if (url?.scheme != 'https' || url?.host != 'res.cloudinary.com') {
+      return _slides;
+    }
+    return [
+      _CandidatePromoSlide(
+        assetPath: _slides[2].assetPath,
+        title: 'Ready to Serve?',
+        subtitle: 'Submit your details and campaign platform for review.',
+        imageUrl: url.toString(),
+      ),
+    ];
+  }
+
+  @override
+  void didUpdateWidget(covariant CandidateApplicationPromo oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.backgroundImageUrl != widget.backgroundImageUrl ||
+        jsonEncode(oldWidget.slides) != jsonEncode(widget.slides)) {
+      _index = 0;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _controller.hasClients) _controller.jumpToPage(0);
+      });
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     _autoScrollTimer = Timer.periodic(const Duration(seconds: 4), (_) {
       if (!mounted || !_controller.hasClients) return;
-      final next = (_index + 1) % _slides.length;
+      if (_visibleSlides.length < 2) return;
+      final next = (_index + 1) % _visibleSlides.length;
       _controller.animateToPage(
         next,
         duration: const Duration(milliseconds: 520),
@@ -102,11 +160,11 @@ class _CandidateApplicationPromoState extends State<CandidateApplicationPromo> {
               child: PageView.builder(
                 controller: _controller,
                 physics: const BouncingScrollPhysics(),
-                itemCount: _slides.length,
+                itemCount: _visibleSlides.length,
                 onPageChanged: (value) => setState(() => _index = value),
                 itemBuilder: (context, index) {
                   return _CandidateApplicationSlide(
-                    slide: _slides[index],
+                    slide: _visibleSlides[index],
                     onApplyNow: widget.onApplyNow,
                   );
                 },
@@ -115,24 +173,25 @@ class _CandidateApplicationPromoState extends State<CandidateApplicationPromo> {
           ),
         ),
         const SizedBox(height: 8),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(_slides.length, (i) {
-            final active = i == _index;
-            return AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              margin: const EdgeInsets.symmetric(horizontal: 3),
-              width: active ? 18 : 6,
-              height: 6,
-              decoration: BoxDecoration(
-                color: active
-                    ? const Color(0xFF2563EB)
-                    : const Color(0xFF94A3B8).withValues(alpha: 0.45),
-                borderRadius: BorderRadius.circular(999),
-              ),
-            );
-          }),
-        ),
+        if (_visibleSlides.length > 1)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(_visibleSlides.length, (i) {
+              final active = i == _index;
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                width: active ? 18 : 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: active
+                      ? const Color(0xFF2563EB)
+                      : const Color(0xFF94A3B8).withValues(alpha: 0.45),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              );
+            }),
+          ),
       ],
     );
   }
@@ -152,21 +211,32 @@ class _CandidateApplicationSlide extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        Image.asset(
-          slide.assetPath,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return const DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                  colors: [Color(0xFF08265F), Color(0xFFF6B62D)],
+        if (slide.imageUrl != null)
+          Image.network(
+            slide.imageUrl!,
+            fit: BoxFit.cover,
+            loadingBuilder: (context, child, progress) => progress == null
+                ? child
+                : Image.asset(slide.assetPath, fit: BoxFit.cover),
+            errorBuilder: (context, error, stackTrace) =>
+                Image.asset(slide.assetPath, fit: BoxFit.cover),
+          )
+        else
+          Image.asset(
+            slide.assetPath,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) {
+              return const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [Color(0xFF08265F), Color(0xFFF6B62D)],
+                  ),
                 ),
-              ),
-            );
-          },
-        ),
+              );
+            },
+          ),
         const DecoratedBox(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -257,9 +327,11 @@ class _CandidatePromoSlide {
     required this.assetPath,
     required this.title,
     required this.subtitle,
+    this.imageUrl,
   });
 
   final String assetPath;
   final String title;
   final String subtitle;
+  final String? imageUrl;
 }
