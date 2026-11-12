@@ -334,9 +334,9 @@ class _ResultsScreenState extends State<ResultsScreen> {
                     title: 'Voting Trend',
                     value: _s(peak, 'label', fallback: 'Not enough data yet'),
                     note: _toInt(peak['votes_submitted']) > 0
-                        ? '${_toInt(peak['votes_submitted'])} votes submitted'
+                        ? '${_toInt(peak['votes_submitted'])} ballots submitted'
                         : _s(peak, 'note', fallback: 'Not enough data yet'),
-                    subtitle: 'Votes submitted over time',
+                    subtitle: 'Ballots submitted over time',
                     trend: peak['trend'],
                     hasEnoughData: peak['has_enough_data'] == true,
                     fg: fg,
@@ -1289,7 +1289,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
                                       ),
                                     ),
                                     Text(
-                                      'Total Votes',
+                                      'Vote Marks',
                                       style: TextStyle(
                                         color: sub,
                                         fontWeight: FontWeight.w700,
@@ -1397,7 +1397,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
                               children: [
                                 Expanded(
                                   child: Text(
-                                    '$totalVotes total votes',
+                                    '$totalVotes vote marks',
                                     style: TextStyle(
                                       color: fg,
                                       fontWeight: FontWeight.w800,

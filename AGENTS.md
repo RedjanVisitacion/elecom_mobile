@@ -1,5 +1,29 @@
 # Agent Instructions (Flutter app: `elecom_mobile`)
 
+## Live support takeover and login wording (2026-11-12)
+
+### Mobile support status and admin requests
+
+- User wants mobile users to see when an administrator takes over their chat and to be able to request an administrator. Implemented in `lib/features/elecom/elevote/elevote_chat_screen.dart` and `lib/features/elecom/data/elecom_mobile_api.dart`.
+- Chat displays a persistent banner for AI mode, pending admin request, or active admin takeover. Active takeover changes the title to **ELECOM Admin Support** and explains that AI replies are paused. **Request admin** is disabled during loading/submission and hidden while pending or taken over. AI remains available while waiting; requesting support must not itself activate takeover or promise response times.
+- `requestEleVoteAdmin()` posts `{"action":"request_admin"}` to the existing authenticated EleVote chat endpoint. Initial history and subsequent polling consume `takeover_active` and `admin_requested`; status must refresh even when there are no new messages. Existing polling interval is three seconds.
+- Backend implementation is in `G:\elecom_web\backend\core\views.py`: `_elevote_support_state()` returns both status flags. `_ensure_elevote_chat_table()` adds `requested boolean NOT NULL DEFAULT FALSE` to `elevote_chat_takeover` using `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`; this change uses the existing runtime table setup, not a newly added Django migration.
+- Request handling uses the authenticated session student ID, not a supplied student ID. A transaction and row lock make repeated requests idempotent and preserve active admin takeover. A new request adds one user message: “I would like an ELECOM admin to take over this chat.” Existing pending/active requests add no duplicate message. Admin takeover/release clears `requested`.
+- Admin conversation responses include `admin_requested`. `frontend/org_elecom/elecom_admin/admin_components/admin_js/elecom_live_chat.js` shows **Admin requested** in the inbox and thread badge; active mode shows **Admin handling chat**. Script query version was bumped to `20261112-admin-request1` in `elecom_live_chat.html`.
+- User requested removal of the duplicate **Release to EleVote** button. Removed only the button in the yellow takeover banner in `frontend/org_elecom/elecom_admin/elecom_live_chat.html`; retain the header Take Over/Release to EleVote control and informative banner. Unused `.takeover-banner-release` CSS remains; its presence does not mean the duplicate button is still rendered.
+
+### Login wording
+
+- The web portal manages elections; voting happens in the mobile app. User approved **Official Electoral Commission management portal.** as the login tagline. Updated `G:\elecom_web\frontend\org_elecom\elecom_login.html`, replacing “Official Electoral Commission voting portal.” Preserve this distinction in future copy.
+
+### Verification and deployment limits
+
+- `backend/core/test_chat_support.py` contains five isolated endpoint regression checks: session-scoped new request, duplicate request, active takeover protection, unauthorized request, and initial-history status. All five passed. These extract functions with AST and mock storage; they do not prove live PostgreSQL schema changes or end-to-end delivery.
+- Backend Python syntax and admin JavaScript syntax checks passed; Git whitespace checks passed. Direct Dart analysis of the two changed mobile files reported only two existing `unnecessary_underscores` info notices in the chat file. The command subsequently failed writing Dart telemetry outside the sandbox; do not describe the analyzer command as a fully successful clean run. A hanging `flutter analyze` invocation was stopped.
+- User screenshot showed the web **Admin handling chat** state and request message, which is evidence of that displayed web flow only. No updated mobile build, on-phone takeover test, or full production request/AI-resume verification was performed here. No deployment commands, release APK build, commit or push were performed by the agent in this work. Later `G:\elecom_web` status was clean, so the user may have committed between turns; always recheck rather than claiming changes remain uncommitted or undeployed.
+- The mobile checkout had unrelated user changes in `lib/features/elecom/results/results_screen.dart`; preserve them. At the last check the two mobile support files were also modified. `AGENTS.md` may be ignored by Git; saving it does not imply it will appear in `git status` or be committed.
+- Continue guided deployment one command at a time, waiting for user output. Web changes need the appropriate backend/static deployment; mobile support UI needs an updated app build. Do not infer successful deployment from a clean local Git status or a screenshot of a different flow.
+
 ## Mobile appearance and notification work (2026-11-12)
 
 ### Working style and current paths

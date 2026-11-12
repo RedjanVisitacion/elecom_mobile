@@ -91,6 +91,12 @@ class ElecomMobileApi {
     });
   }
 
+  Future<Map<String, dynamic>> requestEleVoteAdmin() async {
+    return _postJson(MobileApiPaths.elevoteChat, <String, dynamic>{
+      'action': 'request_admin',
+    });
+  }
+
   Future<Map<String, dynamic>> clearEleVoteHistory() async {
     return _deleteJson(MobileApiPaths.elevoteChat);
   }

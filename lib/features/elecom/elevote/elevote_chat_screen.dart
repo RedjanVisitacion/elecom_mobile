@@ -45,6 +45,8 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
   bool _isLive = false;        // drives the live indicator dot
   int _lastMessageId = 0;      // highest message id we have seen
   bool _takeover = false;      // true when admin has suppressed EleVote AI
+  bool _adminRequested = false;
+  bool _requestingAdmin = false;
   static const _pollInterval = Duration(seconds: 3);
 
   static const List<String> _suggestions = [
@@ -93,6 +95,8 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
         // large enough that since_id=N returns nothing on first poll.
         _lastMessageId = maxId > 0 ? maxId : 0;
         _loadingHistory = false;
+        _takeover = res['takeover_active'] == true;
+        _adminRequested = res['admin_requested'] == true;
       });
       _scrollToBottom(force: true, jump: true);
       _startPolling();
@@ -168,10 +172,7 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
       if (!mounted) return;
 
       // Update takeover state whenever the server tells us
-      final serverTakeover = res['takeover_active'];
-      if (serverTakeover is bool && serverTakeover != _takeover) {
-        setState(() => _takeover = serverTakeover);
-      }
+      _updateSupportState(res);
 
       final incoming = _parseMessages(res['messages']);
       if (incoming.isEmpty) return;
@@ -253,6 +254,7 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
         }
         if (userMsgId > _lastMessageId) _lastMessageId = userMsgId;
         _takeover = takeoverActive;
+        if (_takeover) _adminRequested = false;
         _sending = false;
       });
 
@@ -304,6 +306,35 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
       });
       AppToast.error(context, 'EleVote AI is unavailable.');
       _scrollToBottom(force: true);
+    }
+  }
+
+  void _updateSupportState(Map<String, dynamic> res) {
+    setState(() {
+      if (res['takeover_active'] is bool) {
+        _takeover = res['takeover_active'] as bool;
+      }
+      if (res['admin_requested'] is bool) {
+        _adminRequested = res['admin_requested'] as bool;
+      }
+      if (_takeover) _adminRequested = false;
+    });
+  }
+
+  Future<void> _requestAdmin() async {
+    if (_requestingAdmin || _adminRequested || _takeover) return;
+    setState(() => _requestingAdmin = true);
+    try {
+      final res = await _api.requestEleVoteAdmin();
+      if (!mounted) return;
+      _updateSupportState(res);
+      await _poll();
+    } catch (e) {
+      if (!mounted) return;
+      AppToast.error(context, e is ElecomApiException
+          ? e.message : 'Could not request an admin. Please try again.');
+    } finally {
+      if (mounted) setState(() => _requestingAdmin = false);
     }
   }
 
@@ -423,10 +454,11 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'EleVote Ai Assistant',
-              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
-            ),
+            Flexible(child: Text(
+              _takeover ? 'ELECOM Admin Support' : 'EleVote Ai Assistant',
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
+            )),
             const SizedBox(width: 8),
             AnimatedOpacity(
               opacity: _isLive ? 1.0 : 0.0,
@@ -452,6 +484,31 @@ class _EleVoteChatScreenState extends State<EleVoteChatScreen> {
       ),
       body: Column(
         children: [
+          Container(
+            width: double.infinity,
+            color: _takeover ? const Color(0xFFECFDF5) : const Color(0xFFEFF6FF),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            child: Row(
+              children: [
+                Icon(_takeover ? Icons.support_agent : Icons.smart_toy_outlined,
+                    color: _takeover ? const Color(0xFF047857) : const Color(0xFF2563EB)),
+                const SizedBox(width: 10),
+                Expanded(child: Text(
+                  _takeover
+                      ? 'An ELECOM admin has taken over this chat. AI replies are paused.'
+                      : _adminRequested
+                          ? 'Admin requested. Waiting for an admin to join. You can still chat with EleVote.'
+                          : 'You are chatting with EleVote AI.',
+                  style: const TextStyle(fontSize: 12, height: 1.35),
+                )),
+                if (!_takeover && !_adminRequested)
+                  TextButton(
+                    onPressed: _loadingHistory || _requestingAdmin ? null : _requestAdmin,
+                    child: Text(_requestingAdmin ? 'Requesting…' : 'Request admin'),
+                  ),
+              ],
+            ),
+          ),
           Expanded(
             child: Stack(
               children: [
